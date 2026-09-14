@@ -107,6 +107,12 @@ Then in the dashboard:
   editor: `update public.app_user_profile set role = 'admin' where email = '<email>';`
   Every later user is invited from the app's Users tab.
 
+  **If you signed in and the app says "Your account has no application
+  profile"**, the account was created before the migrations were applied, so
+  the trigger that creates profiles did not exist yet. Run
+  `scripts/bootstrap-admin.sql` in the SQL Editor with your email substituted;
+  it creates the row and makes you an admin.
+
 ### 2. Cloudflare Pages
 
 Connect the repository (or `npm run deploy`). Build command `npm run build`,
