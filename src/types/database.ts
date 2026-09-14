@@ -172,7 +172,29 @@ export type Database = {
           created_at?: Timestamp;
           updated_at?: Timestamp | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'place_parent_place_id_fkey';
+            columns: ['parent_place_id'];
+            isOneToOne: false;
+            referencedRelation: 'place';
+            referencedColumns: ['place_id'];
+          },
+          {
+            foreignKeyName: 'place_created_by_user_id_fkey';
+            columns: ['created_by_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'app_user_profile';
+            referencedColumns: ['user_id'];
+          },
+          {
+            foreignKeyName: 'place_updated_by_user_id_fkey';
+            columns: ['updated_by_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'app_user_profile';
+            referencedColumns: ['user_id'];
+          },
+        ];
       };
       event: {
         Row: {
@@ -241,7 +263,22 @@ export type Database = {
           created_at?: Timestamp;
           updated_at?: Timestamp | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'event_occurrence_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'event';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'event_occurrence_primary_place_id_fkey';
+            columns: ['primary_place_id'];
+            isOneToOne: false;
+            referencedRelation: 'place';
+            referencedColumns: ['place_id'];
+          },
+        ];
       };
       place_space: {
         Row: {
@@ -277,7 +314,15 @@ export type Database = {
           created_at?: Timestamp;
           updated_at?: Timestamp | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'place_space_place_id_fkey';
+            columns: ['place_id'];
+            isOneToOne: false;
+            referencedRelation: 'place';
+            referencedColumns: ['place_id'];
+          },
+        ];
       };
       artist: {
         Row: {
@@ -418,7 +463,50 @@ export type Database = {
           created_at?: Timestamp;
           updated_at?: Timestamp | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'performance_set_occurrence_id_fkey';
+            columns: ['occurrence_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_occurrence';
+            referencedColumns: ['occurrence_id'];
+          },
+          {
+            foreignKeyName: 'performance_set_place_id_fkey';
+            columns: ['place_id'];
+            isOneToOne: false;
+            referencedRelation: 'place';
+            referencedColumns: ['place_id'];
+          },
+          {
+            foreignKeyName: 'performance_set_place_space_id_fkey';
+            columns: ['place_space_id'];
+            isOneToOne: false;
+            referencedRelation: 'place_space';
+            referencedColumns: ['space_id'];
+          },
+          {
+            foreignKeyName: 'performance_set_source_performance_set_id_fkey';
+            columns: ['source_performance_set_id'];
+            isOneToOne: false;
+            referencedRelation: 'performance_set';
+            referencedColumns: ['performance_set_id'];
+          },
+          {
+            foreignKeyName: 'performance_set_supersedes_performance_set_id_fkey';
+            columns: ['supersedes_performance_set_id'];
+            isOneToOne: false;
+            referencedRelation: 'performance_set';
+            referencedColumns: ['performance_set_id'];
+          },
+          {
+            foreignKeyName: 'performance_set_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'evidence_source';
+            referencedColumns: ['source_id'];
+          },
+        ];
       };
       performance_set_participant: {
         Row: {
@@ -463,7 +551,22 @@ export type Database = {
           created_at?: Timestamp;
           updated_at?: Timestamp | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'performance_set_participant_performance_set_id_fkey';
+            columns: ['performance_set_id'];
+            isOneToOne: false;
+            referencedRelation: 'performance_set';
+            referencedColumns: ['performance_set_id'];
+          },
+          {
+            foreignKeyName: 'performance_set_participant_artist_id_fkey';
+            columns: ['artist_id'];
+            isOneToOne: false;
+            referencedRelation: 'artist';
+            referencedColumns: ['artist_id'];
+          },
+        ];
       };
     };
     Views: { [_ in never]: never };
@@ -508,3 +611,28 @@ export const RECORD_STATUSES: Enums<'record_status'>[] = [
 export const PLACE_LIFECYCLE_TYPES: Enums<'place_lifecycle_type'>[] = [
   'permanent', 'temporary', 'mobile', 'virtual',
 ];
+export const EVENT_TYPES: Enums<'event_type'>[] = [
+  'party', 'festival', 'concert', 'afterparty', 'label_night', 'other', 'unknown',
+];
+export const SET_SCENARIO_TYPES: Enums<'set_scenario_type'>[] = [
+  'official', 'predicted', 'actual', 'manual',
+];
+export const PERFORMANCE_SET_TYPES: Enums<'performance_set_type'>[] = [
+  'group', 'single_artist_set', 'b2b', 'multi_b2b', 'featuring',
+  'hosted_set', 'placeholder', 'service_block', 'unknown',
+];
+export const PARTICIPANT_ROLES: Enums<'participant_role'>[] = [
+  'primary', 'b2b', 'featured', 'guest', 'host', 'mc', 'support',
+  'headliner', 'placeholder', 'unknown',
+];
+
+// artist.artist_type is varchar in the DBML, constrained by ck_artist_type.
+export const ARTIST_TYPES = ['solo', 'duo', 'group', 'collective', 'alias', 'unknown'] as const;
+export type ArtistType = (typeof ARTIST_TYPES)[number];
+
+// place_space.space_type is free varchar; these are the common values, offered
+// as suggestions rather than enforced.
+export const SPACE_TYPE_SUGGESTIONS = [
+  'stage', 'room', 'floor', 'terrace', 'rooftop', 'pool_area', 'bar_area',
+  'lounge', 'outdoor_zone', 'vip_area', 'backstage', 'mobile_stage', 'other',
+] as const;

@@ -11,6 +11,10 @@ import { useAuth } from '@/auth/AuthProvider';
  */
 const TABS: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/places', label: 'Places' },
+  { to: '/spaces', label: 'Spaces' },
+  { to: '/events', label: 'Events' },
+  { to: '/occurrences', label: 'Occurrences' },
+  { to: '/artists', label: 'Artists' },
   { to: '/users', label: 'Users', adminOnly: true },
 ];
 

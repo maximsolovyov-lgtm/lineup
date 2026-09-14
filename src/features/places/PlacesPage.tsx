@@ -3,20 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RECORD_STATUSES, type Enums } from '@/types/database';
+import { StatusBadge } from '@/components/StatusBadge';
+import { RECORD_STATUSES } from '@/types/database';
 import { usePlaces, useProfileNames, type PlaceListParams } from './api';
-
-const STATUS_VARIANT: Record<Enums<'record_status'>, 'success' | 'secondary' | 'warning' | 'destructive' | 'outline'> = {
-  active: 'success', draft: 'secondary', inactive: 'warning', closed: 'warning',
-  superseded: 'outline', archived: 'outline', deleted: 'destructive',
-};
-
-export function StatusBadge({ status }: { status: Enums<'record_status'> }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>;
-}
 
 export function PlacesPage() {
   const navigate = useNavigate();

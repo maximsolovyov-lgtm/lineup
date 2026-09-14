@@ -7,9 +7,11 @@ Schedule Agent will use as prediction hints. Admins also manage users.
 
 This is MVP v1 as decided on 2026-09-13 in the Drive documents under
 `LineApp/` (PRD, Solution Architecture, Data Model, `LineApp - Data Model.dbml`).
-Two tabs are built — **Places** and **Users** — while the database schema
-covers all nine tables of the DBML so the roadmap entities (events, artists,
-performance sets) can get tabs without schema work. See
+Six tabs are built — **Places**, **Spaces**, **Events**, **Occurrences**,
+**Artists** and **Users** — over a database schema covering all nine tables of
+the DBML. The two schedule tables (`performance_set`,
+`performance_set_participant`) exist with their constraints but have no UI
+yet. See
 [docs/DECISIONS.md](docs/DECISIONS.md) for the decisions taken on 2026-09-14
 and the contradictions found in the source documents.
 
@@ -49,8 +51,14 @@ scripts/verify-schema.sh   Runs the suite against any throwaway Postgres
 src/                   Vite React app
   auth/                Session, guards, login, set-password
   layout/AppShell.tsx  Object tabs — add a route + one entry per new entity
-  components/form/     LookupField (FK picker), RoomsEditor (structured JSON), Field
+  components/form/     LookupField (FK picker), RoomsEditor, DateTimeField, Field
+  lib/datetime.ts      Venue-local wall time <-> instant (tested)
+  lib/lookups.ts       Searchable foreign-key sources, shared across forms
   features/places/     Places tab: list, search, create/edit form
+  features/spaces/     Spaces tab: rooms and stages, scoped to a venue
+  features/events/     Events tab: brands, with their occurrences listed
+  features/occurrences/  Occurrences tab: dated instances, venue-local times
+  features/artists/    Artists tab
   features/users/      Users tab (admin): invite, role, activate/deactivate
   types/database.ts    Supabase types (hand-written from the migrations; see below)
 functions/api/         Pages Function: POST /api/admin/users/invite, PATCH /api/admin/users/:id/status
@@ -125,6 +133,24 @@ output directory `dist`.
 | | `SUPABASE_URL` | project URL (for the Function) |
 | Pages → Settings → Environment variables (**encrypt**) | `SUPABASE_SERVICE_ROLE_KEY` | service role key — never in the browser, never in git |
 
+## Times and timezones
+
+`event_occurrence.starts_at` and `ends_at` are instants (`timestamptz`), but a
+night at UNVRS starts at 23:30 *Ibiza* time whether the operator entering it
+is in Ibiza or Miami. The occurrence form therefore reads and writes wall
+time in the occurrence's own `timezone`, defaulting to the venue's, and
+converts on the way in and out. `src/lib/datetime.ts` holds that logic and
+`npm test` covers it, including both DST boundaries and nights that cross
+midnight. Display is always 24-hour, whatever the viewer's locale.
+
+## Tests
+
+```bash
+npm test          # node:test over src/**/*.test.ts
+npm run typecheck # app, tests, and Pages Functions
+npm run db:verify # schema + RLS suite against a throwaway Postgres
+```
+
 ## Regenerating database types
 
 `src/types/database.ts` was written by hand against the migrations because
@@ -136,10 +162,18 @@ npm run db:types
 
 ## Roadmap
 
-The remaining DBML tables — `event`, `event_occurrence`, `place_space`,
-`artist`, `evidence_source`, `performance_set`,
-`performance_set_participant` — exist with RLS and constraints but have no
-UI. Each one is an object tab: a list page, a form page, a zod schema, and an
-entry in `AppShell.tsx`. `LookupField` already handles their foreign keys.
+`performance_set`, `performance_set_participant` and `evidence_source` exist
+with RLS and constraints but have no UI. The first two are not simply CRUD:
+`performance_set` carries `scenario_type`, `scenario_version` and the lineage
+pointers `source_performance_set_id` / `supersedes_performance_set_id`, and
+the model depends on new information creating a *new row* rather than editing
+an existing one. A form over its columns would make it easy to produce
+contradictory rows by hand, so that screen needs to be designed around
+versions and supersession rather than fields.
+
+Adding a straightforward entity tab, by contrast, is mechanical: a list page,
+a form page, a zod schema, an `api.ts`, and one entry in `AppShell.tsx`.
+`LookupField` and `lib/lookups.ts` already cover the foreign keys.
+
 Not in scope for this or any near phase: ingestion agents, OCR, notifications,
 favourites, public pages.
