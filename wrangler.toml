@@ -1,0 +1,9 @@
+name = "lineapp-admin"
+compatibility_date = "2026-09-01"
+pages_build_output_dir = "dist"
+
+# Non-secret bindings. Secrets (SUPABASE_SERVICE_ROLE_KEY) are set with
+# `wrangler pages secret put SUPABASE_SERVICE_ROLE_KEY` for production and
+# in .dev.vars for local development.
+[vars]
+SUPABASE_URL = ""

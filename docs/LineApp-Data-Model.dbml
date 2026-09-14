@@ -1,0 +1,289 @@
+Project LineApp_MVP_and_Future_Schedule {
+  database_type: "PostgreSQL"
+  Note: '''
+  Last updated: 2026-09-13.
+
+  Active MVP v1: Cloudflare + Supabase internal Admin application.
+  The operator can create and update any entity in the data model unless a specific admin-only governance rule is later added.
+
+  Admin UI requirements:
+  - The interface must be organized as object tabs, one tab per main data entity.
+  - Foreign-key fields must be searchable lookup fields, not plain UUID text inputs.
+  - Date and time fields must use calendar and time picker controls.
+  - Enum or limited-value fields must use dropdown/select controls.
+  - Boolean fields must use toggles/checkboxes.
+  - JSON fields must use structured editor controls with validation.
+  - Required fields must be visually marked and validated before save.
+
+  Future schedule model simplification:
+  PerformanceSet is the central table for lineup-only, group, predicted, official, manual, and actual records.
+  Artist remains the master data entity.
+  PerformanceSetParticipant remains the normalized link between PerformanceSet and Artist.
+  artist_list_json is optional cache/raw extraction only, not the source of truth.
+  Removed tables: occurrence_place, occurrence_space, occurrence_lineup_entry, lineup_placement, schedule_scenario, performance_set_relation.
+  '''
+}
+
+Enum app_role {
+  admin
+  operator
+}
+
+Enum record_status {
+  draft
+  active
+  inactive
+  closed
+  superseded
+  archived
+  deleted
+}
+
+Enum place_lifecycle_type {
+  permanent
+  temporary
+  mobile
+  virtual
+}
+
+Enum event_type {
+  party
+  festival
+  concert
+  afterparty
+  label_night
+  other
+  unknown
+}
+
+Enum set_scenario_type {
+  official
+  predicted
+  actual
+  manual
+}
+
+Enum performance_set_type {
+  group
+  single_artist_set
+  b2b
+  multi_b2b
+  featuring
+  hosted_set
+  placeholder
+  service_block
+  unknown
+}
+
+Enum participant_role {
+  primary
+  b2b
+  featured
+  guest
+  host
+  mc
+  support
+  headliner
+  placeholder
+  unknown
+}
+
+Table app_user_profile {
+  user_id uuid [pk, note: 'Matches Supabase auth.users.id']
+  email varchar [not null]
+  full_name varchar
+  role app_role [not null, default: 'operator']
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Application profile and authorization role. Admin can manage users and operator access. Operator can create/update model entities through object tabs unless a stricter rule is later defined.'
+}
+
+Table place {
+  place_id uuid [pk]
+  parent_place_id uuid [ref: > place.place_id, note: 'Searchable lookup to Place. Used for parent/child place hierarchy.']
+  name varchar [not null]
+  normalized_name varchar
+  lifecycle_type place_lifecycle_type [not null, default: 'permanent']
+  address text
+  city varchar
+  region varchar
+  country varchar
+  latitude decimal
+  longitude decimal
+  timezone varchar
+  capacity integer
+
+  website_url text
+  instagram_account varchar
+  instagram_url text
+  facebook_account varchar
+  facebook_url text
+
+  news_pattern text
+  lineup_pattern text
+  typical_party_start_time time
+  typical_party_end_time time
+  typical_party_start_day_offset int [default: 0]
+  typical_party_end_day_offset int
+  typical_room_count int
+  typical_rooms_json jsonb
+  typical_headliner_room_name varchar
+  typical_headliner_start_time time
+  typical_headliner_start_day_offset int
+  typical_headliner_end_time time
+  typical_headliner_end_day_offset int
+  lineup_pattern_confidence_score decimal
+  lineup_pattern_sample_size int
+  lineup_pattern_notes text
+
+  status record_status [not null, default: 'active']
+  created_by_user_id uuid [ref: > app_user_profile.user_id]
+  updated_by_user_id uuid [ref: > app_user_profile.user_id]
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Physical, temporary, mobile, or virtual place. MVP stores official web/social links and descriptive news/lineup patterns directly on Place. UI must use dropdowns for lifecycle/status and lookup for parent_place_id.'
+}
+
+Table event {
+  event_id uuid [pk]
+  name varchar [not null]
+  normalized_name varchar
+  event_type event_type [not null, default: 'party']
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Reusable event brand or concept, for example Circoloco, Music On, or a festival brand.'
+}
+
+Table event_occurrence {
+  occurrence_id uuid [pk]
+  event_id uuid [not null, ref: > event.event_id, note: 'Searchable Event lookup']
+  primary_place_id uuid [ref: > place.place_id, note: 'Searchable Place lookup. Main/default location for the occurrence. Multi-venue detail lives on PerformanceSet.place_id.']
+  occurrence_name varchar
+  starts_at timestamptz [not null]
+  ends_at timestamptz [not null]
+  timezone varchar
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Concrete event instance on specific date/time. Date/time fields must use calendar and time picker controls.'
+}
+
+Table place_space {
+  space_id uuid [pk]
+  place_id uuid [not null, ref: > place.place_id, note: 'Searchable Place lookup']
+  name varchar [not null]
+  normalized_name varchar
+  space_type varchar
+  capacity integer
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Permanent or known room/stage inside a place. PerformanceSet.place_space_id points here when stage/room is known. UI must validate that selected place_space belongs to the selected performance_set.place_id.'
+}
+
+Table artist {
+  artist_id uuid [pk]
+  name varchar [not null]
+  normalized_name varchar
+  artist_type varchar [note: 'solo, duo, group, collective, alias, unknown']
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Artist master data. duo_project, group_project, and collective belong here as artist_type, not as performance_set.set_type.'
+}
+
+Table evidence_source {
+  source_id uuid [pk]
+  source_type varchar
+  source_url text
+  source_title varchar
+  captured_at timestamptz
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+  Note: 'Source/evidence for official lineup, stage assignment, timetable, or prediction input.'
+}
+
+Table performance_set {
+  performance_set_id uuid [pk]
+
+  occurrence_id uuid [not null, ref: > event_occurrence.occurrence_id, note: 'Searchable EventOccurrence lookup']
+  place_id uuid [ref: > place.place_id, note: 'Searchable Place lookup. Supports multi-venue events directly without occurrence_place.']
+  place_space_id uuid [ref: > place_space.space_id, note: 'Searchable PlaceSpace lookup. Nullable. Null means stage/room is not known yet.']
+
+  scenario_type set_scenario_type [not null, note: 'official, predicted, actual, manual']
+  scenario_version int [not null]
+
+  set_type performance_set_type [not null, note: 'group, single_artist_set, b2b, multi_b2b, featuring, hosted_set, placeholder, service_block, unknown']
+  display_name varchar
+
+  scheduled_start_at timestamptz [not null]
+  scheduled_end_at timestamptz [not null]
+  sequence_number int
+
+  artist_list_json jsonb [note: 'Optional cache/raw extraction payload only. Normalized participants live in performance_set_participant.']
+  artist_count int
+
+  information_origin varchar
+  confirmation_status varchar
+  confidence_score decimal
+
+  source_performance_set_id uuid [ref: > performance_set.performance_set_id, note: 'Lineage: row used as source for this derived row.']
+  supersedes_performance_set_id uuid [ref: > performance_set.performance_set_id, note: 'Versioning: previous row superseded by this row.']
+  source_id uuid [ref: > evidence_source.source_id]
+
+  notes text
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+
+  indexes {
+    (occurrence_id, scenario_type, scenario_version)
+    (occurrence_id, place_id, place_space_id)
+    (set_type)
+    (source_performance_set_id)
+    (supersedes_performance_set_id)
+  }
+
+  Note: '''
+  Central table for lineup-only group blocks, predicted schedules, official schedules, manual edits, and actual performance records.
+  Lineup-only example: scenario_type=official, scenario_version=1, set_type=group, place_space_id=null, start/end equal event-day window.
+  Stage split without times: create official group PerformanceSets per stage/room with place_space_id populated and broad start/end windows.
+  Exact timetable: create official single_artist_set/b2b/multi_b2b/featuring/hosted_set rows with exact times.
+  Actuals: create actual rows and supersede or reference the official/predicted row.
+  '''
+}
+
+Table performance_set_participant {
+  participant_id uuid [pk]
+  performance_set_id uuid [not null, ref: > performance_set.performance_set_id, note: 'Searchable PerformanceSet lookup']
+  artist_id uuid [ref: > artist.artist_id, note: 'Searchable Artist lookup. Nullable for TBD/Special Guest placeholders.']
+
+  participant_role participant_role [not null, default: 'unknown']
+  billing_order int
+  display_order int
+  is_headliner boolean
+  is_primary boolean
+  display_name_override varchar
+  status record_status [not null, default: 'active']
+  created_at timestamptz [not null]
+  updated_at timestamptz
+
+  indexes {
+    (performance_set_id)
+    (artist_id)
+    (performance_set_id, display_order)
+  }
+
+  Note: '''
+  Normalized link between PerformanceSet and Artist.
+  Single artist set: one primary participant.
+  B2B: two participants with role=b2b.
+  Multi-B2B: three or more participants with role=b2b.
+  Featuring: primary participant plus featured/guest participant.
+  Group lineup: many participants; billing_order/display_order may be known or null.
+  Placeholder: artist_id can be null and display_name_override stores TBD, Special Guest, or To Be Announced.
+  '''
+}
