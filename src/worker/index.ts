@@ -1,5 +1,5 @@
 /**
- * Admin endpoints — Cloudflare Pages Function at /api/*.
+ * Admin endpoints — Cloudflare Worker serving /api/*.
  *
  * Only operations that need the Supabase service-role key live here:
  * creating auth users (invites) and banning/unbanning them on deactivation.
@@ -9,10 +9,9 @@
  * caller's own profile is an active admin before doing anything.
  */
 import { Hono } from 'hono';
-import { handle } from 'hono/cloudflare-pages';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import type { Database } from '../../src/types/database';
+import type { Database } from '../types/database';
 
 interface Env {
   SUPABASE_URL: string;
@@ -132,4 +131,9 @@ app.patch('/admin/users/:id/status', async (c) => {
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 
-export const onRequest = handle(app);
+/**
+ * Only /api/* reaches this Worker: `run_worker_first` in wrangler.jsonc
+ * routes those requests here, and everything else is served from the built
+ * SPA in ./dist, with unmatched navigations falling back to index.html.
+ */
+export default app;

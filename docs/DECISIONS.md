@@ -35,6 +35,25 @@ Data Model, all v1.3 dated 2026-09-13) were ambiguous or silent on them.
   a CHECK enforces that vocabulary.
 - UI in English; shadcn-style components hand-written (no CLI dependency).
 
+## Cloudflare Pages → Workers (2026-09-14)
+
+The architecture document specifies Cloudflare Pages with Pages Functions.
+The app was built that way and then moved to **Workers with static assets**,
+because that is where Cloudflare now directs new projects — its own
+documentation for React SPAs describes only the Workers path, and it ships a
+Pages-to-Workers migration guide rather than the reverse.
+
+Concretely this is better for us in one way that matters: SPA routing is
+configuration (`not_found_handling: "single-page-application"`) rather than a
+`_redirects` file whose precedence against Functions has to be reasoned
+about, and `run_worker_first: ["/api/*"]` states plainly which paths are code
+and which are files.
+
+Nothing about the application changed — the same Hono routes, the same
+service-role handling. `functions/api/[[route]].ts` became
+`src/worker/index.ts`, exporting the app instead of a Pages `onRequest`
+handler. The SAD should be updated to match.
+
 ## Contradictions in the source documents (as of 2026-09-14)
 
 Worth fixing in Drive so the next reader doesn't have to reconcile them.

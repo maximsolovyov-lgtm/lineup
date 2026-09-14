@@ -1,3 +1,4 @@
-# Copy to .dev.vars for `wrangler pages dev`. Git-ignored.
+# Copy to .dev.vars for `npm run dev:worker`. Git-ignored.
+# SUPABASE_URL is also in wrangler.jsonc; .dev.vars wins locally.
 SUPABASE_URL="https://enivasukccwjpvsgwcsd.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="<service role key>"

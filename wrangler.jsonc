@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lineapp",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-09-14",
+
+  // The built SPA. Navigations that match no file fall back to index.html so
+  // client-side routes such as /places/:id survive a direct load or refresh.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    // Everything else is a static asset; only the API reaches the Worker.
+    "run_worker_first": ["/api/*"]
+  },
+
+  // Non-secret. SUPABASE_SERVICE_ROLE_KEY is a secret:
+  //   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+  // or set it encrypted in the dashboard. Never in this file.
+  "vars": {
+    "SUPABASE_URL": "https://enivasukccwjpvsgwcsd.supabase.co"
+  },
+
+  "observability": { "enabled": true }
+}

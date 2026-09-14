@@ -2,22 +2,22 @@
   "name": "lineapp",
   "version": "0.1.0",
   "private": true,
-  "description": "LineApp / LineupIN — Place Admin application (MVP v1)",
+  "description": "LineApp / LineupIN \u2014 Place Admin application (MVP v1)",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev": "vite",
-    "dev:full": "wrangler pages dev --compatibility-date=2026-09-01 -- vite",
+    "dev:worker": "npm run build:app && wrangler dev",
+    "build:app": "vite build",
     "build": "npm run typecheck && vite build",
-    "preview": "wrangler pages dev dist",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit && tsc -p functions/tsconfig.json --noEmit",
-    "lint": "eslint src functions --ext .ts,.tsx",
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.ts",
-    "db:verify": "scripts/verify-schema.sh",
-    "deploy": "npm run build && wrangler pages deploy dist",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "db:verify": "scripts/verify-schema.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -22,8 +22,8 @@ and the contradictions found in the source documents.
 | UI | React 18 + TypeScript, Vite, Tailwind, shadcn-style components, react-hook-form + zod |
 | Data | Supabase Postgres, direct from the browser under row-level security |
 | Auth | Supabase Auth, invite-only (public signup disabled) |
-| Admin API | Cloudflare Pages Functions (Hono) — only for operations that need the service-role key |
-| Hosting | Cloudflare Pages |
+| Admin API | Hono in a Cloudflare Worker — only for operations that need the service-role key |
+| Hosting | Cloudflare Workers with static assets |
 
 ## Permissions
 
@@ -61,7 +61,7 @@ src/                   Vite React app
   features/artists/    Artists tab
   features/users/      Users tab (admin): invite, role, activate/deactivate
   types/database.ts    Supabase types (hand-written from the migrations; see below)
-functions/api/         Pages Function: POST /api/admin/users/invite, PATCH /api/admin/users/:id/status
+  worker/              The Worker: POST /api/admin/users/invite, PATCH /api/admin/users/:id/status
 docs/                  Source DBML and decisions log
 ```
 
@@ -75,7 +75,8 @@ npx supabase start            # Postgres + Auth + REST on localhost:54321
 npx supabase db reset         # applies migrations + seed.sql
 cp .env.example .env          # fill VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY from `supabase status`
 cp .dev.vars.example .dev.vars # SUPABASE_URL + service role key from `supabase status`
-npm run dev:full              # UI on :5173, Functions on :8788
+npm run dev                   # UI on :5173, proxying /api to :8787
+npm run dev:worker            # or the whole thing as it deploys, on :8787
 ```
 
 Sign in as `admin@lineapp.local` or `operator@lineapp.local`. The seed
@@ -121,17 +122,45 @@ Then in the dashboard:
   `scripts/bootstrap-admin.sql` in the SQL Editor with your email substituted;
   it creates the row and makes you an admin.
 
-### 2. Cloudflare Pages
+### 2. Cloudflare Workers
 
-Connect the repository (or `npm run deploy`). Build command `npm run build`,
-output directory `dist`.
+The app deploys as a single Worker: `/api/*` runs the Hono handler in
+`src/worker/`, everything else is served from the built SPA in `dist`, and a
+navigation that matches no file falls back to `index.html` so
+`/places/:id` survives a direct load. That routing lives in `wrangler.jsonc`
+(`run_worker_first` and `not_found_handling`), not in redirect files.
 
-| Where | Name | Value |
+**Either** connect the repository once and let Cloudflare build on every push
+— dashboard → **Workers & Pages → Create → Import a repository** — **or**
+deploy from your machine:
+
+```bash
+npx wrangler login
+npm run deploy
+```
+
+Set these in **Workers & Pages → your Worker → Settings**:
+
+| Kind | Name | Value |
 |---|---|---|
-| Pages → Settings → Environment variables | `VITE_SUPABASE_URL` | project URL |
-| | `VITE_SUPABASE_ANON_KEY` | anon / publishable key |
-| | `SUPABASE_URL` | project URL (for the Function) |
-| Pages → Settings → Environment variables (**encrypt**) | `SUPABASE_SERVICE_ROLE_KEY` | service role key — never in the browser, never in git |
+| Build variable | `VITE_SUPABASE_URL` | project URL |
+| Build variable | `VITE_SUPABASE_ANON_KEY` | anon / publishable key |
+| Variable | `SUPABASE_URL` | project URL — already in `wrangler.jsonc` |
+| **Secret** (encrypt) | `SUPABASE_SERVICE_ROLE_KEY` | service role key |
+
+The two `VITE_` values are needed **at build time**: Vite inlines them into
+the bundle, so a build without them produces an app that cannot reach
+Supabase. They are public by design — the anon key is guarded by RLS. The
+service-role key is the opposite: it bypasses RLS entirely, so it is a secret,
+never a plain variable, and never in git. Deploying from the CLI instead:
+
+```bash
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+```
+
+Finally, in Supabase → **Authentication → URL Configuration**, set the Site
+URL to the deployed address and add `<your-worker-url>/auth/set-password` to
+Redirect URLs, or invitation links will bounce.
 
 ## Times and timezones
 
@@ -147,7 +176,7 @@ midnight. Display is always 24-hour, whatever the viewer's locale.
 
 ```bash
 npm test          # node:test over src/**/*.test.ts
-npm run typecheck # app, tests, and Pages Functions
+npm run typecheck # app, tests, and the Worker
 npm run db:verify # schema + RLS suite against a throwaway Postgres
 ```
 

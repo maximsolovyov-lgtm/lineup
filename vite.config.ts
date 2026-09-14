@@ -11,6 +11,6 @@ export default defineConfig({
     port: 5173,
     // Pages Functions run under `wrangler pages dev`; in plain `vite` mode
     // forward /api to it so the admin endpoints still work.
-    proxy: { '/api': 'http://localhost:8788' },
+    proxy: { '/api': 'http://localhost:8787' },
   },
 });

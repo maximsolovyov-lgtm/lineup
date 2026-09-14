@@ -4,6 +4,7 @@ dist/
 .env.*
 !.env.example
 .dev.vars
+.dev.vars.*
 .wrangler/
 supabase/.branches/
 supabase/.temp/
