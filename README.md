@@ -130,9 +130,13 @@ navigation that matches no file falls back to `index.html` so
 `/places/:id` survives a direct load. That routing lives in `wrangler.jsonc`
 (`run_worker_first` and `not_found_handling`), not in redirect files.
 
+This deploys to the Worker named **`lineapp-claude`**. That name is set in
+`wrangler.jsonc` and, when a repository is connected, it must match the
+Worker's name in the dashboard exactly or the build fails.
+
 **Either** connect the repository once and let Cloudflare build on every push
-— dashboard → **Workers & Pages → Create → Import a repository** — **or**
-deploy from your machine:
+— open the Worker → **Settings → Builds → Connect** — **or** deploy from your
+machine:
 
 ```bash
 npx wrangler login
