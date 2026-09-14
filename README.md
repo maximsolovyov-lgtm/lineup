@@ -143,24 +143,22 @@ npx wrangler login
 npm run deploy
 ```
 
-Set these in **Workers & Pages → your Worker → Settings**:
+The build needs no configuration: `.env.production` carries the two public
+values Vite inlines into the bundle (`VITE_SUPABASE_URL`,
+`VITE_SUPABASE_ANON_KEY`). They are public by design — every visitor to the
+deployed app receives them, and row-level security, not secrecy, is what
+protects the data. Dashboard build variables of the same name override them.
 
-| Kind | Name | Value |
-|---|---|---|
-| Build variable | `VITE_SUPABASE_URL` | project URL |
-| Build variable | `VITE_SUPABASE_ANON_KEY` | anon / publishable key |
-| Variable | `SUPABASE_URL` | project URL — already in `wrangler.jsonc` |
-| **Secret** (encrypt) | `SUPABASE_SERVICE_ROLE_KEY` | service role key |
-
-The two `VITE_` values are needed **at build time**: Vite inlines them into
-the bundle, so a build without them produces an app that cannot reach
-Supabase. They are public by design — the anon key is guarded by RLS. The
-service-role key is the opposite: it bypasses RLS entirely, so it is a secret,
-never a plain variable, and never in git. Deploying from the CLI instead:
+One secret is required, set on the Worker rather than in the build:
 
 ```bash
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 ```
+
+or **Settings → Variables and Secrets → Add → Secret**. That key bypasses RLS
+entirely, so it lives only there: never in the repository, never in a build
+variable, never in the browser. `SUPABASE_URL`, which the Worker also needs,
+is a plain var already in `wrangler.jsonc`.
 
 Finally, in Supabase → **Authentication → URL Configuration**, set the Site
 URL to the deployed address and add `<your-worker-url>/auth/set-password` to
