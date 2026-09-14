@@ -6,4 +6,4 @@ pages_build_output_dir = "dist"
 # `wrangler pages secret put SUPABASE_SERVICE_ROLE_KEY` for production and
 # in .dev.vars for local development.
 [vars]
-SUPABASE_URL = ""
+SUPABASE_URL = "https://enivasukccwjpvsgwcsd.supabase.co"

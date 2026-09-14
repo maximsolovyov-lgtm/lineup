@@ -90,7 +90,7 @@ was verified.
 ### 1. Supabase project
 
 ```bash
-npx supabase link --project-ref <ref>
+npx supabase link --project-ref enivasukccwjpvsgwcsd
 npx supabase db push
 ```
 
