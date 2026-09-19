@@ -110,3 +110,13 @@ Recorded so they are not rediscovered from scratch:
    no home today; the candidate is `display_name` on the set.
 6. **Time zones and DST** — a festival on a zone boundary, the night the
    clocks change.
+
+## Decision 2026-09-19 — one room list, one headliner marker
+
+| Question | Decision |
+|---|---|
+| Rooms were described both as `place.typical_rooms_json` and as `place_space` rows; the headliner room was marked in three independent places. | **`place_space` is the only truth; `place_space.is_primary` is the only headliner marker.** `place.typical_rooms_json`, `typical_headliner_room_name` and `typical_room_count` are deprecated and will be dropped. |
+| Why not keep the JSON for the "typical" nuance — which rooms a venue usually opens, as opposed to which exist? | The nuance is real but does not justify a second list. It belongs on the rooms as flags. `is_primary` covers the headliner room; a `typically_active` flag can be added later if the distinction earns its keep. It was left out for now. |
+| Why not keep the JSON as the editable one? | A JSON array element has no identity. `performance_set.place_space_id` is a foreign key, so the JSON can never carry a schedule, while `place_space` can hold everything the JSON held. The asymmetry is one-directional. |
+| How to sequence it, given the columns are referenced by the form, the seed and six RLS tests? | Two steps. `20260919200000_rooms_to_place_space.sql` backfills and is safe to apply immediately. `docs/pending/DROP_typical_rooms.sql` removes the columns, the CHECKs, the validator function and the trigger logic, and is applied only after the code stops referencing them. |
+| More than one primary room per place? | Rejected by a partial unique index, not left to the interface. The backfill keeps the first candidate when the JSON marked two. |

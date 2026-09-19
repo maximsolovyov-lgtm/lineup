@@ -22,13 +22,44 @@ screen depends on it.
 
 ## Phase 3b — rooms inside a place
 
-- Repeating block in the Place record: name, type, capacity, primary flag.
-- Exactly one room may be primary; selecting one clears the others.
-- Save in the same transaction as the place.
-- Deleting a room is refused while any `performance_set` references it.
-- Order comes from `display_order`.
+Rooms were described twice: `place.typical_rooms_json` (with a structured
+editor already built) and the `place_space` table. The headliner room was
+recorded three times — the JSON flag, `place.typical_headliner_room_name`, and
+`place_space.is_primary` — with nothing keeping them in agreement.
 
-Mockup: `design/PlaceEdit.dc.html`.
+**Decision (2026-09-19): `place_space` is the only truth, and `is_primary` is
+the only headliner marker.** Only `place_space` can carry a schedule, because
+`performance_set.place_space_id` is a foreign key and a JSON array element has
+no identity to point at.
+
+Order of work:
+
+1. `20260919200000_rooms_to_place_space.sql` — applied, additive. Copies the
+   JSON into `place_space`, resolves `is_primary`, adds `notes`, and enforces
+   one primary room per place with a partial unique index. Verify the rows it
+   produced against the JSON they came from before going further.
+2. Rebuild the rooms block in the Place record against `place_space`: name,
+   type, capacity, notes, primary. Selecting a primary clears the others.
+3. Replace the derived `typical_room_count` field with a count of active
+   rooms, and drop the free-text headliner field from the form.
+4. Update `supabase/seed.sql` and the room tests in
+   `supabase/test/rls_test.sql`; add a test that a second primary room in one
+   place is rejected.
+5. Apply `docs/pending/DROP_typical_rooms.sql` last, once nothing references
+   the old columns. Its header lists the prerequisites.
+
+Two things that are easy to get wrong here:
+
+- **The place and its rooms must be saved in one transaction.** supabase-js
+  cannot do client-side transactions, so this needs a Postgres function taking
+  the place and a rooms array, called through RPC. A chain of inserts from the
+  client violates the invariant in `CLAUDE.md` and leaves half-saved records.
+- **Deactivating a room that a `performance_set` references must be refused.**
+  A hard delete is already blocked by the foreign key, but a status change is
+  not, and a status change is how this application deletes.
+
+Mockup: `design/PlaceEdit.dc.html` — note that its rooms block predates this
+decision and shows the JSON-era fields.
 
 ## Phase 4 — people and artists
 
