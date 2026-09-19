@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Площадки — LineApp Admin</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; background: #F6F5F8; color: #1A1523; }
+a { color: #5B21B6; } a:hover { color: #4C1D95; }
+* { box-sizing: border-box; }
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; display: flex; background: #F6F5F8;">
+
+  <nav style="width: 236px; flex-shrink: 0; background: #1A1523; color: #EDEAF2; padding: 24px 16px; display: flex; flex-direction: column; gap: 26px;">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding-left: 8px;">
+      <div style="font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.4px;">LineApp</div>
+      <div style="font-size: 11px; color: #9C93AD; letter-spacing: 1.4px; text-transform: uppercase;">Admin</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <div style="font-size: 10px; color: #7E7591; letter-spacing: 1.2px; text-transform: uppercase; padding: 0 8px 8px;">Мастер-данные</div>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; background: #5B21B6; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 500;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-5.6-7-11a7 7 0 1 1 14 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        Площадки
+      </a>
+      <a href="EventEdit.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #C9C2D6; text-decoration: none; font-size: 14px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+        События
+      </a>
+      <a href="ArtistEdit.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #C9C2D6; text-decoration: none; font-size: 14px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>
+        Артисты
+      </a>
+      <a href="PersonPicker.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #C9C2D6; text-decoration: none; font-size: 14px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+        Люди
+      </a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <div style="font-size: 10px; color: #7E7591; letter-spacing: 1.2px; text-transform: uppercase; padding: 0 8px 8px;">Администрирование</div>
+      <a href="#users" style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: #C9C2D6; text-decoration: none; font-size: 14px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M17 11h4M19 9v4"/></svg>
+        Пользователи
+      </a>
+      <div style="font-size: 11px; color: #7E7591; padding: 6px 10px 0; line-height: 1.5;">Виден только роли admin</div>
+    </div>
+
+    <div style="flex-grow: 1;"></div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; background: #26203180;">
+      <div style="width: 30px; height: 30px; border-radius: 50%; background: #5B21B6; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">MS</div>
+      <div style="flex-grow: 1; min-width: 0;">
+        <div style="font-size: 13px; font-weight: 500; color: #EDEAF2;">Max S.</div>
+        <div style="font-size: 11px; color: #9C93AD;">admin</div>
+      </div>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; min-width: 0; padding: 26px 30px; display: flex; flex-direction: column; gap: 18px;">
+
+    <div style="display: flex; align-items: flex-end; gap: 16px;">
+      <div style="flex-grow: 1;">
+        <h1 style="margin: 0 0 4px; font-family: 'Space Grotesk', sans-serif; font-size: 27px; font-weight: 600; letter-spacing: -0.5px;">Площадки</h1>
+        <div style="font-size: 13px; color: #6B6478;">{{total}} записей · залов суммарно: {{spaces}}</div>
+      </div>
+      <a href="PlaceEdit.dc.html" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 10px; background: #5B21B6; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Добавить площадку
+      </a>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <div style="flex-grow: 1; position: relative;">
+        <label for="q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Поиск по площадкам</label>
+        <input id="q" type="search" placeholder="Название, город, инстаграм…" style="width: 100%; height: 44px; padding: 0 14px 0 40px; border: 1px solid #E3E0E8; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 14px; color: #1A1523;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8A8199" stroke-width="2" style="position: absolute; left: 14px; top: 14px;" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </div>
+      <button type="button" style="height: 44px; padding: 0 14px; border: 1px solid #E3E0E8; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 14px; color: #1A1523; cursor: pointer;">Страна: все</button>
+      <button type="button" style="height: 44px; padding: 0 14px; border: 1px solid #E3E0E8; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 14px; color: #1A1523; cursor: pointer;">Тип: все</button>
+      <button type="button" style="height: 44px; padding: 0 14px; border: 1px solid #C9BCE6; border-radius: 10px; background: #F3EEFB; font-family: inherit; font-size: 14px; color: #4C1D95; font-weight: 500; cursor: pointer;">Статус: active</button>
+    </div>
+
+    <div style="flex-grow: 1; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;">
+      <div style="display: grid; grid-template-columns: 2.4fr 1.3fr 1fr 0.7fr 1.2fr 1fr; gap: 16px; padding: 13px 20px; border-bottom: 1px solid #E3E0E8; background: #FBFAFC; font-size: 11px; font-weight: 600; color: #6B6478; letter-spacing: 0.8px; text-transform: uppercase;">
+        <div>Название</div>
+        <div>Город</div>
+        <div>Тип</div>
+        <div>Залов</div>
+        <div>Паттерн лайнапа</div>
+        <div>Статус</div>
+      </div>
+
+      <sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+        <div style="display: grid; grid-template-columns: 2.4fr 1.3fr 1fr 0.7fr 1.2fr 1fr; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #F0EEF3; align-items: center; font-size: 14px;">
+          <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+            <a href="PlaceEdit.dc.html" style="font-weight: 600; text-decoration: none; color: #1A1523;">{{row.name}}</a>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8199;">{{row.handle}}</span>
+          </div>
+          <div style="color: #4A4456;">{{row.city}}</div>
+          <div style="color: #4A4456;">{{row.kind}}</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: #4A4456;">{{row.spaces}}</div>
+          <div>
+            <span style="display: inline-block; padding: 3px 9px; border-radius: 999px; background: {{row.confBg}}; color: {{row.confInk}}; font-size: 12px; font-weight: 500;">{{row.conf}}</span>
+          </div>
+          <div>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: {{row.statusInk}};">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: {{row.statusInk}};"></span>{{row.status}}
+            </span>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-top: 1px solid #E3E0E8; background: #FBFAFC; font-size: 13px; color: #6B6478;">
+        <span style="flex-grow: 1;">Показаны 1–7 из {{total}}</span>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 8px; background: #FFFFFF; font-family: inherit; font-size: 13px; color: #8A8199; cursor: pointer;">Назад</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 8px; background: #FFFFFF; font-family: inherit; font-size: 13px; color: #1A1523; cursor: pointer;">Вперёд</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ok = { confBg: '#EAF6EE', confInk: '#166534' };
+    const mid = { confBg: '#FDF3E3', confInk: '#B45309' };
+    const none = { confBg: '#F2F1F5', confInk: '#6B6478' };
+    const raw = [
+      { name: 'Space Miami', handle: '@spacemiami', city: 'Miami, US', kind: 'permanent', spaces: 4, conf: 'высокая · 0.82', t: ok, status: 'active' },
+      { name: 'UNVRS', handle: '@unvrsibiza', city: 'Ibiza, ES', kind: 'permanent', spaces: 3, conf: 'средняя · 0.54', t: mid, status: 'active' },
+      { name: 'Pacha Ibiza', handle: '@pachaofficial', city: 'Ibiza, ES', kind: 'permanent', spaces: 2, conf: 'высокая · 0.79', t: ok, status: 'active' },
+      { name: 'Hï Ibiza', handle: '@hiibizaofficial', city: 'Ibiza, ES', kind: 'permanent', spaces: 3, conf: 'высокая · 0.88', t: ok, status: 'active' },
+      { name: 'Circoloco @ Beach Club', handle: '—', city: 'Ibiza, ES', kind: 'temporary', spaces: 0, conf: 'нет данных', t: none, status: 'draft' },
+      { name: 'Club Space Terrace', handle: '@spacemiami', city: 'Miami, US', kind: 'permanent', spaces: 1, conf: 'средняя · 0.41', t: mid, status: 'active' },
+      { name: 'Printworks', handle: '@printworkslondon', city: 'London, UK', kind: 'permanent', spaces: 4, conf: 'нет данных', t: none, status: 'closed' }
+    ];
+    const statusInk = { active: '#166534', draft: '#B45309', closed: '#8A8199' };
+    return {
+      total: 128,
+      spaces: 341,
+      rows: raw.map((r) => ({
+        name: r.name, handle: r.handle, city: r.city, kind: r.kind,
+        spaces: r.spaces, conf: r.conf,
+        confBg: r.t.confBg, confInk: r.t.confInk,
+        status: r.status, statusInk: statusInk[r.status]
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

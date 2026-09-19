@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Артист — карточка с составом</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; background: #F6F5F8; color: #1A1523; }
+a { color: #5B21B6; } a:hover { color: #4C1D95; }
+* { box-sizing: border-box; }
+input, select, textarea { font-family: inherit; }
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; display: flex; flex-direction: column; background: #F6F5F8;">
+
+  <header style="flex-shrink: 0; padding: 18px 30px; background: #FFFFFF; border-bottom: 1px solid #E3E0E8; display: flex; align-items: center; gap: 16px;">
+    <div style="flex-grow: 1; min-width: 0;">
+      <div style="font-size: 12px; color: #6B6478; margin-bottom: 5px;"><a href="Main.dc.html" style="text-decoration: none;">Артисты</a> <span style="color: #C4BFCE;">/</span> {{name}}</div>
+      <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 23px; font-weight: 600; letter-spacing: -0.4px;">{{name}}</h1>
+    </div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: #F3EEFB; color: #4C1D95; font-size: 12px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">{{kind}}</span>
+    <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #E3E0E8; border-radius: 9px; background: #FFFFFF; font-size: 14px; color: #1A1523; cursor: pointer;">Отмена</button>
+    <button type="button" style="height: 40px; padding: 0 18px; border: none; border-radius: 9px; background: #5B21B6; color: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer;">Сохранить</button>
+  </header>
+
+  <div style="flex-grow: 1; min-height: 0; display: flex; gap: 20px; padding: 20px 30px;">
+
+    <div style="width: 350px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+      <section style="background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+          <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Имя на афише</h2>
+          <span style="padding: 2px 8px; border-radius: 999px; background: #F3EEFB; color: #4C1D95; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">artist</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="a-name" style="font-size: 12px; font-weight: 500; color: #4A4456;">Название</label>
+            <input id="a-name" type="text" value="{{name}}" onChange="{{onName}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="a-type" style="font-size: 12px; font-weight: 500; color: #4A4456;">Тип сущности</label>
+            <select id="a-type" value="{{kind}}" onChange="{{onKind}}" style="height: 40px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <option value="solo">solo</option>
+              <option value="duo">duo</option>
+              <option value="group">group</option>
+              <option value="collective">collective</option>
+              <option value="alias">alias</option>
+              <option value="unknown">unknown</option>
+            </select>
+            <span style="font-size: 11px; color: #8A8199; line-height: 1.5;">B2B здесь не выбирается: это формат конкретного сета, а не природа артиста.</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="a-country" style="font-size: 12px; font-weight: 500; color: #4A4456;">Страна</label>
+            <input id="a-country" type="text" value="IT" onChange="{{noop}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="a-ig" style="font-size: 12px; font-weight: 500; color: #4A4456;">Instagram</label>
+            <input id="a-ig" type="url" value="https://instagram.com/taleofus" onChange="{{noop}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+        </div>
+      </section>
+
+      <section style="flex-grow: 1; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <h2 style="margin: 0 0 12px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Проверки</h2>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 10px; background: {{checkBg}}; border: 1px solid {{checkBorder}};">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: {{checkInk}}; margin-top: 5px; flex-shrink: 0;"></span>
+            <div style="font-size: 12px; color: {{checkInk}}; line-height: 1.5;">{{checkText}}</div>
+          </div>
+          <div style="padding: 11px 13px; border-radius: 10px; background: #FBFAFC; border: 1px solid #ECE9F1; font-size: 12px; color: #6B6478; line-height: 1.55;">
+            Несоответствие типа и числа участников не блокирует сохранение — создаётся <span style="font-family: 'IBM Plex Mono', monospace;">review_task</span>. Данные часто приезжают неполными.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section style="flex-grow: 1; min-width: 0; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+        <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Состав</h2>
+        <span style="padding: 2px 8px; border-radius: 999px; background: #F3EEFB; color: #4C1D95; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">artist_membership → person</span>
+        <span style="flex-grow: 1;"></span>
+        <button type="button" onClick="{{openPicker}}" style="display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: 1px solid #C9BCE6; border-radius: 9px; background: #F3EEFB; color: #4C1D95; font-size: 13px; font-weight: 600; cursor: pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить участника
+        </button>
+      </div>
+      <p style="margin: 0 0 14px; font-size: 12px; color: #8A8199; line-height: 1.5;">Человека можно выбрать из существующих или создать на месте. Один человек может стоять за несколькими именами — сольник, дуэт, псевдоним.</p>
+
+      <sc-if value="{{pickerOpen}}" hint-placeholder-val="{{true}}">
+        <div style="margin-bottom: 14px; border: 1px solid #C9BCE6; border-radius: 12px; background: #FBF9FE; overflow: hidden;">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #E6DCF6;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8199" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <label for="p-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Поиск человека</label>
+            <input id="p-search" type="search" value="{{query}}" onChange="{{onQuery}}" placeholder="Начните вводить имя…" style="flex-grow: 1; height: 34px; border: none; background: transparent; font-size: 14px; color: #1A1523; outline: none;">
+            <button type="button" onClick="{{closePicker}}" aria-label="Закрыть поиск" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 7px; background: transparent; color: #8A8199; cursor: pointer;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div style="max-height: 190px; overflow: auto;">
+            <sc-for list="{{results}}" as="r" hint-placeholder-count="3">
+              <button type="button" onClick="{{r.onPick}}" style="width: 100%; display: flex; align-items: center; gap: 11px; padding: 10px 14px; border: none; border-bottom: 1px solid #F0EAFA; background: transparent; text-align: left; cursor: pointer; font-family: inherit;">
+                <span style="width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: #E6DCF6; color: #4C1D95; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;">{{r.initials}}</span>
+                <span style="flex-grow: 1; min-width: 0;">
+                  <span style="display: block; font-size: 14px; font-weight: 500; color: #1A1523;">{{r.name}}</span>
+                  <span style="display: block; font-size: 12px; color: #8A8199;">{{r.known}}</span>
+                </span>
+                <span style="font-size: 12px; color: #5B21B6; font-weight: 600;">Выбрать</span>
+              </button>
+            </sc-for>
+          </div>
+          <button type="button" onClick="{{createPerson}}" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: none; background: #F3EEFB; text-align: left; cursor: pointer; font-family: inherit;">
+            <span style="width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: #5B21B6; color: #FFFFFF; display: flex; align-items: center; justify-content: center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+            <span style="flex-grow: 1; font-size: 14px; font-weight: 600; color: #4C1D95;">Создать нового человека{{createSuffix}}</span>
+            <span style="font-size: 12px; color: #7A5CB0;">Enter</span>
+          </button>
+        </div>
+      </sc-if>
+
+      <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.1fr 1.1fr 40px; gap: 10px; padding: 0 4px 8px; font-size: 11px; font-weight: 600; color: #8A8199; letter-spacing: 0.7px; text-transform: uppercase;">
+        <div>Человек</div><div>Роль</div><div>С</div><div>По</div><div></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <sc-for list="{{members}}" as="m" hint-placeholder-count="2">
+          <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.1fr 1.1fr 40px; gap: 10px; align-items: center; padding: 8px; border: 1px solid #ECE9F1; border-radius: 10px; background: #FCFBFD;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+              <span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: #E6DCF6; color: #4C1D95; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;">{{m.initials}}</span>
+              <span style="min-width: 0;">
+                <span style="display: block; font-size: 14px; font-weight: 500; color: #1A1523;">{{m.name}}</span>
+                <span style="display: block; font-size: 11px; color: #8A8199;">{{m.known}}</span>
+              </span>
+            </div>
+            <select aria-label="Роль участника" style="height: 38px; padding: 0 9px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+              <option>{{m.role}}</option>
+            </select>
+            <input type="date" value="{{m.from}}" onChange="{{m.onFrom}}" aria-label="Участие с" style="height: 38px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+            <input type="date" value="{{m.to}}" onChange="{{m.onTo}}" aria-label="Участие по" placeholder="актуален" style="height: 38px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+            <button type="button" onClick="{{m.onRemove}}" aria-label="Убрать участника" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid #E3E0E8; border-radius: 8px; background: #FFFFFF; color: #A8384A; cursor: pointer;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13"/></svg>
+            </button>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-grow: 1;"></div>
+
+      <div style="padding: 13px 15px; border-radius: 10px; background: #FBFAFC; border: 1px solid #ECE9F1; font-size: 12px; color: #6B6478; line-height: 1.55;">
+        Пустое «По» означает, что состав актуален. Даты нужны, чтобы событие 2019 года показывало состав своего времени, а не сегодняшний.
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      name: 'Tale Of Us',
+      kind: 'duo',
+      pickerOpen: false,
+      query: '',
+      members: [
+        { id: 1, name: 'Carmine Conte', known: 'также Anyma · solo', role: 'dj', from: '2008-01-01', to: '' },
+        { id: 2, name: 'Matteo Milleri', known: 'также Matteo Milleri · solo', role: 'producer', from: '2008-01-01', to: '' }
+      ],
+      nextId: 3
+    };
+  }
+
+  initials(n) {
+    return n.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '??';
+  }
+
+  patch(id, field, value) {
+    this.setState({
+      members: this.state.members.map((m) => (m.id === id ? Object.assign({}, m, { [field]: value }) : m))
+    });
+  }
+
+  add(name, known) {
+    this.setState({
+      members: this.state.members.concat([{ id: this.state.nextId, name: name, known: known, role: 'dj', from: '', to: '' }]),
+      nextId: this.state.nextId + 1,
+      pickerOpen: false,
+      query: ''
+    });
+  }
+
+  renderVals() {
+    const pool = [
+      { name: 'Adam Port', known: 'Keinemusik · collective' },
+      { name: 'Dixon', known: 'Innervisions · solo' },
+      { name: 'Vera Rubin', known: 'ещё не связан с артистами' }
+    ];
+    const q = this.state.query.trim().toLowerCase();
+    const found = q ? pool.filter((p) => p.name.toLowerCase().indexOf(q) >= 0) : pool;
+
+    const expected = { solo: 1, duo: 2 }[this.state.kind];
+    const count = this.state.members.length;
+    const ok = expected === undefined || expected === count;
+
+    return {
+      noop: () => {},
+      name: this.state.name,
+      kind: this.state.kind,
+      onName: (e) => this.setState({ name: e.target.value }),
+      onKind: (e) => this.setState({ kind: e.target.value }),
+
+      pickerOpen: this.state.pickerOpen,
+      query: this.state.query,
+      openPicker: () => this.setState({ pickerOpen: true }),
+      closePicker: () => this.setState({ pickerOpen: false, query: '' }),
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      createSuffix: q ? ': «' + this.state.query.trim() + '»' : '',
+      createPerson: () => this.add(this.state.query.trim() || 'Новый человек', 'создан из карточки артиста'),
+      results: found.map((p) => ({
+        name: p.name,
+        known: p.known,
+        initials: this.initials(p.name),
+        onPick: () => this.add(p.name, p.known)
+      })),
+
+      checkBg: ok ? '#EAF6EE' : '#FDF3E3',
+      checkBorder: ok ? '#C6E4D1' : '#F0DFBC',
+      checkInk: ok ? '#166534' : '#B45309',
+      checkText: ok
+        ? 'Тип «' + this.state.kind + '» и состав из ' + count + ' согласованы.'
+        : 'Тип «' + this.state.kind + '» ожидает ' + expected + ' участн. — сейчас ' + count + '. Будет создан review_task.',
+
+      members: this.state.members.map((m) => ({
+        name: m.name, known: m.known, role: m.role, from: m.from, to: m.to,
+        initials: this.initials(m.name),
+        onFrom: (e) => this.patch(m.id, 'from', e.target.value),
+        onTo: (e) => this.patch(m.id, 'to', e.target.value),
+        onRemove: () => this.setState({ members: this.state.members.filter((x) => x.id !== m.id) })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

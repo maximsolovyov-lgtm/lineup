@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Событие — карточка с проведениями</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; background: #F6F5F8; color: #1A1523; }
+a { color: #5B21B6; } a:hover { color: #4C1D95; }
+* { box-sizing: border-box; }
+input, select, textarea { font-family: inherit; }
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; display: flex; flex-direction: column; background: #F6F5F8;">
+
+  <header style="flex-shrink: 0; padding: 18px 30px; background: #FFFFFF; border-bottom: 1px solid #E3E0E8; display: flex; align-items: center; gap: 16px;">
+    <div style="flex-grow: 1; min-width: 0;">
+      <div style="font-size: 12px; color: #6B6478; margin-bottom: 5px;"><a href="Main.dc.html" style="text-decoration: none;">События</a> <span style="color: #C4BFCE;">/</span> Circoloco</div>
+      <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 23px; font-weight: 600; letter-spacing: -0.4px;">Circoloco</h1>
+    </div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: #EAF6EE; color: #166534; font-size: 12px; font-weight: 600;">
+      <span style="width: 6px; height: 6px; border-radius: 50%; background: #166534;"></span>active
+    </span>
+    <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #E3E0E8; border-radius: 9px; background: #FFFFFF; font-size: 14px; color: #1A1523; cursor: pointer;">Отмена</button>
+    <button type="button" style="height: 40px; padding: 0 18px; border: none; border-radius: 9px; background: #5B21B6; color: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer;">Сохранить</button>
+  </header>
+
+  <div style="flex-grow: 1; min-height: 0; display: flex; gap: 20px; padding: 20px 30px;">
+
+    <div style="width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+      <section style="background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+          <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Бренд события</h2>
+          <span style="padding: 2px 8px; border-radius: 999px; background: #F3EEFB; color: #4C1D95; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">event</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="e-name" style="font-size: 12px; font-weight: 500; color: #4A4456;">Название</label>
+            <input id="e-name" type="text" value="{{name}}" onChange="{{onName}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="e-type" style="font-size: 12px; font-weight: 500; color: #4A4456;">Тип</label>
+            <select id="e-type" style="height: 40px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <option>party</option><option>festival</option><option>concert</option><option>afterparty</option><option>label_night</option><option>other</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="e-site" style="font-size: 12px; font-weight: 500; color: #4A4456;">Сайт</label>
+            <input id="e-site" type="url" value="https://circoloco.com" onChange="{{noop}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="e-desc" style="font-size: 12px; font-weight: 500; color: #4A4456;">Описание</label>
+            <textarea id="e-desc" rows="4" onChange="{{noop}}" style="padding: 10px 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523; resize: none; line-height: 1.5;">Международный бренд вечеринок, резиденции на Ибице и туры.</textarea>
+          </div>
+        </div>
+      </section>
+
+      <section style="flex-grow: 1; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <h2 style="margin: 0 0 12px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Как это связано</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #4A4456; line-height: 1.55;">
+          <div style="padding: 11px 13px; border-radius: 10px; background: #FBFAFC; border: 1px solid #ECE9F1;">
+            <b style="color: #1A1523;">Event</b> — многоразовый бренд. Создаётся один раз.
+          </div>
+          <div style="padding: 11px 13px; border-radius: 10px; background: #F3EEFB; border: 1px solid #DCD0F2;">
+            <b style="color: #4C1D95;">EventOccurrence</b> — конкретная дата. Именно она несёт площадку по умолчанию и бизнес-день.
+          </div>
+          <div style="padding: 11px 13px; border-radius: 10px; background: #FBFAFC; border: 1px solid #ECE9F1; color: #8A8199;">
+            <b style="color: #6B6478;">PerformanceSet</b> — лайнап и расписание. Таблицы развёрнуты, ручной ввод — во втором этапе.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section style="flex-grow: 1; min-width: 0; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+        <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Проведения</h2>
+        <span style="padding: 2px 8px; border-radius: 999px; background: #F3EEFB; color: #4C1D95; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">event_occurrence</span>
+        <span style="flex-grow: 1;"></span>
+        <button type="button" onClick="{{addOcc}}" style="display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: 1px solid #C9BCE6; border-radius: 9px; background: #F3EEFB; color: #4C1D95; font-size: 13px; font-weight: 600; cursor: pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить дату
+        </button>
+      </div>
+      <p style="margin: 0 0 14px; font-size: 12px; color: #8A8199; line-height: 1.5;">Бизнес-день — это ночь события: вечеринка с 23:00 пятницы до 08:00 субботы имеет event_date = пятница.</p>
+
+      <div style="display: grid; grid-template-columns: 1.15fr 1.7fr 0.85fr 0.85fr 1fr 40px; gap: 10px; padding: 0 4px 8px; font-size: 11px; font-weight: 600; color: #8A8199; letter-spacing: 0.7px; text-transform: uppercase;">
+        <div>Бизнес-день</div><div>Площадка по умолчанию</div><div>Начало</div><div>Конец</div><div>Статус</div><div></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <sc-for list="{{occs}}" as="o" hint-placeholder-count="5">
+          <div style="display: grid; grid-template-columns: 1.15fr 1.7fr 0.85fr 0.85fr 1fr 40px; gap: 10px; align-items: center; padding: 8px; border: 1px solid #ECE9F1; border-radius: 10px; background: #FCFBFD;">
+            <input type="date" value="{{o.date}}" onChange="{{o.onDate}}" aria-label="Бизнес-день" style="height: 38px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+            <select aria-label="Площадка" style="height: 38px; padding: 0 9px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+              <option>{{o.place}}</option>
+            </select>
+            <input type="time" value="{{o.start}}" onChange="{{o.onStart}}" aria-label="Начало" style="height: 38px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+            <input type="time" value="{{o.end}}" onChange="{{o.onEnd}}" aria-label="Конец" style="height: 38px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 13px; background: #FFFFFF; color: #1A1523;">
+            <div>
+              <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: {{o.bg}}; color: {{o.ink}}; font-size: 12px; font-weight: 500;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: {{o.ink}};"></span>{{o.status}}
+              </span>
+            </div>
+            <button type="button" onClick="{{o.onRemove}}" aria-label="Удалить проведение" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid #E3E0E8; border-radius: 8px; background: #FFFFFF; color: #A8384A; cursor: pointer;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13"/></svg>
+            </button>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-grow: 1;"></div>
+
+      <div style="display: flex; gap: 10px; align-items: flex-start; padding: 13px 15px; border-radius: 10px; background: #FDF9EF; border: 1px solid #F0DFBC;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+        <div style="font-size: 12px; color: #7A5314; line-height: 1.55;">
+          Площадка по умолчанию — не то же самое, что площадка сета. Если событие идёт в двух местах, лайнап без распределения хранится <b>одной</b> записью с пустым place_id, а не копией списка по площадкам.
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      name: 'Circoloco',
+      occs: [
+        { id: 1, date: '2026-06-29', place: 'DC-10, Ibiza', start: '16:00', end: '06:00', status: 'active' },
+        { id: 2, date: '2026-07-06', place: 'DC-10, Ibiza', start: '16:00', end: '06:00', status: 'active' },
+        { id: 3, date: '2026-07-13', place: 'DC-10, Ibiza', start: '16:00', end: '06:00', status: 'draft' },
+        { id: 4, date: '2026-08-15', place: 'Space Miami', start: '23:00', end: '10:00', status: 'draft' },
+        { id: 5, date: '2026-05-04', place: 'Printworks', start: '22:00', end: '06:00', status: 'cancelled' }
+      ],
+      nextId: 6
+    };
+  }
+
+  patch(id, field, value) {
+    this.setState({
+      occs: this.state.occs.map((o) => (o.id === id ? Object.assign({}, o, { [field]: value }) : o))
+    });
+  }
+
+  renderVals() {
+    const tone = {
+      active: { bg: '#EAF6EE', ink: '#166534' },
+      draft: { bg: '#FDF3E3', ink: '#B45309' },
+      cancelled: { bg: '#FBEBED', ink: '#A8384A' }
+    };
+    return {
+      noop: () => {},
+      name: this.state.name,
+      onName: (e) => this.setState({ name: e.target.value }),
+      addOcc: () => this.setState({
+        occs: this.state.occs.concat([{ id: this.state.nextId, date: '', place: '— не выбрана —', start: '', end: '', status: 'draft' }]),
+        nextId: this.state.nextId + 1
+      }),
+      occs: this.state.occs.map((o) => ({
+        date: o.date, place: o.place, start: o.start, end: o.end, status: o.status,
+        bg: tone[o.status].bg, ink: tone[o.status].ink,
+        onDate: (e) => this.patch(o.id, 'date', e.target.value),
+        onStart: (e) => this.patch(o.id, 'start', e.target.value),
+        onEnd: (e) => this.patch(o.id, 'end', e.target.value),
+        onRemove: () => this.setState({ occs: this.state.occs.filter((x) => x.id !== o.id) })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

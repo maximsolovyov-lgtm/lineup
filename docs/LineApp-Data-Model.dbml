@@ -1,3 +1,21 @@
+// ============================================================================
+// STALE as of 2026-09-19 — this file is at v1.3.
+//
+// The current schema is:
+//   1. supabase/migrations/  — the contract, including the v1.4 delta
+//      (20260919120000..20260919120300)
+//   2. "LineApp - Data Model DBML" in Drive — the full v1.4 schema in DBML
+//
+// Not represented below: person, artist_membership, program_release,
+// performance_set_participant_person, placeholder_type, place_role,
+// lineup_complete, event_day, event_date, content_hash, the 'cancelled'
+// status, the varchar-to-enum conversions, and the partial unique indexes
+// on performance_set.
+//
+// Kept for the diagram of the tables that have not changed. Do not implement
+// from it.
+// ============================================================================
+
 Project LineApp_MVP_and_Future_Schedule {
   database_type: "PostgreSQL"
   Note: '''

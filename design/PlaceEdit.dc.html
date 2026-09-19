@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Площадка — карточка с залами</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; background: #F6F5F8; color: #1A1523; }
+a { color: #5B21B6; } a:hover { color: #4C1D95; }
+* { box-sizing: border-box; }
+input, select, textarea { font-family: inherit; }
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; display: flex; flex-direction: column; background: #F6F5F8;">
+
+  <header style="flex-shrink: 0; padding: 18px 30px; background: #FFFFFF; border-bottom: 1px solid #E3E0E8; display: flex; align-items: center; gap: 16px;">
+    <div style="flex-grow: 1; min-width: 0;">
+      <div style="font-size: 12px; color: #6B6478; margin-bottom: 5px;"><a href="Main.dc.html" style="text-decoration: none;">Площадки</a> <span style="color: #C4BFCE;">/</span> Space Miami</div>
+      <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 23px; font-weight: 600; letter-spacing: -0.4px;">Space Miami</h1>
+    </div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: #EAF6EE; color: #166534; font-size: 12px; font-weight: 600;">
+      <span style="width: 6px; height: 6px; border-radius: 50%; background: #166534;"></span>active
+    </span>
+    <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #E3E0E8; border-radius: 9px; background: #FFFFFF; font-size: 14px; color: #1A1523; cursor: pointer;">Отмена</button>
+    <button type="button" style="height: 40px; padding: 0 18px; border: none; border-radius: 9px; background: #5B21B6; color: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer;">Сохранить</button>
+  </header>
+
+  <div style="flex-grow: 1; min-height: 0; display: flex; gap: 20px; padding: 20px 30px;">
+
+    <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <h2 style="margin: 0 0 14px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Основное</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+          <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-name" style="font-size: 12px; font-weight: 500; color: #4A4456;">Название</label>
+            <input id="p-name" type="text" value="{{name}}" onChange="{{onName}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-life" style="font-size: 12px; font-weight: 500; color: #4A4456;">Жизненный цикл</label>
+            <select id="p-life" style="height: 40px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <option>permanent</option><option>temporary</option><option>mobile</option><option>virtual</option>
+            </select>
+          </div>
+          <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-parent" style="font-size: 12px; font-weight: 500; color: #4A4456;">Родительская площадка</label>
+            <select id="p-parent" style="height: 40px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; background: #FFFFFF; color: #8A8199;">
+              <option>— не задана —</option>
+            </select>
+            <span style="font-size: 11px; color: #8A8199;">Для клуба внутри отеля или комплекса</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-cap" style="font-size: 12px; font-weight: 500; color: #4A4456;">Вместимость</label>
+            <input id="p-cap" type="number" value="3000" onChange="{{noop}}" style="height: 40px; padding: 0 12px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+        </div>
+      </section>
+
+      <section style="flex-grow: 1; min-height: 0; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+          <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Залы и сцены</h2>
+          <span style="padding: 2px 8px; border-radius: 999px; background: #F3EEFB; color: #4C1D95; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">place_space</span>
+          <span style="flex-grow: 1;"></span>
+          <button type="button" onClick="{{addSpace}}" style="display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: 1px solid #C9BCE6; border-radius: 9px; background: #F3EEFB; color: #4C1D95; font-size: 13px; font-weight: 600; cursor: pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Добавить зал
+          </button>
+        </div>
+        <p style="margin: 0 0 14px; font-size: 12px; color: #8A8199; line-height: 1.5;">Залы редактируются вместе с площадкой и сохраняются одной транзакцией. Основной зал используется как подсказка при предсказании времени хедлайнера.</p>
+
+        <div style="display: grid; grid-template-columns: 2fr 1.3fr 0.9fr 0.8fr 40px; gap: 10px; padding: 0 4px 8px; font-size: 11px; font-weight: 600; color: #8A8199; letter-spacing: 0.7px; text-transform: uppercase;">
+          <div>Название</div><div>Тип</div><div>Вместимость</div><div>Основной</div><div></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <sc-for list="{{spaces}}" as="sp" hint-placeholder-count="4">
+            <div style="display: grid; grid-template-columns: 2fr 1.3fr 0.9fr 0.8fr 40px; gap: 10px; align-items: center; padding: 8px; border: 1px solid #ECE9F1; border-radius: 10px; background: #FCFBFD;">
+              <input type="text" value="{{sp.name}}" onChange="{{sp.onName}}" aria-label="Название зала" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <input type="text" value="{{sp.kind}}" onChange="{{sp.onKind}}" aria-label="Тип зала" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <input type="number" value="{{sp.cap}}" onChange="{{sp.onCap}}" aria-label="Вместимость зала" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 8px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4A4456; padding-left: 4px;">
+                <input type="radio" name="primary-space" checked="{{sp.primary}}" onChange="{{sp.onPrimary}}" style="width: 16px; height: 16px; accent-color: #5B21B6;">
+                <span>{{sp.primaryLabel}}</span>
+              </label>
+              <button type="button" onClick="{{sp.onRemove}}" aria-label="Удалить зал" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid #E3E0E8; border-radius: 8px; background: #FFFFFF; color: #A8384A; cursor: pointer;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13"/></svg>
+              </button>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="flex-grow: 1;"></div>
+        <div style="padding-top: 12px; font-size: 12px; color: #8A8199;">Залов: <span style="font-family: 'IBM Plex Mono', monospace; color: #4A4456;">{{spaceCount}}</span> · удаление зала запрещено, если на него ссылается хотя бы один performance_set</div>
+      </section>
+
+    </div>
+
+    <aside style="width: 330px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+
+      <section style="background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <h2 style="margin: 0 0 14px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Локация</h2>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-addr" style="font-size: 12px; font-weight: 500; color: #4A4456;">Адрес</label>
+            <input id="p-addr" type="text" value="34 NE 11th St" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="p-city" style="font-size: 12px; font-weight: 500; color: #4A4456;">Город</label>
+              <input id="p-city" type="text" value="Miami" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="p-country" style="font-size: 12px; font-weight: 500; color: #4A4456;">Страна</label>
+              <input id="p-country" type="text" value="US" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-tz" style="font-size: 12px; font-weight: 500; color: #4A4456;">Часовой пояс</label>
+            <select id="p-tz" style="height: 38px; padding: 0 10px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; background: #FFFFFF; color: #1A1523;">
+              <option>America/New_York</option>
+            </select>
+            <span style="font-size: 11px; color: #8A8199;">Определяет бизнес-день: сет в 02:00 относится к ночи предыдущего дня</span>
+          </div>
+        </div>
+      </section>
+
+      <section style="flex-grow: 1; background: #FFFFFF; border: 1px solid #E3E0E8; border-radius: 14px; padding: 18px 20px;">
+        <h2 style="margin: 0 0 4px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: #6B6478;">Паттерн работы</h2>
+        <p style="margin: 0 0 14px; font-size: 11px; color: #8A8199; line-height: 1.5;">Подсказки для будущего Schedule Agent. Не официальные факты.</p>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-start" style="font-size: 12px; font-weight: 500; color: #4A4456;">Старт вечеринки</label>
+            <input id="p-start" type="time" value="23:00" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-end" style="font-size: 12px; font-weight: 500; color: #4A4456;">Конец</label>
+            <input id="p-end" type="time" value="10:00" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-hl" style="font-size: 12px; font-weight: 500; color: #4A4456;">Хедлайнер с</label>
+            <input id="p-hl" type="time" value="03:00" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="p-off" style="font-size: 12px; font-weight: 500; color: #4A4456;">Сдвиг дня</label>
+            <input id="p-off" type="number" value="1" onChange="{{noop}}" style="height: 38px; padding: 0 11px; border: 1px solid #E3E0E8; border-radius: 9px; font-size: 14px; color: #1A1523;">
+          </div>
+        </div>
+        <div style="margin-top: 14px; padding: 12px; border-radius: 10px; background: #FBFAFC; border: 1px solid #ECE9F1;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: 600; color: #4A4456;">Уверенность паттерна</span>
+            <span style="flex-grow: 1;"></span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #166534;">0.82</span>
+          </div>
+          <div style="height: 6px; border-radius: 999px; background: #E8E5EE; overflow: hidden;">
+            <div style="width: 82%; height: 6px; background: #166534;"></div>
+          </div>
+          <div style="margin-top: 8px; font-size: 11px; color: #8A8199;">Выборка: 27 событий</div>
+        </div>
+      </section>
+
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      name: 'Space Miami',
+      spaces: [
+        { id: 1, name: 'The Club', kind: 'main_room', cap: 1200, primary: true },
+        { id: 2, name: 'Terrace', kind: 'terrace', cap: 900, primary: false },
+        { id: 3, name: 'Ground Level', kind: 'room', cap: 600, primary: false },
+        { id: 4, name: 'Floyd', kind: 'intimate', cap: 300, primary: false }
+      ],
+      nextId: 5
+    };
+  }
+
+  patch(id, field, value) {
+    this.setState({
+      spaces: this.state.spaces.map((s) => (s.id === id ? Object.assign({}, s, { [field]: value }) : s))
+    });
+  }
+
+  renderVals() {
+    const noop = () => {};
+    return {
+      noop: noop,
+      name: this.state.name,
+      onName: (e) => this.setState({ name: e.target.value }),
+      spaceCount: this.state.spaces.length,
+      addSpace: () => this.setState({
+        spaces: this.state.spaces.concat([{ id: this.state.nextId, name: '', kind: '', cap: '', primary: false }]),
+        nextId: this.state.nextId + 1
+      }),
+      spaces: this.state.spaces.map((s) => ({
+        name: s.name,
+        kind: s.kind,
+        cap: s.cap,
+        primary: s.primary,
+        primaryLabel: s.primary ? 'основной' : '',
+        onName: (e) => this.patch(s.id, 'name', e.target.value),
+        onKind: (e) => this.patch(s.id, 'kind', e.target.value),
+        onCap: (e) => this.patch(s.id, 'cap', e.target.value),
+        onPrimary: () => this.setState({
+          spaces: this.state.spaces.map((x) => Object.assign({}, x, { primary: x.id === s.id }))
+        }),
+        onRemove: () => this.setState({ spaces: this.state.spaces.filter((x) => x.id !== s.id) })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

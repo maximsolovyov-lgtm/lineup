@@ -60,3 +60,53 @@ Worth fixing in Drive so the next reader doesn't have to reconcile them.
    `participant_role` enum and the `performance_set_participant` table that
    the `.dbml` file has. The file is the authoritative one per the document
    itself, and is what this schema follows.
+
+## Source documents updated to v1.4 (2026-09-19)
+
+The Drive documents were rewritten. Every contradiction listed above is now
+resolved there, in the way this repository had already chosen:
+
+| Item above | Resolution in v1.4 |
+|---|---|
+| 1. PerformanceSetParticipant removed or retained? | **Retained** as the normalised source of truth; `artist_list_json` is cache only. PRD §9 and Data Model §3 no longer say otherwise. |
+| 2. SAD reader summary | Corrected to ScheduleScenario and PerformanceSetRelation. |
+| 3. Data Model §3–§4 describing removed tables | Section rewritten against the simplified model; legacy names kept only where a reader of an older document needs them. |
+| 4. DBML reader summary listing `occurrence_place` | Removed. |
+| 5. Change logs pasted mid-paragraph | Fixed; change logs are now their own section at the end of each document. |
+| 6. DBML document missing `participant_role` and `performance_set_participant` | Both are in the document body now. The `.dbml` file remains authoritative. |
+
+## Decisions taken on 2026-09-19
+
+| Question | Decision |
+|---|---|
+| How to model who actually performs under a stage name. | `person` + `artist_membership`, many-to-many in both directions, with `started_at` / `ended_at` so a past event shows the line-up of its own time. |
+| A collective arriving short of its full line-up (Keinemusik with two of three). | `performance_set_participant_person`, written **only** when the announced line-up differs from the membership. Empty means the default membership performs. |
+| `person.display_name` vs the repo convention of `name`. | `display_name`, matching the Drive documents, with its own `set_person_normalized_name()` trigger. One extra function is cheaper than document/schema drift. |
+| TBD and Secret Guest — one concept or two? | Two. Different guarantees, different notifications, different display. Stored as `placeholder_type` on the **participant**, not on `set_type`, because a b2b can have one known and one hidden artist. |
+| A third value `special_guest`? | Deferred. It behaves identically to `secret_guest`; if the difference is only the wording on the poster, it belongs in `display_name_override`. |
+| `+ more TBA` on a poster. | `performance_set.lineup_complete`, a property of the block. Phantom participant rows for slots that do not exist were rejected. |
+| An event at two venues with an unattributed line-up. | **One** row with `place_id` null. Duplicating participants per venue was rejected: it asserts a fact no source stated, doubles artist counts, and produces two notifications about one person. This also removed the "defaults to `primary_place_id`" rule — null now always means unknown. |
+| Sets with no end time ("till close") and festivals announced by day only. | `scheduled_start_at` and `scheduled_end_at` became nullable. They were `not null`, so neither case could be recorded at all. |
+| Distinguishing "two venues at once" from "moves to an afterparty". | Explicit `place_role` (main / afterparty / satellite). Inferring it from whether the windows overlap is too fragile. |
+| Uniqueness of `performance_set`. | Two partial unique indexes: one block per (place, room, version) for `group`, and start-time-distinguished for the rest. Both `nulls not distinct`, which fixes Postgres 15 as the floor. |
+| Reprocessing the same source. | `evidence_source.content_hash`, unique. The idempotency NFR had no mechanism behind it. |
+| `information_origin`, `confirmation_status`, `artist_type` as `varchar`. | Converted to enums. The vocabularies were already closed in practice. |
+| Cancellation. | `cancelled` added to `record_status`; it was indistinguishable from `inactive` and `superseded`, although it is a separate notification event. |
+
+### Still open after v1.4
+
+Recorded so they are not rediscovered from scratch:
+
+1. **Conflicting official sources** — a DJ's story says 02:00, the club's site
+   says 03:00; both are `official` within one version. Needs source precedence
+   or parallel rows with a conflict flag.
+2. **Retracting a mistaken publication** — a new version repeating the previous
+   one, or `confirmation_status = retracted` on the wrong one?
+3. **Retiring predicted rows** once the official schedule arrives — who
+   supersedes them, and when.
+4. **An event postponed** — a new occurrence or a shift of the existing one.
+   Affects favourites and notifications.
+5. **A room renamed for one event** (Main Room becomes "Circoloco Stage") —
+   no home today; the candidate is `display_name` on the set.
+6. **Time zones and DST** — a festival on a zone boundary, the night the
+   clocks change.
