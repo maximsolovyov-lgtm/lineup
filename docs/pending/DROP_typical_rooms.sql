@@ -13,7 +13,9 @@
 --                                            block now edits place_space.
 --   4. src/components/form/RoomsEditor.tsx — rewrite against place_space rows,
 --                                            or delete if replaced by a new editor.
---   5. supabase/seed.sql                  — seed place_space rows instead.
+--   5. supabase/seed.sql                  — the place_space block at the end
+--                                          derives rooms from the JSON; replace it
+--                                          with plain inserts.
 --   6. supabase/test/rls_test.sql         — the four "rooms json" shape tests and
 --                                            "valid shape sets typical_room_count"
 --                                            go away; add place_space tests, including
