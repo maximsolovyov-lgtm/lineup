@@ -144,6 +144,7 @@ app.patch('/admin/users/:id/status', async (c) => {
 // admin UI does), or another agent with the shared AGENT_API_KEY in an
 // x-api-key header. Both are checked here; the routes trust c.get('caller').
 app.use('/agents/*', async (c, next) => {
+  if (c.req.path.endsWith('/agents/health')) { await next(); return; }
   const apiKey = c.req.header('x-api-key');
   if (apiKey) {
     if (!c.env.AGENT_API_KEY || !timingSafeEqual(apiKey, c.env.AGENT_API_KEY)) {
@@ -174,6 +175,25 @@ function timingSafeEqual(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
+
+/**
+ * Unauthenticated on purpose: it reveals only whether the Function's keys
+ * are configured and accepted, never their values — the check an operator
+ * needs right after `wrangler pages secret put`. Costs one models.retrieve.
+ */
+app.get('/agents/health', async (c) => {
+  let anthropic: 'ok' | 'missing' | 'rejected' | 'unreachable' = 'missing';
+  if (c.env.ANTHROPIC_API_KEY) {
+    try {
+      await new Anthropic({ apiKey: c.env.ANTHROPIC_API_KEY, maxRetries: 0 }).models.retrieve(PLACE_AGENT_MODEL);
+      anthropic = 'ok';
+    } catch (err) {
+      anthropic = err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError ? 'rejected' : 'unreachable';
+      console.error('agents/health:', err);
+    }
+  }
+  return c.json({ data: { model: PLACE_AGENT_MODEL, anthropic, agent_key: c.env.AGENT_API_KEY ? 'set' : 'unset' } }, anthropic === 'ok' ? 200 : 503);
+});
 
 /** The draft's JSON schema — what another agent registers as this tool's result shape. */
 app.get('/agents/place/schema', (c) =>
