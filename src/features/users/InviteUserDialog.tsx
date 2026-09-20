@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Field } from '@/components/form/Field';
-import { APP_ROLES, type Enums } from '@/types/database';
+import type { Enums } from '@/types/database';
+import { APP_ROLES } from '@/types/enums';
 import { useInviteUser } from './api';
 
 export function InviteUserDialog() {

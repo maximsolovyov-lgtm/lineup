@@ -200,9 +200,9 @@ select test.run('roadmap: event/occurrence/space/set with matching place_space',
       begin
         select place_id into v_unvrs from public.place where name = 'UNVRS';
         insert into public.event (name, event_type) values ('Fisher presents', 'party') returning event_id into v_event;
-        insert into public.event_occurrence (event_id, primary_place_id, starts_at, ends_at)
-          values (v_event, v_unvrs, '2026-07-15 23:30+02', '2026-07-16 06:00+02') returning occurrence_id into v_occ;
-        insert into public.place_space (place_id, name) values (v_unvrs, 'Main Room') returning space_id into v_space;
+        insert into public.event_occurrence (event_id, primary_place_id, event_date, starts_at, ends_at)
+          values (v_event, v_unvrs, '2026-07-15', '2026-07-15 23:30+02', '2026-07-16 06:00+02') returning occurrence_id into v_occ;
+        select space_id into v_space from public.place_space where place_id = v_unvrs and is_primary and status = 'active';
         insert into public.performance_set
           (occurrence_id, place_space_id, scenario_type, scenario_version, set_type, scheduled_start_at, scheduled_end_at)
           values (v_occ, v_space, 'official', 1, 'group', '2026-07-15 23:30+02', '2026-07-16 06:00+02');
@@ -214,7 +214,7 @@ select test.run('roadmap: place_space from another place rejected', :operator_id
       begin
         select occurrence_id into v_occ from public.event_occurrence limit 1;
         select place_id into v_fabric from public.place where name = 'fabric';
-        insert into public.place_space (place_id, name) values (v_fabric, 'Room 1') returning space_id into v_space;
+        select space_id into v_space from public.place_space where place_id = v_fabric and is_primary and status = 'active';
         insert into public.performance_set
           (occurrence_id, place_space_id, scenario_type, scenario_version, set_type, scheduled_start_at, scheduled_end_at)
           values (v_occ, v_space, 'official', 1, 'group', '2026-07-15 23:30+02', '2026-07-16 06:00+02');
@@ -243,6 +243,91 @@ select test.run('roadmap: TBD placeholder participant accepted', :operator_id,
 
 select test.run('roadmap: invalid artist_type rejected', :operator_id,
   $q$ insert into public.artist (name, artist_type) values ('X', 'orchestra') $q$, false);
+
+-- Rooms on place_space (Phase 3b) ---------------------------------------------------
+select test.run('rooms: seed created one primary room per venue', :operator_id,
+  $q$ do $x$ begin
+        if (select count(*) from public.place_space where is_primary and status = 'active') <> 3
+           or (select count(*) from public.place_space where status = 'active') <> 8 then
+          raise exception 'expected 8 active rooms with 3 primaries, saw % / %',
+            (select count(*) from public.place_space where status = 'active'),
+            (select count(*) from public.place_space where is_primary and status = 'active');
+        end if;
+      end $x$ $q$, true);
+
+select test.run('rooms: second primary room in one place rejected', :operator_id,
+  $q$ insert into public.place_space (place_id, name, is_primary)
+      select place_id, 'Second Primary', true from public.place where name = 'UNVRS' $q$, false);
+
+select test.run('rooms: a room referenced by a performance_set cannot be deactivated', :operator_id,
+  $q$ update public.place_space set status = 'inactive'
+      where is_primary and place_id = (select place_id from public.place where name = 'UNVRS') $q$, false);
+
+select test.run('rooms: an unreferenced room can be deactivated', :operator_id,
+  $q$ do $x$ declare v uuid; begin
+        select s.space_id into v from public.place_space s join public.place p on p.place_id = s.place_id
+         where p.name = 'UNVRS' and not s.is_primary and s.status = 'active';
+        update public.place_space set status = 'inactive' where space_id = v;
+        update public.place_space set status = 'active' where space_id = v;
+      end $x$ $q$, true);
+
+select test.run('rooms: anon cannot call save_place_with_spaces', null,
+  $q$ select public.save_place_with_spaces('{"name":"Anon Venue"}'::jsonb, '[]'::jsonb) $q$, false);
+
+select test.run('rooms: save_place_with_spaces creates place and rooms in one call', :operator_id,
+  $q$ do $x$ declare v uuid; begin
+        v := public.save_place_with_spaces(
+          '{"name":"RPC Venue","city":"Berlin","country":"Germany","lifecycle_type":"permanent","status":"active","capacity":"1500"}'::jsonb,
+          '[{"name":"Floor","is_primary":true,"capacity":"500","space_type":"main_room"},{"name":"Garden","space_type":"outdoor","notes":"summer only"}]'::jsonb);
+        if (select count(*) from public.place_space where place_id = v and status = 'active') <> 2
+           or (select name from public.place_space where place_id = v and is_primary) <> 'Floor'
+           or (select display_order from public.place_space where place_id = v and name = 'Garden') <> 2
+           or (select created_by_user_id from public.place where place_id = v) <> auth.uid() then
+          raise exception 'rooms not saved as expected';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('rooms: save moves the primary flag and deactivates a room left out', :operator_id,
+  $q$ do $x$ declare v uuid; v_garden uuid; begin
+        select place_id into v from public.place where name = 'RPC Venue';
+        select space_id into v_garden from public.place_space where place_id = v and name = 'Garden';
+        perform public.save_place_with_spaces(
+          jsonb_build_object('place_id', v, 'name', 'RPC Venue', 'city', 'Berlin', 'lifecycle_type', 'permanent', 'status', 'active'),
+          jsonb_build_array(jsonb_build_object('space_id', v_garden, 'name', 'Garden', 'is_primary', true)));
+        if (select status from public.place_space where place_id = v and name = 'Floor') <> 'inactive'
+           or (select is_primary from public.place_space where space_id = v_garden) is not true
+           or (select count(*) from public.place_space where place_id = v and is_primary and status = 'active') <> 1 then
+          raise exception 'primary move or deactivation failed';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('rooms: two primary rooms in one call rejected', :operator_id,
+  $q$ select public.save_place_with_spaces('{"name":"Two Primaries"}'::jsonb,
+        '[{"name":"A","is_primary":true},{"name":"B","is_primary":true}]'::jsonb) $q$, false);
+
+select test.run('rooms: duplicate room names in one call rejected', :operator_id,
+  $q$ select public.save_place_with_spaces('{"name":"Atomic Venue"}'::jsonb,
+        '[{"name":"Room A"},{"name":"room a"}]'::jsonb) $q$, false);
+
+select test.run('rooms: the failed save left no place behind', :operator_id,
+  $q$ do $x$ begin
+        if exists (select 1 from public.place where name in ('Atomic Venue', 'Two Primaries')) then
+          raise exception 'half-saved place exists';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('rooms: a room of another place cannot be passed as this place''s room', :operator_id,
+  $q$ do $x$ declare v uuid; v_other uuid; begin
+        select place_id into v from public.place where name = 'RPC Venue';
+        select s.space_id into v_other from public.place_space s join public.place p on p.place_id = s.place_id
+         where p.name = 'fabric' and s.is_primary;
+        perform public.save_place_with_spaces(
+          jsonb_build_object('place_id', v, 'name', 'RPC Venue'),
+          jsonb_build_array(jsonb_build_object('space_id', v_other, 'name', 'Stolen')));
+      end $x$ $q$, false);
+
+select test.run('rooms: deactivated user cannot call save_place_with_spaces', :inactive_id,
+  $q$ select public.save_place_with_spaces('{"name":"Sneaky RPC"}'::jsonb, '[]'::jsonb) $q$, false);
 
 -- Report -------------------------------------------------------------------------
 \echo

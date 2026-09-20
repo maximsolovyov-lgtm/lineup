@@ -4,7 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/features/places/PlacesPage';
 import { useAuth } from '@/auth/AuthProvider';
-import { APP_ROLES, type Enums } from '@/types/database';
+import type { Enums } from '@/types/database';
+import { APP_ROLES } from '@/types/enums';
 import { InviteUserDialog } from './InviteUserDialog';
 import { useProfiles, useSetRole, useSetStatus } from './api';
 

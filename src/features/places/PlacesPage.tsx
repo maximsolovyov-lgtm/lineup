@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RECORD_STATUSES, type Enums } from '@/types/database';
+import type { Enums } from '@/types/database';
+import { RECORD_STATUSES } from '@/types/enums';
 import { usePlaces, useProfileNames, type PlaceListParams } from './api';
 
 const STATUS_VARIANT: Record<Enums<'record_status'>, 'success' | 'secondary' | 'warning' | 'destructive' | 'outline'> = {
-  active: 'success', draft: 'secondary', inactive: 'warning', closed: 'warning',
+  active: 'success', draft: 'secondary', inactive: 'warning', closed: 'warning', cancelled: 'destructive',
   superseded: 'outline', archived: 'outline', deleted: 'destructive',
 };
 
@@ -57,19 +58,20 @@ export function PlacesPage() {
               <TableHead>City</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Lifecycle</TableHead>
+              <TableHead className="text-right">Rooms</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last change</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {places.isLoading && (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
             )}
             {places.isError && (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center text-destructive">{(places.error as Error).message}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-destructive">{(places.error as Error).message}</TableCell></TableRow>
             )}
             {places.data?.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No places match.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No places match.</TableCell></TableRow>
             )}
             {places.data?.map((p) => {
               const who = names.data?.get(p.updated_by_user_id ?? p.created_by_user_id ?? '') ?? '';
@@ -80,6 +82,7 @@ export function PlacesPage() {
                   <TableCell>{p.city}</TableCell>
                   <TableCell>{p.country}</TableCell>
                   <TableCell className="capitalize">{p.lifecycle_type}</TableCell>
+                  <TableCell className="text-right font-mono text-muted-foreground">{p.room_count || '—'}</TableCell>
                   <TableCell><StatusBadge status={p.status} /></TableCell>
                   <TableCell className="text-muted-foreground">{when}{who && ` · ${who}`}</TableCell>
                 </TableRow>

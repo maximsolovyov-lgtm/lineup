@@ -10,7 +10,7 @@ Source: Solution Architecture Document v1.4, §3 and §4.
 - [x] Phase 1 — Supabase project, migrations, RLS, first admin
 - [x] Phase 2 — application shell, login, role-aware navigation
 - [x] Phase 3a — Places list and record with enriched venue fields
-- [ ] **Phase 3b — nested `place_space` block inside the Place record**
+- [x] Phase 3b — nested `place_space` block inside the Place record (2026-09-19; the column drop is still pending)
 - [ ] Phase 4 — People and Artists
 - [ ] Phase 5 — Events and occurrences
 - [x] Phase 6 — Users management
@@ -34,19 +34,21 @@ no identity to point at.
 
 Order of work:
 
-1. `20260919200000_rooms_to_place_space.sql` — applied, additive. Copies the
-   JSON into `place_space`, resolves `is_primary`, adds `notes`, and enforces
-   one primary room per place with a partial unique index. Verify the rows it
-   produced against the JSON they came from before going further.
-2. Rebuild the rooms block in the Place record against `place_space`: name,
-   type, capacity, notes, primary. Selecting a primary clears the others.
-3. Replace the derived `typical_room_count` field with a count of active
-   rooms, and drop the free-text headliner field from the form.
-4. Update `supabase/seed.sql` and the room tests in
-   `supabase/test/rls_test.sql`; add a test that a second primary room in one
-   place is rejected.
-5. Apply `docs/pending/DROP_typical_rooms.sql` last, once nothing references
-   the old columns. Its header lists the prerequisites.
+1. ✅ `20260919200000_rooms_to_place_space.sql` — applied, additive. Verified:
+   its backfill is correct but sees no places on a fresh `db reset` (the seed
+   runs after migrations), so `seed.sql` now inserts the rooms itself.
+2. ✅ Rooms block rebuilt against `place_space` (`SpacesEditor`): name, type,
+   capacity, notes, primary. Selecting a primary clears the others. Saved with
+   the place through `save_place_with_spaces()` — one RPC, one transaction
+   (`20260919230000_place_space_editing.sql`).
+3. ✅ Room count is the count of active rooms; the free-text headliner field
+   and the room-count field are gone from the form.
+4. ✅ `seed.sql` inserts 8 rooms across the 3 venues; `rls_test.sql` has 12
+   rooms tests, including a second primary room being rejected and a
+   referenced room refusing deactivation. 43/43 pass.
+5. ⏳ Apply `docs/pending/DROP_typical_rooms.sql` last. Remaining references
+   to the old columns: `seed.sql` (still fills `typical_rooms_json`) and the
+   five "rooms json" tests. Nothing in `src/` reads or writes them any more.
 
 Two things that are easy to get wrong here:
 
@@ -58,8 +60,8 @@ Two things that are easy to get wrong here:
   A hard delete is already blocked by the foreign key, but a status change is
   not, and a status change is how this application deletes.
 
-Mockup: `design/PlaceEdit.dc.html` — note that its rooms block predates this
-decision and shows the JSON-era fields.
+Mockup: `design/PlaceEdit.dc.html`. The rooms block is implemented as drawn
+(name / type / capacity / primary / remove, with notes under the row).
 
 ## Phase 4 — people and artists
 

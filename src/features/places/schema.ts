@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import type { Json, Tables, TablesInsert } from '@/types/database';
-import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/database';
-import type { RoomFormValue } from '@/components/form/RoomsEditor';
+import type { Json, Tables } from '@/types/database';
+import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/enums';
+import { normalizeName } from '@/lib/normalize';
 
 // Form values are strings for every text/number input so react-hook-form
 // typing stays simple; toPayload() converts to the database shape.
@@ -13,11 +13,35 @@ const optionalUrl = z.string().trim().max(2048).refine((v) => v === '' || /^http
 const coordinate = (limit: number) =>
   z.string().trim().refine((v) => v === '' || (/^-?\d+(\.\d+)?$/.test(v) && Math.abs(Number(v)) <= limit), `Between -${limit} and ${limit}`);
 
-export const roomSchema = z.object({
-  name: z.string().trim().min(1, 'Required').max(256),
-  is_headliner_room: z.boolean(),
+// One row of the rooms block: a place_space row, or a new one when space_id is null.
+export const spaceSchema = z.object({
+  space_id: z.string().uuid().nullable(),
+  name: z.string().trim().min(1, 'Required').max(512),
+  space_type: z.string().trim().max(64),
   capacity: optionalInt(),
-  notes: z.string().max(1000),
+  notes: z.string().max(2000),
+  is_primary: z.boolean(),
+});
+export type SpaceFormValue = z.infer<typeof spaceSchema>;
+
+// The database rejects both of these too (uq_place_space_name, uq_place_space_primary);
+// checking here puts the message on the row instead of in a toast.
+const spacesSchema = z.array(spaceSchema).superRefine((spaces, ctx) => {
+  const seen = new Map<string, number>();
+  spaces.forEach((sp, i) => {
+    const key = normalizeName(sp.name);
+    if (!key) return;
+    const first = seen.get(key);
+    if (first !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'name'], message: `Same name as room ${first + 1}` });
+    } else {
+      seen.set(key, i);
+    }
+  });
+  const primaries = spaces.flatMap((sp, i) => (sp.is_primary ? [i] : []));
+  primaries.slice(1).forEach((i) => {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'is_primary'], message: 'Only one primary room' });
+  });
 });
 
 export const placeFormSchema = z.object({
@@ -47,9 +71,7 @@ export const placeFormSchema = z.object({
   typical_party_end_time: optionalTime,
   typical_party_start_day_offset: optionalSignedInt,
   typical_party_end_day_offset: optionalSignedInt,
-  typical_room_count: optionalInt(),
-  typical_rooms: z.array(roomSchema),
-  typical_headliner_room_name: z.string().trim().max(256),
+  spaces: spacesSchema,
   typical_headliner_start_time: optionalTime,
   typical_headliner_start_day_offset: optionalSignedInt,
   typical_headliner_end_time: optionalTime,
@@ -61,6 +83,7 @@ export const placeFormSchema = z.object({
 
 export type PlaceFormValues = z.infer<typeof placeFormSchema>;
 export type PlaceRow = Tables<'place'>;
+export type SpaceRow = Tables<'place_space'>;
 
 export const emptyPlaceForm: PlaceFormValues = {
   name: '', parent_place_id: null, lifecycle_type: 'permanent', status: 'active',
@@ -69,7 +92,7 @@ export const emptyPlaceForm: PlaceFormValues = {
   news_pattern: '', lineup_pattern: '',
   typical_party_start_time: '', typical_party_end_time: '',
   typical_party_start_day_offset: '0', typical_party_end_day_offset: '',
-  typical_room_count: '', typical_rooms: [], typical_headliner_room_name: '',
+  spaces: [],
   typical_headliner_start_time: '', typical_headliner_start_day_offset: '',
   typical_headliner_end_time: '', typical_headliner_end_day_offset: '',
   lineup_pattern_confidence_score: '', lineup_pattern_sample_size: '', lineup_pattern_notes: '',
@@ -79,8 +102,7 @@ const str = (v: string | null | undefined) => v ?? '';
 const num = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v));
 const hhmm = (v: string | null | undefined) => (v ? v.slice(0, 5) : '');
 
-export function fromRow(row: PlaceRow): PlaceFormValues {
-  const rooms = Array.isArray(row.typical_rooms_json) ? (row.typical_rooms_json as Record<string, Json | undefined>[]) : [];
+export function fromRow(row: PlaceRow, spaces: SpaceRow[]): PlaceFormValues {
   return {
     name: row.name,
     parent_place_id: row.parent_place_id,
@@ -95,14 +117,14 @@ export function fromRow(row: PlaceRow): PlaceFormValues {
     typical_party_end_time: hhmm(row.typical_party_end_time),
     typical_party_start_day_offset: num(row.typical_party_start_day_offset),
     typical_party_end_day_offset: num(row.typical_party_end_day_offset),
-    typical_room_count: num(row.typical_room_count),
-    typical_rooms: rooms.map((r): RoomFormValue => ({
-      name: typeof r.name === 'string' ? r.name : '',
-      is_headliner_room: r.is_headliner_room === true,
-      capacity: typeof r.capacity === 'number' ? String(r.capacity) : '',
-      notes: typeof r.notes === 'string' ? r.notes : '',
+    spaces: spaces.map((s): SpaceFormValue => ({
+      space_id: s.space_id,
+      name: s.name,
+      space_type: str(s.space_type),
+      capacity: num(s.capacity),
+      notes: str(s.notes),
+      is_primary: s.is_primary,
     })),
-    typical_headliner_room_name: str(row.typical_headliner_room_name),
     typical_headliner_start_time: hhmm(row.typical_headliner_start_time),
     typical_headliner_start_day_offset: num(row.typical_headliner_start_day_offset),
     typical_headliner_end_time: hhmm(row.typical_headliner_end_time),
@@ -117,20 +139,19 @@ const nullIfEmpty = (v: string) => (v.trim() === '' ? null : v.trim());
 const intOrNull = (v: string) => (v.trim() === '' ? null : Number.parseInt(v, 10));
 const floatOrNull = (v: string) => (v.trim() === '' ? null : Number.parseFloat(v));
 
-/** Converts validated form values to the row the database expects. */
-export function toPayload(v: PlaceFormValues): TablesInsert<'place'> {
-  const rooms: Json[] = v.typical_rooms.map((r) => {
-    const room: { [k: string]: Json } = { name: r.name.trim(), is_headliner_room: r.is_headliner_room };
-    if (r.capacity.trim() !== '') room.capacity = Number.parseInt(r.capacity, 10);
-    if (r.notes.trim() !== '') room.notes = r.notes.trim();
-    return room;
-  });
+/** The two arguments of save_place_with_spaces(): the place columns and the rooms in display order. */
+export interface SavePlaceArgs {
+  p_place: { [k: string]: Json };
+  p_spaces: { [k: string]: Json }[];
+}
 
-  return {
+export function toPayload(v: PlaceFormValues, placeId: string | null): SavePlaceArgs {
+  const p_place: { [k: string]: Json } = {
+    place_id: placeId,
     name: v.name.trim(),
     parent_place_id: v.parent_place_id,
-    lifecycle_type: v.lifecycle_type as PlaceRow['lifecycle_type'],
-    status: v.status as PlaceRow['status'],
+    lifecycle_type: v.lifecycle_type,
+    status: v.status,
     address: nullIfEmpty(v.address), city: nullIfEmpty(v.city), region: nullIfEmpty(v.region), country: nullIfEmpty(v.country),
     latitude: floatOrNull(v.latitude), longitude: floatOrNull(v.longitude), timezone: nullIfEmpty(v.timezone), capacity: intOrNull(v.capacity),
     website_url: nullIfEmpty(v.website_url),
@@ -141,10 +162,6 @@ export function toPayload(v: PlaceFormValues): TablesInsert<'place'> {
     typical_party_end_time: nullIfEmpty(v.typical_party_end_time),
     typical_party_start_day_offset: intOrNull(v.typical_party_start_day_offset),
     typical_party_end_day_offset: intOrNull(v.typical_party_end_day_offset),
-    // typical_room_count is derived by the database trigger when rooms are given.
-    typical_room_count: rooms.length > 0 ? rooms.length : intOrNull(v.typical_room_count),
-    typical_rooms_json: rooms.length > 0 ? rooms : null,
-    typical_headliner_room_name: nullIfEmpty(v.typical_headliner_room_name),
     typical_headliner_start_time: nullIfEmpty(v.typical_headliner_start_time),
     typical_headliner_start_day_offset: intOrNull(v.typical_headliner_start_day_offset),
     typical_headliner_end_time: nullIfEmpty(v.typical_headliner_end_time),
@@ -153,4 +170,13 @@ export function toPayload(v: PlaceFormValues): TablesInsert<'place'> {
     lineup_pattern_sample_size: intOrNull(v.lineup_pattern_sample_size),
     lineup_pattern_notes: nullIfEmpty(v.lineup_pattern_notes),
   };
+  const p_spaces = v.spaces.map((sp) => ({
+    space_id: sp.space_id,
+    name: sp.name.trim(),
+    space_type: nullIfEmpty(sp.space_type),
+    capacity: intOrNull(sp.capacity),
+    notes: nullIfEmpty(sp.notes),
+    is_primary: sp.is_primary,
+  }));
+  return { p_place, p_spaces };
 }

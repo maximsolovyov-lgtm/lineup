@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormSection } from '@/components/form/Field';
 import { LookupField } from '@/components/form/LookupField';
-import { RoomsEditor, type RoomErrors } from '@/components/form/RoomsEditor';
+import { SpacesEditor, type SpaceErrors } from '@/components/form/SpacesEditor';
 import { TimezoneInput } from '@/components/form/TimezoneInput';
-import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/database';
+import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/enums';
 import { emptyPlaceForm, fromRow, placeFormSchema, toPayload, type PlaceFormValues } from './schema';
-import { placeLookup, useCreatePlace, usePlace, useProfileNames, useUpdatePlace } from './api';
+import { placeLookup, usePlace, useProfileNames, useSavePlace } from './api';
 
 export function PlaceFormPage() {
   const { placeId } = useParams<{ placeId: string }>();
@@ -22,8 +22,7 @@ export function PlaceFormPage() {
   const navigate = useNavigate();
   const existing = usePlace(placeId);
   const names = useProfileNames();
-  const create = useCreatePlace();
-  const update = useUpdatePlace(placeId ?? '');
+  const save = useSavePlace();
   const lookup = useMemo(() => placeLookup(placeId), [placeId]);
 
   const form = useForm<PlaceFormValues>({
@@ -31,23 +30,23 @@ export function PlaceFormPage() {
     defaultValues: emptyPlaceForm,
     mode: 'onBlur',
   });
-  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting, isDirty } } = form;
+  const { register, control, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = form;
+  const spaces = watch('spaces');
 
   useEffect(() => {
-    if (existing.data) reset(fromRow(existing.data));
+    if (existing.data) reset(fromRow(existing.data.place, existing.data.spaces));
   }, [existing.data, reset]);
 
+  // One RPC call saves the place and its rooms in one transaction; on any
+  // error nothing is written, so the form simply stays dirty.
   async function onSubmit(values: PlaceFormValues) {
-    const payload = toPayload(values);
     try {
+      const saved = await save.mutateAsync(toPayload(values, placeId ?? null));
       if (isNew) {
-        const created = await create.mutateAsync(payload);
         toast.success('Place created');
-        navigate(`/places/${created.place_id}`, { replace: true });
+        navigate(`/places/${saved.place_id}`, { replace: true });
       } else {
-        await update.mutateAsync(payload);
         toast.success('Place saved');
-        reset(values);
       }
     } catch (e) {
       toast.error((e as Error).message);
@@ -57,7 +56,7 @@ export function PlaceFormPage() {
   if (!isNew && existing.isLoading) return <p className="text-muted-foreground">Loading…</p>;
   if (!isNew && existing.isError) return <p className="text-destructive">{(existing.error as Error).message}</p>;
 
-  const row = existing.data;
+  const row = existing.data?.place;
   const audit = row
     ? `Created ${new Date(row.created_at).toLocaleString()} by ${names.data?.get(row.created_by_user_id ?? '') ?? '—'}` +
       (row.updated_at ? ` · Updated ${new Date(row.updated_at).toLocaleString()} by ${names.data?.get(row.updated_by_user_id ?? '') ?? '—'}` : '')
@@ -162,10 +161,6 @@ export function PlaceFormPage() {
         <Field label="End day offset" htmlFor="typical_party_end_day_offset" error={errors.typical_party_end_day_offset?.message}>
           <Input id="typical_party_end_day_offset" inputMode="numeric" {...register('typical_party_end_day_offset')} />
         </Field>
-        <Field label="Headliner room" htmlFor="typical_headliner_room_name" error={errors.typical_headliner_room_name?.message}>
-          <Input id="typical_headliner_room_name" {...register('typical_headliner_room_name')} />
-        </Field>
-        <div />
         <Field label="Headliner start" htmlFor="typical_headliner_start_time" error={errors.typical_headliner_start_time?.message}>
           <Input id="typical_headliner_start_time" type="time" {...register('typical_headliner_start_time')} />
         </Field>
@@ -180,16 +175,23 @@ export function PlaceFormPage() {
         </Field>
       </FormSection>
 
-      <FormSection title="Rooms" description="Known rooms and stages. Room count is derived from this list when it is filled in.">
-        <div className="sm:col-span-2">
-          <Controller control={control} name="typical_rooms" render={({ field }) => (
-            <RoomsEditor value={field.value} onChange={field.onChange} errors={errors.typical_rooms as RoomErrors} />
-          )} />
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-semibold">Rooms and stages</h2>
+          <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">place_space</span>
         </div>
-        <Field label="Room count (if rooms above are unknown)" htmlFor="typical_room_count" error={errors.typical_room_count?.message}>
-          <Input id="typical_room_count" inputMode="numeric" {...register('typical_room_count')} />
-        </Field>
-      </FormSection>
+        <p className="text-sm text-muted-foreground">
+          Rooms are edited together with the place and saved in one transaction. The primary room is
+          the venue's main room; it is used as a hint when predicting headliner timing.
+        </p>
+        <Controller control={control} name="spaces" render={({ field }) => (
+          <SpacesEditor value={field.value} onChange={field.onChange} errors={errors.spaces as SpaceErrors} />
+        )} />
+        <p className="text-xs text-muted-foreground">
+          Rooms: <span className="font-mono text-foreground">{spaces.length}</span>
+          {' · '}a removed room is deactivated, not deleted, and the save is refused while a performance set still refers to it.
+        </p>
+      </section>
 
       <FormSection title="Pattern confidence">
         <Field label="Confidence score" htmlFor="lineup_pattern_confidence_score" error={errors.lineup_pattern_confidence_score?.message} hint="0 to 1">

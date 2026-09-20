@@ -121,8 +121,9 @@ output directory `dist`.
 
 ## Regenerating database types
 
-`src/types/database.ts` was written by hand against the migrations because
-`supabase gen types` needs Docker. With the local stack running:
+`src/types/database.ts` is generated — never edit it by hand. The enum value
+lists the app uses live in `src/types/enums.ts`, derived from the generated
+`Constants`. With the local stack running:
 
 ```bash
 npm run db:types

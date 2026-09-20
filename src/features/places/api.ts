@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { normalizeName, safeFilterTerm } from '@/lib/normalize';
-import type { Enums, TablesInsert, TablesUpdate } from '@/types/database';
+import type { Enums } from '@/types/database';
 import type { LookupOption } from '@/components/form/LookupField';
+import type { SavePlaceArgs } from './schema';
 
+// place_space(count) is an embedded aggregate: one query, no N+1 for the rooms column.
 export const PLACE_LIST_COLUMNS =
-  'place_id,name,city,country,lifecycle_type,status,updated_at,created_at,updated_by_user_id,created_by_user_id' as const;
+  'place_id,name,city,country,lifecycle_type,status,updated_at,created_at,updated_by_user_id,created_by_user_id,place_space(count)' as const;
 
 export interface PlaceListParams {
   q: string;
@@ -23,24 +25,30 @@ export function usePlaces(params: PlaceListParams) {
   return useQuery({
     queryKey: ['places', params],
     queryFn: async () => {
-      let query = supabase.from('place').select(PLACE_LIST_COLUMNS).order('name').limit(200);
+      let query = supabase.from('place').select(PLACE_LIST_COLUMNS).eq('place_space.status', 'active').order('name').limit(200);
       if (params.status !== 'all') query = query.eq('status', params.status);
       query = applySearch(query, params.q);
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data.map(({ place_space, ...p }) => ({ ...p, room_count: place_space[0]?.count ?? 0 }));
     },
   });
 }
 
+/** The place with its active rooms in display order — what the form edits. */
 export function usePlace(placeId: string | undefined) {
   return useQuery({
     queryKey: ['place', placeId],
     enabled: !!placeId,
     queryFn: async () => {
-      const { data, error } = await supabase.from('place').select('*').eq('place_id', placeId!).single();
-      if (error) throw error;
-      return data;
+      const [place, spaces] = await Promise.all([
+        supabase.from('place').select('*').eq('place_id', placeId!).single(),
+        supabase.from('place_space').select('*').eq('place_id', placeId!).eq('status', 'active')
+          .order('display_order', { ascending: true, nullsFirst: false }).order('name'),
+      ]);
+      if (place.error) throw place.error;
+      if (spaces.error) throw spaces.error;
+      return { place: place.data, spaces: spaces.data };
     },
   });
 }
@@ -58,29 +66,21 @@ export function useProfileNames() {
   });
 }
 
-export function useCreatePlace() {
+/**
+ * Place and rooms go through one RPC so they are saved in one transaction.
+ * A chain of per-row requests is what leaves half-saved records behind.
+ */
+export function useSavePlace() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: TablesInsert<'place'>) => {
-      const { data, error } = await supabase.from('place').insert(payload).select('place_id').single();
+    mutationFn: async (args: SavePlaceArgs) => {
+      const { data, error } = await supabase.rpc('save_place_with_spaces', args);
       if (error) throw error;
-      return data;
+      return { place_id: data };
     },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['places'] }),
-  });
-}
-
-export function useUpdatePlace(placeId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: TablesUpdate<'place'>) => {
-      const { data, error } = await supabase.from('place').update(payload).eq('place_id', placeId).select('place_id').single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
+    onSuccess: ({ place_id }) => {
       void qc.invalidateQueries({ queryKey: ['places'] });
-      void qc.invalidateQueries({ queryKey: ['place', placeId] });
+      void qc.invalidateQueries({ queryKey: ['place', place_id] });
     },
   });
 }

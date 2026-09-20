@@ -1,510 +1,1107 @@
-// Supabase Database types for LineApp MVP v1.
-//
-// Hand-written against supabase/migrations (verified by scripts/verify-schema.sh)
-// because `supabase gen types` needs Docker, which the authoring environment
-// lacked. Regenerate with `npm run db:types` when the local stack is available;
-// the shape below matches the generator's output for supabase-js v2.
-
 export type Json =
   | string
   | number
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
-
-type Timestamp = string;
+  | Json[]
 
 export type Database = {
   public: {
     Tables: {
       app_user_profile: {
         Row: {
-          user_id: string;
-          email: string;
-          full_name: string | null;
-          role: Database['public']['Enums']['app_role'];
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
+          created_at: string
+          email: string
+          full_name: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+          user_id: string
+        }
         Insert: {
-          user_id: string;
-          email: string;
-          full_name?: string | null;
-          role?: Database['public']['Enums']['app_role'];
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
+          created_at?: string
+          email: string
+          full_name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+          user_id: string
+        }
         Update: {
-          user_id?: string;
-          email?: string;
-          full_name?: string | null;
-          role?: Database['public']['Enums']['app_role'];
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
-      place: {
-        Row: {
-          place_id: string;
-          parent_place_id: string | null;
-          name: string;
-          normalized_name: string | null;
-          lifecycle_type: Database['public']['Enums']['place_lifecycle_type'];
-          address: string | null;
-          city: string | null;
-          region: string | null;
-          country: string | null;
-          latitude: number | null;
-          longitude: number | null;
-          timezone: string | null;
-          capacity: number | null;
-          website_url: string | null;
-          instagram_account: string | null;
-          instagram_url: string | null;
-          facebook_account: string | null;
-          facebook_url: string | null;
-          news_pattern: string | null;
-          lineup_pattern: string | null;
-          typical_party_start_time: string | null;
-          typical_party_end_time: string | null;
-          typical_party_start_day_offset: number | null;
-          typical_party_end_day_offset: number | null;
-          typical_room_count: number | null;
-          typical_rooms_json: Json | null;
-          typical_headliner_room_name: string | null;
-          typical_headliner_start_time: string | null;
-          typical_headliner_start_day_offset: number | null;
-          typical_headliner_end_time: string | null;
-          typical_headliner_end_day_offset: number | null;
-          lineup_pattern_confidence_score: number | null;
-          lineup_pattern_sample_size: number | null;
-          lineup_pattern_notes: string | null;
-          status: Database['public']['Enums']['record_status'];
-          created_by_user_id: string | null;
-          updated_by_user_id: string | null;
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
-        Insert: {
-          place_id?: string;
-          parent_place_id?: string | null;
-          name: string;
-          normalized_name?: string | null;
-          lifecycle_type?: Database['public']['Enums']['place_lifecycle_type'];
-          address?: string | null;
-          city?: string | null;
-          region?: string | null;
-          country?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
-          timezone?: string | null;
-          capacity?: number | null;
-          website_url?: string | null;
-          instagram_account?: string | null;
-          instagram_url?: string | null;
-          facebook_account?: string | null;
-          facebook_url?: string | null;
-          news_pattern?: string | null;
-          lineup_pattern?: string | null;
-          typical_party_start_time?: string | null;
-          typical_party_end_time?: string | null;
-          typical_party_start_day_offset?: number | null;
-          typical_party_end_day_offset?: number | null;
-          typical_room_count?: number | null;
-          typical_rooms_json?: Json | null;
-          typical_headliner_room_name?: string | null;
-          typical_headliner_start_time?: string | null;
-          typical_headliner_start_day_offset?: number | null;
-          typical_headliner_end_time?: string | null;
-          typical_headliner_end_day_offset?: number | null;
-          lineup_pattern_confidence_score?: number | null;
-          lineup_pattern_sample_size?: number | null;
-          lineup_pattern_notes?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_by_user_id?: string | null;
-          updated_by_user_id?: string | null;
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Update: {
-          place_id?: string;
-          parent_place_id?: string | null;
-          name?: string;
-          normalized_name?: string | null;
-          lifecycle_type?: Database['public']['Enums']['place_lifecycle_type'];
-          address?: string | null;
-          city?: string | null;
-          region?: string | null;
-          country?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
-          timezone?: string | null;
-          capacity?: number | null;
-          website_url?: string | null;
-          instagram_account?: string | null;
-          instagram_url?: string | null;
-          facebook_account?: string | null;
-          facebook_url?: string | null;
-          news_pattern?: string | null;
-          lineup_pattern?: string | null;
-          typical_party_start_time?: string | null;
-          typical_party_end_time?: string | null;
-          typical_party_start_day_offset?: number | null;
-          typical_party_end_day_offset?: number | null;
-          typical_room_count?: number | null;
-          typical_rooms_json?: Json | null;
-          typical_headliner_room_name?: string | null;
-          typical_headliner_start_time?: string | null;
-          typical_headliner_start_day_offset?: number | null;
-          typical_headliner_end_time?: string | null;
-          typical_headliner_end_day_offset?: number | null;
-          lineup_pattern_confidence_score?: number | null;
-          lineup_pattern_sample_size?: number | null;
-          lineup_pattern_notes?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_by_user_id?: string | null;
-          updated_by_user_id?: string | null;
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
-      event: {
-        Row: {
-          event_id: string;
-          name: string;
-          normalized_name: string | null;
-          event_type: Database['public']['Enums']['event_type'];
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
-        Insert: {
-          event_id?: string;
-          name: string;
-          normalized_name?: string | null;
-          event_type?: Database['public']['Enums']['event_type'];
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Update: {
-          event_id?: string;
-          name?: string;
-          normalized_name?: string | null;
-          event_type?: Database['public']['Enums']['event_type'];
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
-      event_occurrence: {
-        Row: {
-          occurrence_id: string;
-          event_id: string;
-          primary_place_id: string | null;
-          occurrence_name: string | null;
-          starts_at: Timestamp;
-          ends_at: Timestamp;
-          timezone: string | null;
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
-        Insert: {
-          occurrence_id?: string;
-          event_id: string;
-          primary_place_id?: string | null;
-          occurrence_name?: string | null;
-          starts_at: Timestamp;
-          ends_at: Timestamp;
-          timezone?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Update: {
-          occurrence_id?: string;
-          event_id?: string;
-          primary_place_id?: string | null;
-          occurrence_name?: string | null;
-          starts_at?: Timestamp;
-          ends_at?: Timestamp;
-          timezone?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
-      place_space: {
-        Row: {
-          space_id: string;
-          place_id: string;
-          name: string;
-          normalized_name: string | null;
-          space_type: string | null;
-          capacity: number | null;
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
-        Insert: {
-          space_id?: string;
-          place_id: string;
-          name: string;
-          normalized_name?: string | null;
-          space_type?: string | null;
-          capacity?: number | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Update: {
-          space_id?: string;
-          place_id?: string;
-          name?: string;
-          normalized_name?: string | null;
-          space_type?: string | null;
-          capacity?: number | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       artist: {
         Row: {
-          artist_id: string;
-          name: string;
-          normalized_name: string | null;
-          artist_type: string | null;
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
+          artist_id: string
+          artist_type: Database["public"]["Enums"]["artist_type"] | null
+          created_at: string
+          name: string
+          normalized_name: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
         Insert: {
-          artist_id?: string;
-          name: string;
-          normalized_name?: string | null;
-          artist_type?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
+          artist_id?: string
+          artist_type?: Database["public"]["Enums"]["artist_type"] | null
+          created_at?: string
+          name: string
+          normalized_name?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
         Update: {
-          artist_id?: string;
-          name?: string;
-          normalized_name?: string | null;
-          artist_type?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
+          artist_id?: string
+          artist_type?: Database["public"]["Enums"]["artist_type"] | null
+          created_at?: string
+          name?: string
+          normalized_name?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      artist_membership: {
+        Row: {
+          artist_id: string
+          created_at: string
+          display_order: number | null
+          ended_at: string | null
+          is_primary: boolean
+          membership_id: string
+          membership_role: Database["public"]["Enums"]["membership_role"] | null
+          person_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string
+          display_order?: number | null
+          ended_at?: string | null
+          is_primary?: boolean
+          membership_id?: string
+          membership_role?:
+            | Database["public"]["Enums"]["membership_role"]
+            | null
+          person_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string
+          display_order?: number | null
+          ended_at?: string | null
+          is_primary?: boolean
+          membership_id?: string
+          membership_role?:
+            | Database["public"]["Enums"]["membership_role"]
+            | null
+          person_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_membership_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "artist_membership_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "person"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      event: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          name: string
+          normalized_name: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          name: string
+          normalized_name?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          name?: string
+          normalized_name?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      event_occurrence: {
+        Row: {
+          created_at: string
+          ends_at: string
+          event_date: string
+          event_id: string
+          occurrence_id: string
+          occurrence_name: string | null
+          primary_place_id: string | null
+          starts_at: string
+          status: Database["public"]["Enums"]["record_status"]
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          event_date: string
+          event_id: string
+          occurrence_id?: string
+          occurrence_name?: string | null
+          primary_place_id?: string | null
+          starts_at: string
+          status?: Database["public"]["Enums"]["record_status"]
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          event_date?: string
+          event_id?: string
+          occurrence_id?: string
+          occurrence_name?: string | null
+          primary_place_id?: string | null
+          starts_at?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_occurrence_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "event"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_occurrence_primary_place_id_fkey"
+            columns: ["primary_place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["place_id"]
+          },
+        ]
+      }
       evidence_source: {
         Row: {
-          source_id: string;
-          source_type: string | null;
-          source_url: string | null;
-          source_title: string | null;
-          captured_at: Timestamp | null;
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
+          captured_at: string | null
+          content_hash: string | null
+          created_at: string
+          source_id: string
+          source_title: string | null
+          source_type: string | null
+          source_url: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
         Insert: {
-          source_id?: string;
-          source_type?: string | null;
-          source_url?: string | null;
-          source_title?: string | null;
-          captured_at?: Timestamp | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
+          captured_at?: string | null
+          content_hash?: string | null
+          created_at?: string
+          source_id?: string
+          source_title?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
         Update: {
-          source_id?: string;
-          source_type?: string | null;
-          source_url?: string | null;
-          source_title?: string | null;
-          captured_at?: Timestamp | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
+          captured_at?: string | null
+          content_hash?: string | null
+          created_at?: string
+          source_id?: string
+          source_title?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       performance_set: {
         Row: {
-          performance_set_id: string;
-          occurrence_id: string;
-          place_id: string | null;
-          place_space_id: string | null;
-          scenario_type: Database['public']['Enums']['set_scenario_type'];
-          scenario_version: number;
-          set_type: Database['public']['Enums']['performance_set_type'];
-          display_name: string | null;
-          scheduled_start_at: Timestamp;
-          scheduled_end_at: Timestamp;
-          sequence_number: number | null;
-          artist_list_json: Json | null;
-          artist_count: number | null;
-          information_origin: string | null;
-          confirmation_status: string | null;
-          confidence_score: number | null;
-          source_performance_set_id: string | null;
-          supersedes_performance_set_id: string | null;
-          source_id: string | null;
-          notes: string | null;
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
+          artist_count: number | null
+          artist_list_json: Json | null
+          confidence_score: number | null
+          confirmation_status: Database["public"]["Enums"]["confirmation_status"]
+          created_at: string
+          display_name: string | null
+          event_day: string | null
+          information_origin:
+            | Database["public"]["Enums"]["information_origin"]
+            | null
+          lineup_complete: boolean
+          notes: string | null
+          occurrence_id: string
+          performance_set_id: string
+          place_id: string | null
+          place_role: Database["public"]["Enums"]["place_role"] | null
+          place_space_id: string | null
+          release_id: string | null
+          scenario_type: Database["public"]["Enums"]["set_scenario_type"]
+          scenario_version: number
+          scheduled_end_at: string | null
+          scheduled_start_at: string | null
+          sequence_number: number | null
+          set_type: Database["public"]["Enums"]["performance_set_type"]
+          source_id: string | null
+          source_performance_set_id: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          supersedes_performance_set_id: string | null
+          updated_at: string | null
+        }
         Insert: {
-          performance_set_id?: string;
-          occurrence_id: string;
-          place_id?: string | null;
-          place_space_id?: string | null;
-          scenario_type: Database['public']['Enums']['set_scenario_type'];
-          scenario_version: number;
-          set_type: Database['public']['Enums']['performance_set_type'];
-          display_name?: string | null;
-          scheduled_start_at: Timestamp;
-          scheduled_end_at: Timestamp;
-          sequence_number?: number | null;
-          artist_list_json?: Json | null;
-          artist_count?: number | null;
-          information_origin?: string | null;
-          confirmation_status?: string | null;
-          confidence_score?: number | null;
-          source_performance_set_id?: string | null;
-          supersedes_performance_set_id?: string | null;
-          source_id?: string | null;
-          notes?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
+          artist_count?: number | null
+          artist_list_json?: Json | null
+          confidence_score?: number | null
+          confirmation_status?: Database["public"]["Enums"]["confirmation_status"]
+          created_at?: string
+          display_name?: string | null
+          event_day?: string | null
+          information_origin?:
+            | Database["public"]["Enums"]["information_origin"]
+            | null
+          lineup_complete?: boolean
+          notes?: string | null
+          occurrence_id: string
+          performance_set_id?: string
+          place_id?: string | null
+          place_role?: Database["public"]["Enums"]["place_role"] | null
+          place_space_id?: string | null
+          release_id?: string | null
+          scenario_type: Database["public"]["Enums"]["set_scenario_type"]
+          scenario_version: number
+          scheduled_end_at?: string | null
+          scheduled_start_at?: string | null
+          sequence_number?: number | null
+          set_type: Database["public"]["Enums"]["performance_set_type"]
+          source_id?: string | null
+          source_performance_set_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          supersedes_performance_set_id?: string | null
+          updated_at?: string | null
+        }
         Update: {
-          performance_set_id?: string;
-          occurrence_id?: string;
-          place_id?: string | null;
-          place_space_id?: string | null;
-          scenario_type?: Database['public']['Enums']['set_scenario_type'];
-          scenario_version?: number;
-          set_type?: Database['public']['Enums']['performance_set_type'];
-          display_name?: string | null;
-          scheduled_start_at?: Timestamp;
-          scheduled_end_at?: Timestamp;
-          sequence_number?: number | null;
-          artist_list_json?: Json | null;
-          artist_count?: number | null;
-          information_origin?: string | null;
-          confirmation_status?: string | null;
-          confidence_score?: number | null;
-          source_performance_set_id?: string | null;
-          supersedes_performance_set_id?: string | null;
-          source_id?: string | null;
-          notes?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
+          artist_count?: number | null
+          artist_list_json?: Json | null
+          confidence_score?: number | null
+          confirmation_status?: Database["public"]["Enums"]["confirmation_status"]
+          created_at?: string
+          display_name?: string | null
+          event_day?: string | null
+          information_origin?:
+            | Database["public"]["Enums"]["information_origin"]
+            | null
+          lineup_complete?: boolean
+          notes?: string | null
+          occurrence_id?: string
+          performance_set_id?: string
+          place_id?: string | null
+          place_role?: Database["public"]["Enums"]["place_role"] | null
+          place_space_id?: string | null
+          release_id?: string | null
+          scenario_type?: Database["public"]["Enums"]["set_scenario_type"]
+          scenario_version?: number
+          scheduled_end_at?: string | null
+          scheduled_start_at?: string | null
+          sequence_number?: number | null
+          set_type?: Database["public"]["Enums"]["performance_set_type"]
+          source_id?: string | null
+          source_performance_set_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          supersedes_performance_set_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_set_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "event_occurrence"
+            referencedColumns: ["occurrence_id"]
+          },
+          {
+            foreignKeyName: "performance_set_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["place_id"]
+          },
+          {
+            foreignKeyName: "performance_set_place_space_id_fkey"
+            columns: ["place_space_id"]
+            isOneToOne: false
+            referencedRelation: "place_space"
+            referencedColumns: ["space_id"]
+          },
+          {
+            foreignKeyName: "performance_set_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "program_release"
+            referencedColumns: ["release_id"]
+          },
+          {
+            foreignKeyName: "performance_set_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_source"
+            referencedColumns: ["source_id"]
+          },
+          {
+            foreignKeyName: "performance_set_source_performance_set_id_fkey"
+            columns: ["source_performance_set_id"]
+            isOneToOne: false
+            referencedRelation: "performance_set"
+            referencedColumns: ["performance_set_id"]
+          },
+          {
+            foreignKeyName: "performance_set_supersedes_performance_set_id_fkey"
+            columns: ["supersedes_performance_set_id"]
+            isOneToOne: false
+            referencedRelation: "performance_set"
+            referencedColumns: ["performance_set_id"]
+          },
+        ]
+      }
       performance_set_participant: {
         Row: {
-          participant_id: string;
-          performance_set_id: string;
-          artist_id: string | null;
-          participant_role: Database['public']['Enums']['participant_role'];
-          billing_order: number | null;
-          display_order: number | null;
-          is_headliner: boolean | null;
-          is_primary: boolean | null;
-          display_name_override: string | null;
-          status: Database['public']['Enums']['record_status'];
-          created_at: Timestamp;
-          updated_at: Timestamp | null;
-        };
+          artist_id: string | null
+          billing_order: number | null
+          created_at: string
+          display_name_override: string | null
+          display_order: number | null
+          is_headliner: boolean | null
+          is_primary: boolean | null
+          participant_id: string
+          participant_role: Database["public"]["Enums"]["participant_role"]
+          performance_set_id: string
+          placeholder_type:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
         Insert: {
-          participant_id?: string;
-          performance_set_id: string;
-          artist_id?: string | null;
-          participant_role?: Database['public']['Enums']['participant_role'];
-          billing_order?: number | null;
-          display_order?: number | null;
-          is_headliner?: boolean | null;
-          is_primary?: boolean | null;
-          display_name_override?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
+          artist_id?: string | null
+          billing_order?: number | null
+          created_at?: string
+          display_name_override?: string | null
+          display_order?: number | null
+          is_headliner?: boolean | null
+          is_primary?: boolean | null
+          participant_id?: string
+          participant_role?: Database["public"]["Enums"]["participant_role"]
+          performance_set_id: string
+          placeholder_type?:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
         Update: {
-          participant_id?: string;
-          performance_set_id?: string;
-          artist_id?: string | null;
-          participant_role?: Database['public']['Enums']['participant_role'];
-          billing_order?: number | null;
-          display_order?: number | null;
-          is_headliner?: boolean | null;
-          is_primary?: boolean | null;
-          display_name_override?: string | null;
-          status?: Database['public']['Enums']['record_status'];
-          created_at?: Timestamp;
-          updated_at?: Timestamp | null;
-        };
-        Relationships: [];
-      };
-    };
-    Views: { [_ in never]: never };
+          artist_id?: string | null
+          billing_order?: number | null
+          created_at?: string
+          display_name_override?: string | null
+          display_order?: number | null
+          is_headliner?: boolean | null
+          is_primary?: boolean | null
+          participant_id?: string
+          participant_role?: Database["public"]["Enums"]["participant_role"]
+          performance_set_id?: string
+          placeholder_type?:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_set_participant_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "performance_set_participant_performance_set_id_fkey"
+            columns: ["performance_set_id"]
+            isOneToOne: false
+            referencedRelation: "performance_set"
+            referencedColumns: ["performance_set_id"]
+          },
+        ]
+      }
+      performance_set_participant_person: {
+        Row: {
+          created_at: string
+          participant_id: string
+          participant_person_id: string
+          person_id: string
+          source_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          participant_id: string
+          participant_person_id?: string
+          person_id: string
+          source_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          participant_id?: string
+          participant_person_id?: string
+          person_id?: string
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_set_participant_person_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "performance_set_participant"
+            referencedColumns: ["participant_id"]
+          },
+          {
+            foreignKeyName: "performance_set_participant_person_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "person"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "performance_set_participant_person_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_source"
+            referencedColumns: ["source_id"]
+          },
+        ]
+      }
+      person: {
+        Row: {
+          country: string | null
+          created_at: string
+          display_name: string
+          normalized_name: string | null
+          notes: string | null
+          person_id: string
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          display_name: string
+          normalized_name?: string | null
+          notes?: string | null
+          person_id?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          display_name?: string
+          normalized_name?: string | null
+          notes?: string | null
+          person_id?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      place: {
+        Row: {
+          address: string | null
+          capacity: number | null
+          city: string | null
+          country: string | null
+          created_at: string
+          created_by_user_id: string | null
+          facebook_account: string | null
+          facebook_url: string | null
+          instagram_account: string | null
+          instagram_url: string | null
+          latitude: number | null
+          lifecycle_type: Database["public"]["Enums"]["place_lifecycle_type"]
+          lineup_pattern: string | null
+          lineup_pattern_confidence_score: number | null
+          lineup_pattern_notes: string | null
+          lineup_pattern_sample_size: number | null
+          longitude: number | null
+          name: string
+          news_pattern: string | null
+          normalized_name: string | null
+          parent_place_id: string | null
+          place_id: string
+          region: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          timezone: string | null
+          typical_headliner_end_day_offset: number | null
+          typical_headliner_end_time: string | null
+          typical_headliner_room_name: string | null
+          typical_headliner_start_day_offset: number | null
+          typical_headliner_start_time: string | null
+          typical_party_end_day_offset: number | null
+          typical_party_end_time: string | null
+          typical_party_start_day_offset: number | null
+          typical_party_start_time: string | null
+          typical_room_count: number | null
+          typical_rooms_json: Json | null
+          updated_at: string | null
+          updated_by_user_id: string | null
+          website_url: string | null
+        }
+        Insert: {
+          address?: string | null
+          capacity?: number | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          facebook_account?: string | null
+          facebook_url?: string | null
+          instagram_account?: string | null
+          instagram_url?: string | null
+          latitude?: number | null
+          lifecycle_type?: Database["public"]["Enums"]["place_lifecycle_type"]
+          lineup_pattern?: string | null
+          lineup_pattern_confidence_score?: number | null
+          lineup_pattern_notes?: string | null
+          lineup_pattern_sample_size?: number | null
+          longitude?: number | null
+          name: string
+          news_pattern?: string | null
+          normalized_name?: string | null
+          parent_place_id?: string | null
+          place_id?: string
+          region?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          timezone?: string | null
+          typical_headliner_end_day_offset?: number | null
+          typical_headliner_end_time?: string | null
+          typical_headliner_room_name?: string | null
+          typical_headliner_start_day_offset?: number | null
+          typical_headliner_start_time?: string | null
+          typical_party_end_day_offset?: number | null
+          typical_party_end_time?: string | null
+          typical_party_start_day_offset?: number | null
+          typical_party_start_time?: string | null
+          typical_room_count?: number | null
+          typical_rooms_json?: Json | null
+          updated_at?: string | null
+          updated_by_user_id?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          address?: string | null
+          capacity?: number | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          facebook_account?: string | null
+          facebook_url?: string | null
+          instagram_account?: string | null
+          instagram_url?: string | null
+          latitude?: number | null
+          lifecycle_type?: Database["public"]["Enums"]["place_lifecycle_type"]
+          lineup_pattern?: string | null
+          lineup_pattern_confidence_score?: number | null
+          lineup_pattern_notes?: string | null
+          lineup_pattern_sample_size?: number | null
+          longitude?: number | null
+          name?: string
+          news_pattern?: string | null
+          normalized_name?: string | null
+          parent_place_id?: string | null
+          place_id?: string
+          region?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          timezone?: string | null
+          typical_headliner_end_day_offset?: number | null
+          typical_headliner_end_time?: string | null
+          typical_headliner_room_name?: string | null
+          typical_headliner_start_day_offset?: number | null
+          typical_headliner_start_time?: string | null
+          typical_party_end_day_offset?: number | null
+          typical_party_end_time?: string | null
+          typical_party_start_day_offset?: number | null
+          typical_party_start_time?: string | null
+          typical_room_count?: number | null
+          typical_rooms_json?: Json | null
+          updated_at?: string | null
+          updated_by_user_id?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_profile"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "place_parent_place_id_fkey"
+            columns: ["parent_place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["place_id"]
+          },
+          {
+            foreignKeyName: "place_updated_by_user_id_fkey"
+            columns: ["updated_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_profile"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      place_space: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          display_order: number | null
+          is_primary: boolean
+          name: string
+          normalized_name: string | null
+          notes: string | null
+          place_id: string
+          space_id: string
+          space_type: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          display_order?: number | null
+          is_primary?: boolean
+          name: string
+          normalized_name?: string | null
+          notes?: string | null
+          place_id: string
+          space_id?: string
+          space_type?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          display_order?: number | null
+          is_primary?: boolean
+          name?: string
+          normalized_name?: string | null
+          notes?: string | null
+          place_id?: string
+          space_id?: string
+          space_type?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_space_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["place_id"]
+          },
+        ]
+      }
+      program_release: {
+        Row: {
+          created_at: string
+          occurrence_id: string
+          published_at: string | null
+          release_id: string
+          release_kind: Database["public"]["Enums"]["release_kind"]
+          source_id: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          summary: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          occurrence_id: string
+          published_at?: string | null
+          release_id?: string
+          release_kind?: Database["public"]["Enums"]["release_kind"]
+          source_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          summary?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          occurrence_id?: string
+          published_at?: string | null
+          release_id?: string
+          release_kind?: Database["public"]["Enums"]["release_kind"]
+          source_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          summary?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_release_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "event_occurrence"
+            referencedColumns: ["occurrence_id"]
+          },
+          {
+            foreignKeyName: "program_release_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_source"
+            referencedColumns: ["source_id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
-      current_app_role: { Args: Record<PropertyKey, never>; Returns: Database['public']['Enums']['app_role'] | null };
-      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      is_operator_or_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      normalize_name: { Args: { p_name: string }; Returns: string | null };
-      is_valid_rooms_json: { Args: { j: Json }; Returns: boolean };
-    };
+      current_app_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_operator_or_admin: { Args: never; Returns: boolean }
+      is_valid_rooms_json: { Args: { j: Json }; Returns: boolean }
+      normalize_name: { Args: { p_name: string }; Returns: string }
+      save_place_with_spaces: {
+        Args: { p_place: Json; p_spaces?: Json }
+        Returns: string
+      }
+    }
     Enums: {
-      app_role: 'admin' | 'operator';
-      record_status: 'draft' | 'active' | 'inactive' | 'closed' | 'superseded' | 'archived' | 'deleted';
-      place_lifecycle_type: 'permanent' | 'temporary' | 'mobile' | 'virtual';
-      event_type: 'party' | 'festival' | 'concert' | 'afterparty' | 'label_night' | 'other' | 'unknown';
-      set_scenario_type: 'official' | 'predicted' | 'actual' | 'manual';
-      performance_set_type:
-        | 'group' | 'single_artist_set' | 'b2b' | 'multi_b2b' | 'featuring'
-        | 'hosted_set' | 'placeholder' | 'service_block' | 'unknown';
+      app_role: "admin" | "operator"
+      artist_type: "solo" | "duo" | "group" | "collective" | "alias" | "unknown"
+      confirmation_status:
+        | "unconfirmed"
+        | "confirmed"
+        | "disputed"
+        | "retracted"
+      event_type:
+        | "party"
+        | "festival"
+        | "concert"
+        | "afterparty"
+        | "label_night"
+        | "other"
+        | "unknown"
+      information_origin:
+        | "venue_announced"
+        | "artist_announced"
+        | "ticketing"
+        | "press"
+        | "user_submitted"
+        | "predicted"
+        | "observed"
+        | "manual"
+      membership_role:
+        | "dj"
+        | "producer"
+        | "live"
+        | "vocalist"
+        | "mc"
+        | "visual"
+        | "other"
       participant_role:
-        | 'primary' | 'b2b' | 'featured' | 'guest' | 'host' | 'mc' | 'support'
-        | 'headliner' | 'placeholder' | 'unknown';
-    };
-    CompositeTypes: { [_ in never]: never };
-  };
-};
+        | "primary"
+        | "b2b"
+        | "featured"
+        | "guest"
+        | "host"
+        | "mc"
+        | "support"
+        | "headliner"
+        | "placeholder"
+        | "unknown"
+      performance_set_type:
+        | "group"
+        | "single_artist_set"
+        | "b2b"
+        | "multi_b2b"
+        | "featuring"
+        | "hosted_set"
+        | "placeholder"
+        | "service_block"
+        | "unknown"
+      place_lifecycle_type: "permanent" | "temporary" | "mobile" | "virtual"
+      place_role: "main" | "afterparty" | "satellite"
+      placeholder_type: "tbd" | "secret_guest"
+      record_status:
+        | "draft"
+        | "active"
+        | "inactive"
+        | "closed"
+        | "cancelled"
+        | "superseded"
+        | "archived"
+        | "deleted"
+      release_kind:
+        | "lineup"
+        | "stage_split"
+        | "partial_schedule"
+        | "full_timetable"
+        | "cancellation"
+        | "replacement"
+        | "other"
+      set_scenario_type: "official" | "predicted" | "actual" | "manual"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
 
-export type Tables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row'];
-export type TablesInsert<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Insert'];
-export type TablesUpdate<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Update'];
-export type Enums<T extends keyof Database['public']['Enums']> =
-  Database['public']['Enums'][T];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-// Enum value lists for dropdowns — the database is the source of truth.
-export const APP_ROLES: Enums<'app_role'>[] = ['admin', 'operator'];
-export const RECORD_STATUSES: Enums<'record_status'>[] = [
-  'draft', 'active', 'inactive', 'closed', 'superseded', 'archived', 'deleted',
-];
-export const PLACE_LIFECYCLE_TYPES: Enums<'place_lifecycle_type'>[] = [
-  'permanent', 'temporary', 'mobile', 'virtual',
-];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["admin", "operator"],
+      artist_type: ["solo", "duo", "group", "collective", "alias", "unknown"],
+      confirmation_status: [
+        "unconfirmed",
+        "confirmed",
+        "disputed",
+        "retracted",
+      ],
+      event_type: [
+        "party",
+        "festival",
+        "concert",
+        "afterparty",
+        "label_night",
+        "other",
+        "unknown",
+      ],
+      information_origin: [
+        "venue_announced",
+        "artist_announced",
+        "ticketing",
+        "press",
+        "user_submitted",
+        "predicted",
+        "observed",
+        "manual",
+      ],
+      membership_role: [
+        "dj",
+        "producer",
+        "live",
+        "vocalist",
+        "mc",
+        "visual",
+        "other",
+      ],
+      participant_role: [
+        "primary",
+        "b2b",
+        "featured",
+        "guest",
+        "host",
+        "mc",
+        "support",
+        "headliner",
+        "placeholder",
+        "unknown",
+      ],
+      performance_set_type: [
+        "group",
+        "single_artist_set",
+        "b2b",
+        "multi_b2b",
+        "featuring",
+        "hosted_set",
+        "placeholder",
+        "service_block",
+        "unknown",
+      ],
+      place_lifecycle_type: ["permanent", "temporary", "mobile", "virtual"],
+      place_role: ["main", "afterparty", "satellite"],
+      placeholder_type: ["tbd", "secret_guest"],
+      record_status: [
+        "draft",
+        "active",
+        "inactive",
+        "closed",
+        "cancelled",
+        "superseded",
+        "archived",
+        "deleted",
+      ],
+      release_kind: [
+        "lineup",
+        "stage_split",
+        "partial_schedule",
+        "full_timetable",
+        "cancellation",
+        "replacement",
+        "other",
+      ],
+      set_scenario_type: ["official", "predicted", "actual", "manual"],
+    },
+  },
+} as const
+
