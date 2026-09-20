@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": [".", "../agents", "../src/agents"]
+  "include": [".", "../agents", "../src/agents/common.ts", "../src/agents/*/schema.ts"]
 }

@@ -1,77 +1,70 @@
 # Agents
 
-Server-side agents live in `agents/` and are exposed through the Pages
-Function at `/api/agents/*`. They run Claude with server-side web tools; the
-Anthropic key is a Pages secret and never reaches the browser.
+Server-side research agents live in `agents/` and are exposed through the
+Pages Function at `/api/agents/*`. They run Claude with the server-side web
+search and web fetch tools; the Anthropic key is a Pages secret and never
+reaches the browser. Nothing they return is written to the database — the
+caller (the admin UI, or another agent) decides what to save.
 
-## Place agent — keywords in, a Place draft out
+## One shape for four kinds
 
-`POST /api/agents/place`
-
-Takes a keyword string about **one venue** and returns a draft of its Place
-record, shaped exactly for `save_place_with_spaces()`: `draft.place` is
-`p_place`, `draft.spaces` is `p_spaces`. Every fact the agent could not
-establish from a source is `null`; nothing is written to the database — the
-caller decides what to save.
-
-Model: `claude-opus-5` with `web_search` and `web_fetch`, structured output
-constrained to `src/agents/place/schema.ts`. Contract, prompt and loop:
-`agents/place/agent.ts`. Venue sites rarely publish coordinates, so when the
-model leaves them null the address it found is geocoded afterwards with
-OpenStreetMap Nominatim (`agents/geocode.ts`); the note says so and the
-request URL is added to `sources`. A city-only match is not used.
-
-### Request
+`POST /api/agents/:kind` — `kind` is `place`, `artist`, `person` or `event`.
 
 ```json
-{ "keywords": "Club Space; Miami; https://www.instagram.com/clubspacemiami" }
+{ "keywords": "Tale Of Us; Berlin; https://www.instagram.com/taleofus" }
 ```
 
-Keywords are separated by `;` — a name, a city, an Instagram profile, a
-website. One venue per call.
+Keywords are separated by `;`. The answer has one of three outcomes:
 
-### Response
-
-```json
-{
-  "data": {
-    "draft": {
-      "matched": true,
-      "place": { "name": "Club Space", "lifecycle_type": "permanent", "city": "Miami", "...": "…" },
-      "spaces": [{ "name": "Terrace", "space_type": "terrace", "capacity": null, "notes": null, "is_primary": true }],
-      "sources": ["https://www.clubspace.com/"],
-      "confidence": 0.9,
-      "notes": "Capacity per room is not published."
-    },
-    "keywords": ["Club Space", "Miami", "https://www.instagram.com/clubspacemiami"],
-    "model": "claude-opus-5",
-    "usage": { "input_tokens": 12345, "output_tokens": 1234, "web_searches": 3 }
-  }
-}
-```
-
-`matched: false` means the keywords did not identify one venue; the draft then
-carries only what is certain and `notes` says why. A call takes 20–60 s.
-
-`GET /api/agents/place/schema` returns the JSON schema of `draft` — register it
-as the result schema when another agent wraps this endpoint as a tool.
-
-### Authentication — two ways in
-
-| Caller | How | Who may |
+| `outcome` | Meaning | What is filled |
 |---|---|---|
-| The admin UI | `Authorization: Bearer <Supabase session token>` (what `apiFetch()` sends) | any active operator or admin |
-| Another agent or script | `x-api-key: <AGENT_API_KEY>` | whoever holds the shared secret |
+| `draft` | the keywords identify exactly one thing | `draft` |
+| `ambiguous` | two or more different things fit about equally | `candidates` (2–6, most likely first: `label`, `description`, `sources`, `confidence`) |
+| `not_found` | nothing fits | neither; `notes` says what was looked for |
 
-```bash
-curl -s https://lineapp-admin.pages.dev/api/agents/place \
-  -H "x-api-key: $AGENT_API_KEY" -H "content-type: application/json" \
-  -d '{"keywords":"Club Space; Miami"}'
+After an `ambiguous` answer, call again with the chosen candidate and the
+same keywords; the answer is then a `draft` for that one:
+
+```json
+{ "keywords": "Eagle; techno", "candidate": { "label": "…", "description": "…", "sources": ["…"], "confidence": 0.6 } }
 ```
 
-Errors: `400` invalid payload, `401` no or wrong credentials, `403` inactive
-user, `429` rate-limited upstream, `502` the agent or the Anthropic API
-failed, `503` the Function has no `ANTHROPIC_API_KEY`.
+Every answer also carries `sources` (URLs consulted), `confidence` (0..1),
+`notes` (for the operator), `keywords`, `model` and `usage`. Unknown facts
+inside a draft are `null` — never a guess. A call takes 20–60 s.
+
+`GET /api/agents/:kind/schema` returns the JSON schema of the full answer —
+register it as the result schema when another agent wraps the endpoint as a
+tool.
+
+### Drafts per kind
+
+Contracts are in `src/agents/<kind>/schema.ts`; prompts in `agents/kinds.ts`
+and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
+
+- **place** — `draft.place` is `p_place` and `draft.spaces` is `p_spaces` of
+  `save_place_with_spaces()`. When the model leaves coordinates null, the
+  address it found is geocoded afterwards with OpenStreetMap Nominatim
+  (`agents/geocode.ts`); the note says so. A city-only match is not used.
+- **artist** — `draft.artist` maps onto `p_artist` of
+  `save_artist_with_members()`; `draft.members` are the people behind the
+  name (public names only). The UI links each member to an existing person
+  by normalised name and creates the rest with the artist, in one
+  transaction. `genres` is for recognition.
+- **person** — `draft.person` maps onto `public.person`; `performs_as` lists
+  the acts the person is publicly part of. Memberships are edited on the
+  artist record, so the UI keeps that list in the note.
+- **event** — `draft.event` maps onto `p_event` of
+  `save_event_with_occurrences()`; `draft.occurrences` are the announced
+  dates from today on (business day, venue name and city, times when
+  announced). The UI matches each venue to a stored place by name; unmatched
+  venues stay in the occurrence name for the operator to resolve.
+
+### Names
+
+Only publicly known names are stored for people (CLAUDE.md invariant). The
+artist and person prompts say so explicitly; a legal or birth name that the
+artist has not published is never returned.
 
 ## Geocoder — address in, coordinates out
 
@@ -81,24 +74,47 @@ failed, `503` the Function has no `ANTHROPIC_API_KEY`.
 OpenStreetMap Nominatim, no model. Tries the street address with the city,
 then the venue name with the city (Nominatim lists many clubs as POIs), then
 the city alone — that last result comes back with `approximate: true` and
-should not be stored as a venue position. Same authentication as the place
-agent. Nominatim's policy: one request per second, no bulk runs — this is for
-one operator action at a time, never a loop over a table. In the UI: the
-**Find** button next to Longitude on the Place record.
+should not be stored as a venue position. Nominatim's policy: one request per
+second, no bulk runs — this is for one operator action at a time, never a
+loop over a table. In the UI: the **Find** button next to Longitude on the
+Place record.
 
-### Configuration
+## Authentication — two ways in
+
+| Caller | How | Who may |
+|---|---|---|
+| The admin UI | `Authorization: Bearer <Supabase session token>` (what `apiFetch()` sends) | any active operator or admin |
+| Another agent or script | `x-api-key: <AGENT_API_KEY>` | whoever holds the shared secret |
+
+```bash
+curl -s https://lineapp-admin.pages.dev/api/agents/artist \
+  -H "x-api-key: $AGENT_API_KEY" -H "content-type: application/json" \
+  -d '{"keywords":"Keinemusik; Berlin"}'
+```
+
+Errors: `400` invalid payload, `401` no or wrong credentials, `403` inactive
+user, `404` unknown kind, `429` rate-limited upstream, `502` the agent or the
+Anthropic API failed, `503` the Function has no `ANTHROPIC_API_KEY`.
+
+`GET /api/agents/health` (no auth) says whether the keys are configured and
+accepted — never their values.
+
+## Configuration
 
 Pages secrets on `lineapp-admin` (`npx wrangler pages secret put <NAME> --project-name lineapp-admin`):
 
-- `ANTHROPIC_API_KEY` — required for the agent to run at all.
-- `AGENT_API_KEY` — only if other agents should call it; any long random
-  string. Without it, only signed-in users can call the agent.
+- `ANTHROPIC_API_KEY` — required for the agents to run at all.
+- `AGENT_API_KEY` — only if other agents should call them; any long random
+  string. Without it, only signed-in users can call the agents.
+- `SUPABASE_ANON_KEY` — the public anon key, so the Function can verify a
+  session without the service-role key.
 
-Locally, put both in `.dev.vars` and run `npm run dev:full`.
+Locally, put them in `.dev.vars` and run `npm run dev:full`.
 
-### In the UI
+## In the UI
 
-Places → **New place** → the *Create from keywords* block at the top: enter
-the keywords, press **Fill the form**. Every field and the rooms block are
-filled from the draft; sources and confidence are shown; the operator reviews
-and presses **Create place**. Only that press writes anything.
+Every **New …** form (Places, Events, Artists, People) opens with a *Create
+from keywords* block: enter the keywords, press **Fill the form**. If several
+things fit, a chooser lists them with a line that tells them apart; pick one
+and the agent researches exactly that one. The form is filled, sources and
+confidence are shown, and only **Create** writes anything.

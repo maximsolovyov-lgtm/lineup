@@ -1,32 +1,5 @@
-import { useMutation } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
-import type { PlaceAgentResponse, PlaceDraft } from '@/agents/place/schema';
+import type { PlaceDraft } from '@/agents/place/schema';
 import { emptyPlaceForm, type PlaceFormValues } from './schema';
-
-export interface GeocodeHit {
-  latitude: number;
-  longitude: number;
-  display_name: string;
-  kind: string;
-  approximate: boolean;
-  source: string;
-}
-
-/** Address → coordinates through the Function (OpenStreetMap Nominatim); null when nothing matched. */
-export function useGeocode() {
-  return useMutation({
-    mutationFn: (input: { name?: string; address?: string; city?: string; region?: string; country?: string }) =>
-      apiFetch<GeocodeHit | null>('/api/agents/geocode', { method: 'POST', body: JSON.stringify(input) }),
-  });
-}
-
-/** Calls the place agent through the Pages Function (the API key never reaches the browser). */
-export function useDraftPlace() {
-  return useMutation({
-    mutationFn: (keywords: string) =>
-      apiFetch<PlaceAgentResponse>('/api/agents/place', { method: 'POST', body: JSON.stringify({ keywords }) }),
-  });
-}
 
 const str = (v: string | null) => v ?? '';
 const num = (v: number | null) => (v === null ? '' : String(v));

@@ -2,12 +2,13 @@
 import { z } from 'zod/v4';
 
 /**
- * Contract of the place agent: what it returns for a keyword string.
- * Shared by the browser (typing the response) and the Pages Function (the
- * structured-output schema Claude must follow, and the validation of what
- * came back). Field names match public.place and public.place_space, so a
- * consumer can hand `place` to save_place_with_spaces() as p_place and
- * `spaces` as p_spaces without renaming anything.
+ * Draft of the place agent. Shared by the browser (typing the response) and
+ * the Pages Function (the structured-output schema Claude must follow, and
+ * the validation of what came back). Field names match public.place and
+ * public.place_space, so a consumer can hand `place` to
+ * save_place_with_spaces() as p_place and `spaces` as p_spaces without
+ * renaming anything. The outcome wrapper (draft / ambiguous / not_found) is
+ * in ../common.ts.
  *
  * Every fact the agent could not establish is null — never a guess.
  */
@@ -56,31 +57,10 @@ export const PlaceDraftSpaceSchema = z.object({
   is_primary: z.boolean().describe('true for exactly one room: the main room where headliners play. false for all others'),
 });
 
+/** The draft of one venue. `place` is p_place and `spaces` is p_spaces of save_place_with_spaces(). */
 export const PlaceDraftSchema = z.object({
-  matched: z.boolean().describe('true if the keywords identify one real venue. false if nothing was found or several venues are equally plausible — then fill only what is certain'),
   place: PlaceDraftPlaceSchema,
   spaces: z.array(PlaceDraftSpaceSchema).describe('Known rooms and stages; empty if none are documented. At most one is_primary'),
-  sources: z.array(z.string()).describe('URLs actually consulted for the facts above'),
-  confidence: z.number().describe('0..1 overall confidence that this is the right venue and the facts are current'),
-  notes: z.string().describe('For the operator: what could not be established, ambiguities, what to double-check'),
 });
 
 export type PlaceDraft = z.infer<typeof PlaceDraftSchema>;
-
-/** Request body of POST /api/agents/place. */
-export const PlaceAgentRequestSchema = z.object({
-  keywords: z.string().trim().min(2).max(2000).describe('Keywords separated by ";" — a venue name, a city, an Instagram profile or website URL'),
-});
-export type PlaceAgentRequest = z.infer<typeof PlaceAgentRequestSchema>;
-
-/** Response body: the draft plus what it cost. */
-export interface PlaceAgentResponse {
-  draft: PlaceDraft;
-  keywords: string[];
-  model: string;
-  usage: { input_tokens: number; output_tokens: number; web_searches: number };
-}
-
-export function splitKeywords(raw: string): string[] {
-  return raw.split(';').map((k) => k.trim()).filter(Boolean);
-}

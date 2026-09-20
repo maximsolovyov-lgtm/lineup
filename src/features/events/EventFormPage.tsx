@@ -13,6 +13,9 @@ import { RECORD_STATUSES } from '@/types/enums';
 import { EVENT_TYPES, emptyEventForm, eventFormSchema, fromRow, toPayload, type EventFormValues } from './schema';
 import { useEvent, useSaveEvent } from './api';
 import { OccurrencesEditor, type OccurrenceErrors } from './OccurrencesEditor';
+import { AgentPanel } from '@/agents/AgentPanel';
+import type { EventDraft } from '@/agents/event/schema';
+import { fromDraft } from './agent';
 
 export function EventFormPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -55,6 +58,27 @@ export function EventFormPage() {
           {isSubmitting ? 'Saving…' : isNew ? 'Create event' : 'Save changes'}
         </Button>
       </div>
+
+      {isNew && (
+        <AgentPanel<EventDraft>
+          kind="event"
+          noun="event brand"
+          placeholder="Circoloco; Ibiza; https://www.instagram.com/circolocoibiza"
+          onDraft={async (r) => {
+            const m = await fromDraft(r.draft);
+            reset(m.values, { keepDefaultValues: true });
+            return (
+              <p className="text-xs text-muted-foreground">
+                {r.draft.occurrences.length} date{r.draft.occurrences.length === 1 ? '' : 's'} announced.{' '}
+                {m.matchedPlaces.length > 0 && <>Venues matched to stored places: <b>{m.matchedPlaces.join(', ')}</b>. </>}
+                {m.unmatchedPlaces.length > 0 && <>Not in Places yet — pick or create them: <b>{m.unmatchedPlaces.join(', ')}</b>. </>}
+                Times not announced were set to 23:00–06:00; check each row.
+                {r.draft.instagram_url && <> Instagram: <a href={r.draft.instagram_url} target="_blank" rel="noreferrer" className="underline">{r.draft.instagram_url}</a></>}
+              </p>
+            );
+          }}
+        />
+      )}
 
       <FormSection title="Event brand" description="A reusable brand or concept — Circoloco, Music On, a festival. Created once; each date is an occurrence below.">
         <Field label="Name" htmlFor="name" required error={errors.name?.message} className="sm:col-span-2">

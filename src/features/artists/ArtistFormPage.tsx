@@ -13,6 +13,9 @@ import { ARTIST_TYPES, artistFormSchema, emptyArtistForm, expectedMembers, fromR
 import { useArtist, useSaveArtist } from './api';
 import { MembersEditor, type MemberErrors } from './MembersEditor';
 import { PersonPickerDialog } from './PersonPickerDialog';
+import { AgentPanel } from '@/agents/AgentPanel';
+import type { ArtistDraft } from '@/agents/artist/schema';
+import { fromDraft } from './agent';
 
 export function ArtistFormPage() {
   const { artistId } = useParams<{ artistId: string }>();
@@ -65,6 +68,25 @@ export function ArtistFormPage() {
           {isSubmitting ? 'Saving…' : isNew ? 'Create artist' : 'Save changes'}
         </Button>
       </div>
+
+      {isNew && (
+        <AgentPanel<ArtistDraft>
+          kind="artist"
+          noun="artist"
+          placeholder="Tale Of Us; Berlin; https://www.instagram.com/taleofus"
+          onDraft={async (r) => {
+            const m = await fromDraft(r.draft);
+            reset(m.values, { keepDefaultValues: true });
+            return (
+              <p className="text-xs text-muted-foreground">
+                {m.linked.length > 0 && <>Linked to existing people: <b>{m.linked.join(', ')}</b>. </>}
+                {m.created.length > 0 && <>Will be created as new people: <b>{m.created.join(', ')}</b>. </>}
+                {r.draft.genres.length > 0 && <>Genres: {r.draft.genres.join(', ')}.</>}
+              </p>
+            );
+          }}
+        />
+      )}
 
       <FormSection title="Name on the poster" description="What users follow and what appears in a line-up. The humans behind it are members below.">
         <Field label="Name" htmlFor="name" required error={errors.name?.message} className="sm:col-span-2">

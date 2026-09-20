@@ -16,8 +16,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../../src/types/database';
 import Anthropic from '@anthropic-ai/sdk';
-import { PlaceAgentRequestSchema } from '../../src/agents/place/schema';
-import { draftPlace, placeDraftJsonSchema, PLACE_AGENT_MODEL } from '../../agents/place/agent';
+import { AGENT_KINDS, AgentRequestSchema, type AgentKind } from '../../src/agents/common';
+import { AGENTS } from '../../agents/kinds';
+import { AGENT_MODEL, answerJsonSchema, runResearch } from '../../agents/research';
 import { geocodePlace } from '../../agents/geocode';
 
 interface Env {
@@ -203,36 +204,53 @@ app.get('/agents/health', async (c) => {
   let anthropic: 'ok' | 'missing' | 'rejected' | 'unreachable' = 'missing';
   if (c.env.ANTHROPIC_API_KEY) {
     try {
-      await new Anthropic({ apiKey: c.env.ANTHROPIC_API_KEY, maxRetries: 0 }).models.retrieve(PLACE_AGENT_MODEL);
+      await new Anthropic({ apiKey: c.env.ANTHROPIC_API_KEY, maxRetries: 0 }).models.retrieve(AGENT_MODEL);
       anthropic = 'ok';
     } catch (err) {
       anthropic = err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError ? 'rejected' : 'unreachable';
       console.error('agents/health:', err);
     }
   }
-  return c.json({ data: { model: PLACE_AGENT_MODEL, anthropic, agent_key: c.env.AGENT_API_KEY ? 'set' : 'unset' } }, anthropic === 'ok' ? 200 : 503);
+  return c.json({ data: { model: AGENT_MODEL, anthropic, agent_key: c.env.AGENT_API_KEY ? 'set' : 'unset' } }, anthropic === 'ok' ? 200 : 503);
 });
 
-/** The draft's JSON schema — what another agent registers as this tool's result shape. */
-app.get('/agents/place/schema', (c) =>
-  c.json({ data: { model: PLACE_AGENT_MODEL, request: { keywords: 'string — keywords separated by ";"' }, response: placeDraftJsonSchema() } }));
+function agentKind(raw: string): AgentKind | null {
+  return (AGENT_KINDS as readonly string[]).includes(raw) ? (raw as AgentKind) : null;
+}
+
+/** The JSON schema of a kind's answer — what another agent registers as this tool's result shape. */
+app.get('/agents/:kind/schema', (c) => {
+  const kind = agentKind(c.req.param('kind'));
+  if (!kind) return c.json({ error: `Unknown agent; one of ${AGENT_KINDS.join(', ')}` }, 404);
+  return c.json({
+    data: {
+      kind,
+      model: AGENT_MODEL,
+      request: { keywords: 'string — keywords separated by ";"', candidate: 'optional — one of the candidates from an "ambiguous" answer' },
+      response: answerJsonSchema(AGENTS[kind]),
+    },
+  });
+});
 
 /**
- * POST /api/agents/place  { "keywords": "Club Space; Miami; https://www.instagram.com/clubspacemiami" }
- * → { data: { draft: PlaceDraft, keywords, model, usage } }
- * The draft's `place` and `spaces` are shaped for save_place_with_spaces().
+ * POST /api/agents/:kind   kind = place | artist | person | event
+ *   { "keywords": "Tale Of Us; Berlin" }                       → outcome "draft" | "ambiguous" | "not_found"
+ *   { "keywords": "...", "candidate": { ...one of candidates } } → outcome "draft" for that candidate
+ * A draft's fields are shaped for the kind's save_*_with_*() function.
  */
-app.post('/agents/place', async (c) => {
+app.post('/agents/:kind', async (c) => {
+  const kind = agentKind(c.req.param('kind'));
+  if (!kind) return c.json({ error: `Unknown agent; one of ${AGENT_KINDS.join(', ')}` }, 404);
   if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'ANTHROPIC_API_KEY is not configured for the Function' }, 503);
-  const parsed = PlaceAgentRequestSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = AgentRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid payload', details: parsed.error.flatten() }, 400);
 
   try {
-    const result = await draftPlace(parsed.data.keywords, { apiKey: c.env.ANTHROPIC_API_KEY });
+    const result = await runResearch(AGENTS[kind], parsed.data.keywords, parsed.data.candidate, c.env.ANTHROPIC_API_KEY);
     return c.json({ data: result });
   } catch (err) {
     // Most specific first; the raw API error body is logged, not returned.
-    console.error('place agent:', err);
+    console.error(`${kind} agent:`, err);
     if (err instanceof Anthropic.AuthenticationError) return c.json({ error: 'The Anthropic API key configured for the Function was rejected' }, 503);
     if (err instanceof Anthropic.RateLimitError) return c.json({ error: 'The agent is rate-limited right now — try again in a minute' }, 429);
     if (err instanceof Anthropic.APIConnectionError) return c.json({ error: 'Could not reach the Anthropic API' }, 502);

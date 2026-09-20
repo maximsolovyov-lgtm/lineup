@@ -159,3 +159,14 @@ Recorded so they are not rediscovered from scratch:
 | What the agent returns. | A **draft**, never a saved row. `draft.place` and `draft.spaces` are shaped for `save_place_with_spaces()`; unknown facts are `null`; `sources`, `confidence`, `notes` and `matched` let the operator judge. Writing stays with the operator (the UI) or the calling agent. |
 | How another agent calls it. | `x-api-key: <AGENT_API_KEY>` on the same endpoint; `GET /api/agents/place/schema` serves the result schema for tool registration. A per-agent identity was not needed yet; the shared secret is a Pages secret. See `docs/AGENTS.md`. |
 | zod v4 next to zod v3. | The SDK's `zodOutputFormat()` needs zod v4 schemas; the app's forms use v3. The agent contract imports `zod/v4` (shipped inside zod 3.25); the rest of the app is untouched. |
+
+## Decision 2026-09-20 — research agents for artists, people and events
+
+| Question | Decision |
+|---|---|
+| Four agents or one? | One research loop (`agents/research.ts`) with a prompt and a draft schema per kind. The answer shape is shared: `outcome` of `draft` / `ambiguous` / `not_found`, plus `candidates`, `sources`, `confidence`, `notes`. The place agent moved onto it; its only extra is the geocoding step. |
+| Keywords that fit two or more things ("Eagle", a brand that exists in several cities). | The agent must not pick. It returns `ambiguous` with 2–6 candidates, each with one line that tells them apart and the URLs that identify it. The UI shows a chooser; the operator's pick is sent back as `candidate` and the second call returns the draft for exactly that one. Two calls at most. |
+| Members the artist agent names. | Matched to existing people by normalised public name — one exact match links the person, otherwise a `new_person` created with the artist in one transaction. Two existing people with the same normalised name link neither; the operator decides in the picker. |
+| Venues the event agent names. | Matched to stored places by normalised name and the place's time zone is used; an unmatched venue stays in the occurrence name (`at <venue>, <city>`) so nothing is lost and the operator picks or creates the place. Times not announced default to 23:00–06:00 and the note says so. |
+| The person agent and memberships. | It lists the acts the person performs under, but memberships are only editable on the artist record; the list is kept in the person's note rather than half-modelled. |
+| Legal names. | Both prompts carry the CLAUDE.md rule verbatim: only publicly known names, never a legal or birth name the artist has not published. |

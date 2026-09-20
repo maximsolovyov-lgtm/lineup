@@ -13,6 +13,8 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { RECORD_STATUSES } from '@/types/enums';
 import { emptyPersonForm, fromRow, personFormSchema, toPayload, type PersonFormValues } from './schema';
 import { usePerson, useSavePerson } from './api';
+import { AgentPanel } from '@/agents/AgentPanel';
+import type { PersonDraft } from '@/agents/person/schema';
 
 export function PersonFormPage() {
   const { personId } = useParams<{ personId: string }>();
@@ -57,6 +59,29 @@ export function PersonFormPage() {
           {isSubmitting ? 'Saving…' : isNew ? 'Create person' : 'Save changes'}
         </Button>
       </div>
+
+      {isNew && (
+        <AgentPanel<PersonDraft>
+          kind="person"
+          noun="person"
+          placeholder="Adam Port; Keinemusik; https://www.instagram.com/adamport"
+          onDraft={(r) => {
+            const d = r.draft;
+            const acts = d.performs_as.map((a) => `${a.artist_name} (${a.artist_type}${a.role ? `, ${a.role}` : ''}${a.started_at ? `, since ${a.started_at.slice(0, 4)}` : ''}${a.ended_at ? ` until ${a.ended_at.slice(0, 4)}` : ''})`);
+            reset({
+              display_name: d.person.display_name,
+              country: d.person.country ?? '',
+              notes: [d.person.notes ?? '', acts.length ? `Performs as: ${acts.join('; ')}.` : ''].filter(Boolean).join('\n'),
+              status: 'active',
+            }, { keepDefaultValues: true });
+            return acts.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Performs as: <b>{d.performs_as.map((a) => a.artist_name).join(', ')}</b> — memberships are added on each artist record; the list is kept in the note.
+              </p>
+            ) : null;
+          }}
+        />
+      )}
 
       <FormSection title="Person">
         <Field label="Public name" htmlFor="display_name" required error={errors.display_name?.message} className="sm:col-span-2"

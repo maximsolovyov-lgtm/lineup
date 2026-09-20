@@ -1,0 +1,34 @@
+// zod/v4: the Anthropic SDK's zodOutputFormat() builds the JSON schema from v4 schemas.
+import { z } from 'zod/v4';
+
+/**
+ * Draft of the event agent: a reusable brand and its announced dates.
+ * `event` maps onto p_event of save_event_with_occurrences(); each date
+ * becomes an occurrence once the form has matched its venue to a place.
+ */
+const nullableStr = z.string().nullable().describe('null when not established from a source');
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable().describe('HH:MM wall time in the venue zone, or null');
+
+export const EventDraftOccurrenceSchema = z.object({
+  event_date: z.string().describe('YYYY-MM-DD, the BUSINESS DAY: the night the party starts. 23:00 Friday to 08:00 Saturday is Friday'),
+  place_name: nullableStr.describe('Venue name as the announcement gives it'),
+  city: nullableStr,
+  country: nullableStr.describe('Country name in English'),
+  timezone: nullableStr.describe('IANA zone of the venue'),
+  start_time: hhmm.describe('Doors/start; null if not announced'),
+  end_time: hhmm.describe('Close; null if not announced'),
+  occurrence_name: nullableStr.describe('Edition or night name if the announcement has one, e.g. "Opening Party"'),
+  source: nullableStr.describe('URL of the announcement'),
+});
+
+export const EventDraftSchema = z.object({
+  event: z.object({
+    name: z.string().describe('The brand or concept name, e.g. "Circoloco" — not one date'),
+    event_type: z.enum(['party', 'festival', 'concert', 'afterparty', 'label_night', 'other', 'unknown']),
+    website_url: nullableStr.describe('Official site, https://…'),
+    description: nullableStr.describe('Two or three sentences for an operator: what this brand is, who runs it, where it usually happens'),
+  }),
+  occurrences: z.array(EventDraftOccurrenceSchema).describe('Announced dates from today onwards, soonest first, at most 20. Empty if none are announced'),
+  instagram_url: nullableStr.describe('Official Instagram profile, for the operator'),
+});
+export type EventDraft = z.infer<typeof EventDraftSchema>;

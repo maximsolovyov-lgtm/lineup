@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,9 @@ import { TimezoneInput } from '@/components/form/TimezoneInput';
 import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/enums';
 import { emptyPlaceForm, fromRow, placeFormSchema, toPayload, type PlaceFormValues } from './schema';
 import { placeLookup, usePlace, useProfileNames, useSavePlace } from './api';
-import { fromDraft, useDraftPlace, useGeocode } from './agent';
+import { fromDraft } from './agent';
+import { useGeocode } from '@/agents/client';
+import { AgentPanel } from '@/agents/AgentPanel';
 import type { PlaceDraft } from '@/agents/place/schema';
 
 export function PlaceFormPage() {
@@ -26,10 +28,7 @@ export function PlaceFormPage() {
   const names = useProfileNames();
   const save = useSavePlace();
   const lookup = useMemo(() => placeLookup(placeId), [placeId]);
-  const agent = useDraftPlace();
   const geocoder = useGeocode();
-  const [keywords, setKeywords] = useState('');
-  const [draft, setDraft] = useState<PlaceDraft | null>(null);
 
   const form = useForm<PlaceFormValues>({
     resolver: zodResolver(placeFormSchema),
@@ -58,21 +57,6 @@ export function PlaceFormPage() {
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.place, existing.data.spaces));
   }, [existing.data, reset]);
-
-  // The agent fills the form; nothing is saved until the operator reviews
-  // the draft and presses Create. keepDefaultValues keeps the form dirty.
-  async function fillFromKeywords() {
-    if (keywords.trim().length < 2) return;
-    try {
-      const result = await agent.mutateAsync(keywords);
-      setDraft(result.draft);
-      reset(fromDraft(result.draft), { keepDefaultValues: true });
-      if (result.draft.matched) toast.success(`Draft filled from ${result.draft.sources.length} source${result.draft.sources.length === 1 ? '' : 's'} — review before creating`);
-      else toast.warning('The keywords did not identify one venue — only what is certain was filled');
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
 
   // One RPC call saves the place and its rooms in one transaction; on any
   // error nothing is written, so the form simply stays dirty.
@@ -111,47 +95,12 @@ export function PlaceFormPage() {
       {audit && <p className="text-xs text-muted-foreground">{audit}</p>}
 
       {isNew && (
-        <section className="space-y-3 rounded-xl border border-[#C9BCE6] bg-secondary/40 p-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-secondary-foreground">Create from keywords</h2>
-            <span className="rounded-full bg-card px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">place agent</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            A venue name, a city, an Instagram profile or a website — several keywords separated by <code>;</code>.
-            The agent researches the venue on the web and fills every field below, including rooms. Nothing is saved until you press Create.
-          </p>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              aria-label="Keywords"
-              placeholder="Club Space; Miami; https://www.instagram.com/clubspacemiami"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void fillFromKeywords(); } }}
-              disabled={agent.isPending}
-              className="h-11 bg-card"
-            />
-            <Button type="button" size="lg" onClick={() => void fillFromKeywords()} disabled={agent.isPending || keywords.trim().length < 2}>
-              <Sparkles /> {agent.isPending ? 'Researching…' : 'Fill the form'}
-            </Button>
-          </div>
-          {agent.isPending && <p className="text-xs text-muted-foreground">Searching the web and reading the venue's pages — usually 20–60 seconds.</p>}
-          {draft && (
-            <div className={draft.matched ? 'space-y-1 rounded-md border bg-card p-3 text-sm' : 'space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm'} role="status">
-              <div>
-                <b>{draft.matched ? 'Venue identified' : 'Venue not identified with certainty'}</b>
-                {' · '}confidence <span className="font-mono">{Math.round(draft.confidence * 100)}%</span>
-              </div>
-              {draft.notes && <p className="text-muted-foreground">{draft.notes}</p>}
-              {draft.sources.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Sources: {draft.sources.map((u, i) => (
-                    <span key={u}>{i > 0 && ' · '}<a href={u} target="_blank" rel="noreferrer" className="underline">{hostnameOf(u)}</a></span>
-                  ))}
-                </p>
-              )}
-            </div>
-          )}
-        </section>
+        <AgentPanel<PlaceDraft>
+          kind="place"
+          noun="venue"
+          placeholder="Club Space; Miami; https://www.instagram.com/clubspacemiami"
+          onDraft={(r) => { reset(fromDraft(r.draft), { keepDefaultValues: true }); }}
+        />
       )}
 
       <FormSection title="Identity">
@@ -299,13 +248,4 @@ export function PlaceFormPage() {
       </div>
     </form>
   );
-}
-
-/** Hostname for a source link; the raw string if the agent returned something that is not a URL. */
-function hostnameOf(u: string): string {
-  try {
-    return new URL(u).hostname.replace(/^www\./, '');
-  } catch {
-    return u;
-  }
 }
