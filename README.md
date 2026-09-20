@@ -118,6 +118,8 @@ output directory `dist`.
 | | `VITE_SUPABASE_ANON_KEY` | anon / publishable key |
 | | `SUPABASE_URL` | project URL (for the Function) |
 | Pages → Settings → Environment variables (**encrypt**) | `SUPABASE_SERVICE_ROLE_KEY` | service role key — never in the browser, never in git |
+| | `ANTHROPIC_API_KEY` | for the place agent (`docs/AGENTS.md`) |
+| | `AGENT_API_KEY` | optional: lets other agents call `/api/agents/*` |
 
 ## Regenerating database types
 

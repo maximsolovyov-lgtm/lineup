@@ -149,3 +149,13 @@ Recorded so they are not rediscovered from scratch:
 | Removing a date from an event. | Left out of the list → `inactive`, unless a `performance_set` or `program_release` refers to it, in which case the whole save is refused and the form says to cancel it instead. Cancelling (`cancelled`) is always allowed: it is a notification event, not a deletion. |
 | `DELETE` was granted to `authenticated` on the four v1.4 tables. | Supabase's default privileges grant ALL on new tables; `20260919120300` granted select/insert/update without revoking. RLS had no delete policy, so no row could go, but the invariant was enforced once. Revoked, and default privileges for new tables and functions now revoke all from `anon` and `authenticated`, so every migration must grant explicitly. |
 | Unit tests. | `npm test` runs `node --test` on `src/**/*.test.ts` (Node 22 strips types natively; no runner dependency). `tsconfig.test.json` type-checks them with `@types/node`. |
+
+## Decision 2026-09-20 — the place agent
+
+| Question | Decision |
+|---|---|
+| Where does an LLM agent run? | In the Pages Function (`/api/agents/*`), next to the other server-side secrets. `agents/place/agent.ts` holds the prompt and the loop; `src/agents/place/schema.ts` is the contract shared with the browser. The browser never holds the Anthropic key. |
+| Model and tools. | `claude-opus-5`, adaptive thinking at medium effort, server-side `web_search` + `web_fetch` (six uses each), one request re-sent on `pause_turn`. Structured output constrained to the draft schema, so the caller always gets a valid object or an error — never free text to parse. |
+| What the agent returns. | A **draft**, never a saved row. `draft.place` and `draft.spaces` are shaped for `save_place_with_spaces()`; unknown facts are `null`; `sources`, `confidence`, `notes` and `matched` let the operator judge. Writing stays with the operator (the UI) or the calling agent. |
+| How another agent calls it. | `x-api-key: <AGENT_API_KEY>` on the same endpoint; `GET /api/agents/place/schema` serves the result schema for tool registration. A per-agent identity was not needed yet; the shared secret is a Pages secret. See `docs/AGENTS.md`. |
+| zod v4 next to zod v3. | The SDK's `zodOutputFormat()` needs zod v4 schemas; the app's forms use v3. The agent contract imports `zod/v4` (shipped inside zod 3.25); the rest of the app is untouched. |

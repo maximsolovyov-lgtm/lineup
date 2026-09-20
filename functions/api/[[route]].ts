@@ -1,22 +1,31 @@
 /**
- * Admin endpoints — Cloudflare Pages Function at /api/*.
+ * Server endpoints — Cloudflare Pages Function at /api/*.
  *
- * Only operations that need the Supabase service-role key live here:
- * creating auth users (invites) and banning/unbanning them on deactivation.
+ * Two things live here because they need server-side secrets:
+ *   /api/admin/*  — the Supabase service-role key: creating auth users
+ *                   (invites) and banning/unbanning them on deactivation.
+ *   /api/agents/* — the Anthropic API key: the place agent.
  * Everything else the browser does directly against Supabase under RLS.
  *
- * The service-role key bypasses RLS, so every route re-checks that the
- * caller's own profile is an active admin before doing anything.
+ * The service-role key bypasses RLS, so every route re-checks the caller's
+ * own profile before doing anything.
  */
 import { Hono } from 'hono';
 import { handle } from 'hono/cloudflare-pages';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../../src/types/database';
+import Anthropic from '@anthropic-ai/sdk';
+import { PlaceAgentRequestSchema } from '../../src/agents/place/schema';
+import { draftPlace, placeDraftJsonSchema, PLACE_AGENT_MODEL } from '../../agents/place/agent';
 
 interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Anthropic API key for the agents. */
+  ANTHROPIC_API_KEY?: string;
+  /** Shared secret that lets another agent call /api/agents/* without a user session. */
+  AGENT_API_KEY?: string;
 }
 
 interface Variables {
@@ -128,6 +137,70 @@ app.patch('/admin/users/:id/status', async (c) => {
   if (error) return c.json({ error: error.message }, 500);
 
   return c.json({ data: profile });
+});
+
+// Agents ----------------------------------------------------------------------
+// Two ways in: a signed-in operator or admin (Bearer session token, as the
+// admin UI does), or another agent with the shared AGENT_API_KEY in an
+// x-api-key header. Both are checked here; the routes trust c.get('caller').
+app.use('/agents/*', async (c, next) => {
+  const apiKey = c.req.header('x-api-key');
+  if (apiKey) {
+    if (!c.env.AGENT_API_KEY || !timingSafeEqual(apiKey, c.env.AGENT_API_KEY)) {
+      return c.json({ error: 'Invalid agent key' }, 401);
+    }
+    c.set('userId', 'agent');
+    await next();
+    return;
+  }
+
+  const header = c.req.header('authorization') ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) return c.json({ error: 'Sign in, or send x-api-key' }, 401);
+
+  const sb = serviceClient(c.env);
+  const { data: { user }, error } = await sb.auth.getUser(token);
+  if (error || !user) return c.json({ error: 'Invalid or expired session' }, 401);
+  const { data: me } = await sb.from('app_user_profile').select('role,status').eq('user_id', user.id).maybeSingle();
+  if (!me || me.status !== 'active') return c.json({ error: 'Active operator or admin role required' }, 403);
+
+  c.set('userId', user.id);
+  await next();
+});
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/** The draft's JSON schema — what another agent registers as this tool's result shape. */
+app.get('/agents/place/schema', (c) =>
+  c.json({ data: { model: PLACE_AGENT_MODEL, request: { keywords: 'string — keywords separated by ";"' }, response: placeDraftJsonSchema() } }));
+
+/**
+ * POST /api/agents/place  { "keywords": "Club Space; Miami; https://www.instagram.com/clubspacemiami" }
+ * → { data: { draft: PlaceDraft, keywords, model, usage } }
+ * The draft's `place` and `spaces` are shaped for save_place_with_spaces().
+ */
+app.post('/agents/place', async (c) => {
+  if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'ANTHROPIC_API_KEY is not configured for the Function' }, 503);
+  const parsed = PlaceAgentRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Invalid payload', details: parsed.error.flatten() }, 400);
+
+  try {
+    const result = await draftPlace(parsed.data.keywords, { apiKey: c.env.ANTHROPIC_API_KEY });
+    return c.json({ data: result });
+  } catch (err) {
+    // Most specific first; the raw API error body is logged, not returned.
+    console.error('place agent:', err);
+    if (err instanceof Anthropic.AuthenticationError) return c.json({ error: 'The Anthropic API key configured for the Function was rejected' }, 503);
+    if (err instanceof Anthropic.RateLimitError) return c.json({ error: 'The agent is rate-limited right now — try again in a minute' }, 429);
+    if (err instanceof Anthropic.APIConnectionError) return c.json({ error: 'Could not reach the Anthropic API' }, 502);
+    if (err instanceof Anthropic.APIError) return c.json({ error: `Anthropic API error ${err.status ?? ''}: ${err.message}` }, 502);
+    return c.json({ error: err instanceof Error ? err.message : 'Agent failed' }, 502);
+  }
 });
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));

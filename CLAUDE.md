@@ -129,7 +129,8 @@ npm run db:verify
 src/features/<area>/   page, api.ts, schema.ts per area
 src/components/ui/     hand-written shadcn-style components, no CLI
 src/components/form/   shared form pieces
-functions/api/         Hono, service-role operations only
+functions/api/         Hono: service-role operations and the /api/agents routes
+agents/                server-side LLM agents (Anthropic key); contracts in src/agents/
 supabase/migrations/   the schema contract
 supabase/test/         RLS tests — extend these when adding a table
 design/                interface mockups for the screens not yet built
