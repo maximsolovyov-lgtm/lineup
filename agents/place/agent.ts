@@ -9,6 +9,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { PlaceDraftSchema, splitKeywords, type PlaceAgentResponse, type PlaceDraft } from '../../src/agents/place/schema';
+import { geocodePlace } from '../geocode';
 
 export const PLACE_AGENT_MODEL = 'claude-opus-5';
 
@@ -18,7 +19,7 @@ const SYSTEM_PROMPT = `You are the venue-research agent of LineApp, an admin too
 How to work:
 1. Identify the venue. Use web_search with the keywords; if a URL was given, web_fetch it first — the official site or Instagram profile is the best source. Prefer official sources (venue site, official social profiles) over listings.
 2. Read enough to fill the record: address, city/region/country, capacity, official links, and how the venue runs a night.
-3. Return ONLY the structured record. Every field you could not establish from a source is null. Do not invent addresses, capacities, coordinates or handles. Coordinates only if a source states them.
+3. Return ONLY the structured record. Every field you could not establish from a source is null. Do not invent addresses, capacities, coordinates or handles. Coordinates only if a source states them — otherwise leave them null; the street address you found is geocoded afterwards.
 
 Field semantics that operators get wrong:
 - The record describes the PLACE, never one event. lifecycle_type is "permanent" for a club with a fixed address.
@@ -102,6 +103,24 @@ export async function draftPlace(rawKeywords: string, opts: PlaceAgentOptions): 
     if (s.is_primary) seenPrimary = true;
     return { ...s, is_primary: p };
   });
+
+  // Venue sites rarely publish coordinates; the address they do publish is
+  // geocoded here (OpenStreetMap Nominatim) when the model left them null.
+  if (draft.matched && draft.place.latitude === null && draft.place.longitude === null) {
+    try {
+      const hit = await geocodePlace(draft.place);
+      if (hit && !hit.approximate) {
+        draft.place.latitude = hit.latitude;
+        draft.place.longitude = hit.longitude;
+        draft.sources.push(hit.source);
+        draft.notes = `${draft.notes} Coordinates come from OpenStreetMap for "${hit.display_name}" — check them on a map.`.trim();
+      } else if (hit) {
+        draft.notes = `${draft.notes} No street-level match on OpenStreetMap; coordinates left empty (only the city centroid was found).`.trim();
+      }
+    } catch (err) {
+      console.error('geocode:', err);
+    }
+  }
 
   return { draft, keywords, model: PLACE_AGENT_MODEL, usage };
 }

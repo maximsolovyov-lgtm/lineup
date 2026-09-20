@@ -3,6 +3,23 @@ import { apiFetch } from '@/lib/api';
 import type { PlaceAgentResponse, PlaceDraft } from '@/agents/place/schema';
 import { emptyPlaceForm, type PlaceFormValues } from './schema';
 
+export interface GeocodeHit {
+  latitude: number;
+  longitude: number;
+  display_name: string;
+  kind: string;
+  approximate: boolean;
+  source: string;
+}
+
+/** Address → coordinates through the Function (OpenStreetMap Nominatim); null when nothing matched. */
+export function useGeocode() {
+  return useMutation({
+    mutationFn: (input: { name?: string; address?: string; city?: string; region?: string; country?: string }) =>
+      apiFetch<GeocodeHit | null>('/api/agents/geocode', { method: 'POST', body: JSON.stringify(input) }),
+  });
+}
+
 /** Calls the place agent through the Pages Function (the API key never reaches the browser). */
 export function useDraftPlace() {
   return useMutation({

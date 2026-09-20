@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, MapPin, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { TimezoneInput } from '@/components/form/TimezoneInput';
 import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/enums';
 import { emptyPlaceForm, fromRow, placeFormSchema, toPayload, type PlaceFormValues } from './schema';
 import { placeLookup, usePlace, useProfileNames, useSavePlace } from './api';
-import { fromDraft, useDraftPlace } from './agent';
+import { fromDraft, useDraftPlace, useGeocode } from './agent';
 import type { PlaceDraft } from '@/agents/place/schema';
 
 export function PlaceFormPage() {
@@ -27,6 +27,7 @@ export function PlaceFormPage() {
   const save = useSavePlace();
   const lookup = useMemo(() => placeLookup(placeId), [placeId]);
   const agent = useDraftPlace();
+  const geocoder = useGeocode();
   const [keywords, setKeywords] = useState('');
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
 
@@ -35,8 +36,24 @@ export function PlaceFormPage() {
     defaultValues: emptyPlaceForm,
     mode: 'onBlur',
   });
-  const { register, control, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = form;
+  const { register, control, handleSubmit, reset, watch, getValues, setValue, formState: { errors, isSubmitting, isDirty } } = form;
   const spaces = watch('spaces');
+
+  // Fills latitude/longitude from the address fields as they stand in the form.
+  async function findCoordinates() {
+    const v = getValues();
+    if (!v.city.trim() && !v.address.trim()) { toast.error('Enter at least a city or an address first'); return; }
+    try {
+      const hit = await geocoder.mutateAsync({ name: v.name, address: v.address, city: v.city, region: v.region, country: v.country });
+      if (!hit) { toast.warning('Nothing matched on OpenStreetMap'); return; }
+      if (hit.approximate) { toast.warning(`Only the city matched (${hit.display_name}) — add a street address for venue coordinates`); return; }
+      setValue('latitude', String(hit.latitude), { shouldDirty: true, shouldValidate: true });
+      setValue('longitude', String(hit.longitude), { shouldDirty: true, shouldValidate: true });
+      toast.success(`Matched “${hit.display_name}” — check it on a map`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.place, existing.data.spaces));
@@ -181,7 +198,12 @@ export function PlaceFormPage() {
           <Input id="latitude" inputMode="decimal" {...register('latitude')} aria-invalid={!!errors.latitude} />
         </Field>
         <Field label="Longitude" htmlFor="longitude" error={errors.longitude?.message}>
-          <Input id="longitude" inputMode="decimal" {...register('longitude')} aria-invalid={!!errors.longitude} />
+          <div className="flex gap-2">
+            <Input id="longitude" inputMode="decimal" {...register('longitude')} aria-invalid={!!errors.longitude} />
+            <Button type="button" variant="outline" onClick={() => void findCoordinates()} disabled={geocoder.isPending} title="Look the address up on OpenStreetMap and fill both fields">
+              <MapPin /> {geocoder.isPending ? 'Looking up…' : 'Find'}
+            </Button>
+          </div>
         </Field>
       </FormSection>
 

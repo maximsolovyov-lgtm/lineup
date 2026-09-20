@@ -18,6 +18,7 @@ import type { Database } from '../../src/types/database';
 import Anthropic from '@anthropic-ai/sdk';
 import { PlaceAgentRequestSchema } from '../../src/agents/place/schema';
 import { draftPlace, placeDraftJsonSchema, PLACE_AGENT_MODEL } from '../../agents/place/agent';
+import { geocodePlace } from '../../agents/geocode';
 
 interface Env {
   SUPABASE_URL: string;
@@ -237,6 +238,31 @@ app.post('/agents/place', async (c) => {
     if (err instanceof Anthropic.APIConnectionError) return c.json({ error: 'Could not reach the Anthropic API' }, 502);
     if (err instanceof Anthropic.APIError) return c.json({ error: `Anthropic API error ${err.status ?? ''}: ${err.message}` }, 502);
     return c.json({ error: err instanceof Error ? err.message : 'Agent failed' }, 502);
+  }
+});
+
+const geocodeSchema = z.object({
+  name: z.string().trim().max(512).optional(),
+  address: z.string().trim().max(2000).optional(),
+  city: z.string().trim().max(256).optional(),
+  region: z.string().trim().max(256).optional(),
+  country: z.string().trim().max(128).optional(),
+});
+
+/**
+ * POST /api/agents/geocode  { address?, city?, region?, country?, name? }
+ * → { data: { latitude, longitude, display_name, kind, approximate, source } | null }
+ * OpenStreetMap Nominatim; no model involved. Same auth as the other agents.
+ */
+app.post('/agents/geocode', async (c) => {
+  const parsed = geocodeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Invalid payload', details: parsed.error.flatten() }, 400);
+  if (!parsed.data.city && !parsed.data.address) return c.json({ error: 'Give at least a city or an address' }, 400);
+  try {
+    return c.json({ data: await geocodePlace(parsed.data, AbortSignal.timeout(15_000)) });
+  } catch (err) {
+    console.error('geocode:', err);
+    return c.json({ error: 'The geocoding service did not answer' }, 502);
   }
 });
 

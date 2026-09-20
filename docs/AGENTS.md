@@ -16,7 +16,10 @@ caller decides what to save.
 
 Model: `claude-opus-5` with `web_search` and `web_fetch`, structured output
 constrained to `src/agents/place/schema.ts`. Contract, prompt and loop:
-`agents/place/agent.ts`.
+`agents/place/agent.ts`. Venue sites rarely publish coordinates, so when the
+model leaves them null the address it found is geocoded afterwards with
+OpenStreetMap Nominatim (`agents/geocode.ts`); the note says so and the
+request URL is added to `sources`. A city-only match is not used.
 
 ### Request
 
@@ -69,6 +72,19 @@ curl -s https://lineapp-admin.pages.dev/api/agents/place \
 Errors: `400` invalid payload, `401` no or wrong credentials, `403` inactive
 user, `429` rate-limited upstream, `502` the agent or the Anthropic API
 failed, `503` the Function has no `ANTHROPIC_API_KEY`.
+
+## Geocoder — address in, coordinates out
+
+`POST /api/agents/geocode` `{ "address"?, "city"?, "region"?, "country"?, "name"? }`
+→ `{ "data": { latitude, longitude, display_name, kind, approximate, source } | null }`
+
+OpenStreetMap Nominatim, no model. Tries the street address with the city,
+then the venue name with the city (Nominatim lists many clubs as POIs), then
+the city alone — that last result comes back with `approximate: true` and
+should not be stored as a venue position. Same authentication as the place
+agent. Nominatim's policy: one request per second, no bulk runs — this is for
+one operator action at a time, never a loop over a table. In the UI: the
+**Find** button next to Longitude on the Place record.
 
 ### Configuration
 
