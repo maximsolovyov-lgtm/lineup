@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,18 @@ export function SetPasswordPage() {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Supabase reports a bad link in the URL fragment (#error=access_denied&
+  // error_code=otp_expired&error_description=...). Read it once so the user
+  // sees why the form is locked instead of two silent disabled fields.
+  const linkError = useMemo(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const code = hash.get('error_code');
+    const description = hash.get('error_description')?.replace(/\+/g, ' ');
+    if (!hash.get('error')) return null;
+    if (code === 'otp_expired') return 'This link has expired or was already used. Ask an admin to send a new invitation.';
+    return description ?? 'This link is not valid. Ask an admin to send a new invitation.';
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,6 +54,11 @@ export function SetPasswordPage() {
           <CardDescription>
             {loading ? 'Checking your link…' : session ? `Signed in as ${session.user.email}` : 'Open this page from your invitation or reset email.'}
           </CardDescription>
+          {!loading && !session && (
+            <p className="text-sm text-destructive" role="alert">
+              {linkError ?? 'No sign-in link was found in this page address, so the form is locked. Use the link from your invitation email; if it opened elsewhere, copy the full address into this browser.'}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -55,6 +72,9 @@ export function SetPasswordPage() {
             </div>
             {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             <Button type="submit" className="w-full" disabled={busy || !session}>{busy ? 'Saving…' : 'Save password'}</Button>
+            {!session && !loading && (
+              <p className="text-center text-xs text-muted-foreground">Already have a password? <Link to="/login" className="underline">Sign in</Link></p>
+            )}
           </form>
         </CardContent>
       </Card>
