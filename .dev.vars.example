@@ -1,5 +1,6 @@
 # Copy to .dev.vars for `wrangler pages dev`. Git-ignored.
 SUPABASE_URL="https://enivasukccwjpvsgwcsd.supabase.co"
+SUPABASE_ANON_KEY="<anon / publishable key>"
 SUPABASE_SERVICE_ROLE_KEY="<service role key>"
 ANTHROPIC_API_KEY="<anthropic api key, for the place agent>"
 AGENT_API_KEY="<any long random string; lets other agents call /api/agents/*>"

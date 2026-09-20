@@ -117,6 +117,7 @@ output directory `dist`.
 | Pages → Settings → Environment variables | `VITE_SUPABASE_URL` | project URL |
 | | `VITE_SUPABASE_ANON_KEY` | anon / publishable key |
 | | `SUPABASE_URL` | project URL (for the Function) |
+| | `SUPABASE_ANON_KEY` | anon key again, for the Function to verify sessions on `/api/agents/*` |
 | Pages → Settings → Environment variables (**encrypt**) | `SUPABASE_SERVICE_ROLE_KEY` | service role key — never in the browser, never in git |
 | | `ANTHROPIC_API_KEY` | for the place agent (`docs/AGENTS.md`) |
 | | `AGENT_API_KEY` | optional: lets other agents call `/api/agents/*` |

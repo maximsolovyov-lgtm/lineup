@@ -21,6 +21,8 @@ import { draftPlace, placeDraftJsonSchema, PLACE_AGENT_MODEL } from '../../agent
 
 interface Env {
   SUPABASE_URL: string;
+  /** Public anon key: enough to verify a session token and read the caller's own profile under RLS. */
+  SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   /** Anthropic API key for the agents. */
   ANTHROPIC_API_KEY?: string;
@@ -41,6 +43,21 @@ function serviceClient(env: Env): SupabaseClient<Database> {
   }
   return createClient<Database>(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+
+/**
+ * A client acting as the signed-in user: anon key plus their token, so RLS
+ * applies. Verifying a session and reading one's own profile needs nothing
+ * more — the service-role key stays reserved for /admin/*.
+ */
+function userClient(env: Env, token: string): SupabaseClient<Database> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be configured for the Function');
+  }
+  return createClient<Database>(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   });
 }
 
@@ -159,7 +176,7 @@ app.use('/agents/*', async (c, next) => {
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   if (!token) return c.json({ error: 'Sign in, or send x-api-key' }, 401);
 
-  const sb = serviceClient(c.env);
+  const sb = userClient(c.env, token);
   const { data: { user }, error } = await sb.auth.getUser(token);
   if (error || !user) return c.json({ error: 'Invalid or expired session' }, 401);
   const { data: me } = await sb.from('app_user_profile').select('role,status').eq('user_id', user.id).maybeSingle();
