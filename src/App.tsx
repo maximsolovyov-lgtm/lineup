@@ -8,6 +8,12 @@ import { SetPasswordPage } from '@/auth/SetPasswordPage';
 import { AppShell } from '@/layout/AppShell';
 import { PlacesPage } from '@/features/places/PlacesPage';
 import { PlaceFormPage } from '@/features/places/PlaceFormPage';
+import { EventsPage } from '@/features/events/EventsPage';
+import { EventFormPage } from '@/features/events/EventFormPage';
+import { ArtistsPage } from '@/features/artists/ArtistsPage';
+import { ArtistFormPage } from '@/features/artists/ArtistFormPage';
+import { PeoplePage } from '@/features/people/PeoplePage';
+import { PersonFormPage } from '@/features/people/PersonFormPage';
 import { UsersPage } from '@/features/users/UsersPage';
 
 const queryClient = new QueryClient({
@@ -28,6 +34,15 @@ export function App() {
                 <Route path="/places" element={<PlacesPage />} />
                 <Route path="/places/new" element={<PlaceFormPage />} />
                 <Route path="/places/:placeId" element={<PlaceFormPage />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/events/new" element={<EventFormPage />} />
+                <Route path="/events/:eventId" element={<EventFormPage />} />
+                <Route path="/artists" element={<ArtistsPage />} />
+                <Route path="/artists/new" element={<ArtistFormPage />} />
+                <Route path="/artists/:artistId" element={<ArtistFormPage />} />
+                <Route path="/people" element={<PeoplePage />} />
+                <Route path="/people/new" element={<PersonFormPage />} />
+                <Route path="/people/:personId" element={<PersonFormPage />} />
                 <Route element={<RequireAdmin />}>
                   <Route path="/users" element={<UsersPage />} />
                 </Route>

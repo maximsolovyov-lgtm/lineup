@@ -329,6 +329,121 @@ select test.run('rooms: a room of another place cannot be passed as this place''
 select test.run('rooms: deactivated user cannot call save_place_with_spaces', :inactive_id,
   $q$ select public.save_place_with_spaces('{"name":"Sneaky RPC"}'::jsonb, '[]'::jsonb) $q$, false);
 
+-- People, artists, events (Phases 4-5) ---------------------------------------------
+select test.run('artists: anon cannot call save_artist_with_members', null,
+  $q$ select public.save_artist_with_members('{"name":"Anon"}'::jsonb, '[]'::jsonb) $q$, false);
+
+select test.run('artists: save creates artist, inline person and membership in one call', :operator_id,
+  $q$ do $x$ declare v uuid; begin
+        v := public.save_artist_with_members(
+          '{"name":"Tale Of Us","artist_type":"duo","country":"IT"}'::jsonb,
+          '[{"new_person":{"display_name":"Carmine Conte","country":"IT"},"membership_role":"dj","started_at":"2008-01-01"},
+            {"new_person":{"display_name":"Matteo Milleri","country":"IT"},"membership_role":"dj"}]'::jsonb);
+        if (select count(*) from public.artist_membership where artist_id = v and status = 'active') <> 2
+           or (select count(*) from public.person where display_name in ('Carmine Conte','Matteo Milleri')) <> 2
+           or exists (select 1 from public.review_task where entity_type = 'artist' and entity_id = v and status = 'active') then
+          raise exception 'artist save not as expected';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('artists: type/member mismatch records a review_task and does not block', :operator_id,
+  $q$ do $x$ declare v uuid; v_p uuid; begin
+        select artist_id into v from public.artist where name = 'Tale Of Us';
+        select person_id into v_p from public.person where display_name = 'Carmine Conte';
+        perform public.save_artist_with_members(
+          jsonb_build_object('artist_id', v, 'name', 'Tale Of Us', 'artist_type', 'solo'),
+          jsonb_build_array(
+            jsonb_build_object('person_id', v_p, 'membership_role', 'dj'),
+            jsonb_build_object('person_id', (select person_id from public.person where display_name = 'Matteo Milleri'), 'membership_role', 'dj')));
+        if (select count(*) from public.review_task where entity_type = 'artist' and entity_id = v
+              and kind = 'artist_type_member_count' and status = 'active') <> 1 then
+          raise exception 'review_task not recorded';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('artists: a consistent save closes the review_task and deactivates a member left out', :operator_id,
+  $q$ do $x$ declare v uuid; v_p uuid; begin
+        select artist_id into v from public.artist where name = 'Tale Of Us';
+        select person_id into v_p from public.person where display_name = 'Carmine Conte';
+        perform public.save_artist_with_members(
+          jsonb_build_object('artist_id', v, 'name', 'Tale Of Us', 'artist_type', 'solo'),
+          jsonb_build_array(jsonb_build_object('person_id', v_p, 'membership_role', 'dj')));
+        if exists (select 1 from public.review_task where entity_type = 'artist' and entity_id = v and status = 'active')
+           or (select count(*) from public.artist_membership where artist_id = v and status = 'active') <> 1
+           or (select am.status from public.artist_membership am join public.person p on p.person_id = am.person_id
+                where am.artist_id = v and p.display_name = 'Matteo Milleri') <> 'inactive' then
+          raise exception 'review_task not closed or member not deactivated';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('artists: a membership of another artist cannot be passed as this artist''s', :operator_id,
+  $q$ do $x$ declare v uuid; v_m uuid; begin
+        v := public.save_artist_with_members('{"name":"Other Act","artist_type":"solo"}'::jsonb, '[]'::jsonb);
+        select membership_id into v_m from public.artist_membership limit 1;
+        perform public.save_artist_with_members(
+          jsonb_build_object('artist_id', v, 'name', 'Other Act'),
+          jsonb_build_array(jsonb_build_object('membership_id', v_m, 'person_id', (select person_id from public.artist_membership where membership_id = v_m))));
+      end $x$ $q$, false);
+
+select test.run('artists: member without person_id or new_person rejected', :operator_id,
+  $q$ select public.save_artist_with_members('{"name":"Nobody"}'::jsonb, '[{"membership_role":"dj"}]'::jsonb) $q$, false);
+
+select test.run('events: save creates event and two occurrences with business days', :operator_id,
+  $q$ do $x$ declare v uuid; v_unvrs uuid; begin
+        select place_id into v_unvrs from public.place where name = 'UNVRS';
+        v := public.save_event_with_occurrences(
+          '{"name":"Circoloco","event_type":"party","website_url":"https://circoloco.com"}'::jsonb,
+          jsonb_build_array(
+            jsonb_build_object('event_date', '2026-07-17', 'primary_place_id', v_unvrs, 'starts_at', '2026-07-17T23:30:00+02:00', 'ends_at', '2026-07-18T06:00:00+02:00', 'timezone', 'Europe/Madrid'),
+            jsonb_build_object('event_date', '2026-07-24', 'primary_place_id', v_unvrs, 'starts_at', '2026-07-24T23:30:00+02:00', 'ends_at', '2026-07-25T06:00:00+02:00', 'timezone', 'Europe/Madrid')));
+        if (select count(*) from public.event_occurrence where event_id = v and status = 'active') <> 2
+           or (select min(event_date) from public.event_occurrence where event_id = v) <> '2026-07-17' then
+          raise exception 'occurrences not saved';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('events: an occurrence left out becomes inactive, the other keeps its id', :operator_id,
+  $q$ do $x$ declare v uuid; v_keep uuid; begin
+        select event_id into v from public.event where name = 'Circoloco';
+        select occurrence_id into v_keep from public.event_occurrence where event_id = v and event_date = '2026-07-17';
+        perform public.save_event_with_occurrences(
+          jsonb_build_object('event_id', v, 'name', 'Circoloco'),
+          jsonb_build_array(jsonb_build_object('occurrence_id', v_keep, 'event_date', '2026-07-17', 'starts_at', '2026-07-17T23:30:00+02:00', 'ends_at', '2026-07-18T06:00:00+02:00')));
+        if (select status from public.event_occurrence where event_id = v and event_date = '2026-07-24') <> 'inactive'
+           or (select status from public.event_occurrence where occurrence_id = v_keep) <> 'active' then
+          raise exception 'occurrence statuses wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('events: an occurrence with a schedule cannot be removed from the list', :operator_id,
+  $q$ do $x$ declare v uuid; begin
+        select event_id into v from public.event where name = 'Fisher presents';
+        perform public.save_event_with_occurrences(jsonb_build_object('event_id', v, 'name', 'Fisher presents'), '[]'::jsonb);
+      end $x$ $q$, false);
+
+select test.run('events: an occurrence with a schedule can still be cancelled', :operator_id,
+  $q$ do $x$ declare v uuid; v_o uuid; begin
+        select event_id into v from public.event where name = 'Fisher presents';
+        select occurrence_id into v_o from public.event_occurrence where event_id = v;
+        perform public.save_event_with_occurrences(
+          jsonb_build_object('event_id', v, 'name', 'Fisher presents'),
+          jsonb_build_array(jsonb_build_object('occurrence_id', v_o, 'event_date', '2026-07-15', 'starts_at', '2026-07-15T23:30:00+02:00', 'ends_at', '2026-07-16T06:00:00+02:00', 'status', 'cancelled')));
+        if (select status from public.event_occurrence where occurrence_id = v_o) <> 'cancelled' then
+          raise exception 'not cancelled';
+        end if;
+        update public.event_occurrence set status = 'active' where occurrence_id = v_o;
+      end $x$ $q$, true);
+
+select test.run('events: occurrence ending before it starts rejected', :operator_id,
+  $q$ select public.save_event_with_occurrences('{"name":"Backwards"}'::jsonb,
+        '[{"event_date":"2026-08-01","starts_at":"2026-08-02T06:00:00Z","ends_at":"2026-08-01T23:00:00Z"}]'::jsonb) $q$, false);
+
+select test.run('events: deactivated user cannot call save_event_with_occurrences', :inactive_id,
+  $q$ select public.save_event_with_occurrences('{"name":"Sneaky"}'::jsonb, '[]'::jsonb) $q$, false);
+
+select test.run('review_task: nobody can hard-delete one', :admin_id,
+  $q$ delete from public.review_task $q$, false);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

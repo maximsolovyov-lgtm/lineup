@@ -4,14 +4,17 @@
   "private": true,
   "description": "LineApp / LineupIN — Place Admin application (MVP v1)",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "dev:full": "wrangler pages dev --compatibility-date=2026-09-01 -- vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "wrangler pages dev dist",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p functions/tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit && tsc -p functions/tsconfig.json --noEmit",
     "lint": "eslint src functions --ext .ts,.tsx",
+    "test": "node --test \"src/**/*.test.ts\"",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.ts",
     "db:verify": "scripts/verify-schema.sh",
     "deploy": "npm run build && wrangler pages deploy dist"
@@ -42,6 +45,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260911.1",
+    "@types/node": "^22.20.4",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",

@@ -43,7 +43,9 @@ export type Database = {
         Row: {
           artist_id: string
           artist_type: Database["public"]["Enums"]["artist_type"] | null
+          country: string | null
           created_at: string
+          instagram_url: string | null
           name: string
           normalized_name: string | null
           status: Database["public"]["Enums"]["record_status"]
@@ -52,7 +54,9 @@ export type Database = {
         Insert: {
           artist_id?: string
           artist_type?: Database["public"]["Enums"]["artist_type"] | null
+          country?: string | null
           created_at?: string
+          instagram_url?: string | null
           name: string
           normalized_name?: string | null
           status?: Database["public"]["Enums"]["record_status"]
@@ -61,7 +65,9 @@ export type Database = {
         Update: {
           artist_id?: string
           artist_type?: Database["public"]["Enums"]["artist_type"] | null
+          country?: string | null
           created_at?: string
+          instagram_url?: string | null
           name?: string
           normalized_name?: string | null
           status?: Database["public"]["Enums"]["record_status"]
@@ -133,30 +139,36 @@ export type Database = {
       event: {
         Row: {
           created_at: string
+          description: string | null
           event_id: string
           event_type: Database["public"]["Enums"]["event_type"]
           name: string
           normalized_name: string | null
           status: Database["public"]["Enums"]["record_status"]
           updated_at: string | null
+          website_url: string | null
         }
         Insert: {
           created_at?: string
+          description?: string | null
           event_id?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           name: string
           normalized_name?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
+          website_url?: string | null
         }
         Update: {
           created_at?: string
+          description?: string | null
           event_id?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           name?: string
           normalized_name?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
@@ -799,6 +811,39 @@ export type Database = {
           },
         ]
       }
+      review_task: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          kind: string
+          message: string
+          review_task_id: string
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          kind: string
+          message: string
+          review_task_id?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          kind?: string
+          message?: string
+          review_task_id?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -812,6 +857,14 @@ export type Database = {
       is_operator_or_admin: { Args: never; Returns: boolean }
       is_valid_rooms_json: { Args: { j: Json }; Returns: boolean }
       normalize_name: { Args: { p_name: string }; Returns: string }
+      save_artist_with_members: {
+        Args: { p_artist: Json; p_members?: Json }
+        Returns: string
+      }
+      save_event_with_occurrences: {
+        Args: { p_event: Json; p_occurrences?: Json }
+        Returns: string
+      }
       save_place_with_spaces: {
         Args: { p_place: Json; p_spaces?: Json }
         Returns: string

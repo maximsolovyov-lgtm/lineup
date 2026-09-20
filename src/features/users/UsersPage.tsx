@@ -2,7 +2,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { StatusBadge } from '@/features/places/PlacesPage';
+import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/auth/AuthProvider';
 import type { Enums } from '@/types/database';
 import { APP_ROLES } from '@/types/enums';

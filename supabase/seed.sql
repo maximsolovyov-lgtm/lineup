@@ -73,3 +73,24 @@ where not exists (
   select 1 from public.place_space s
   where s.place_id = p.place_id and s.normalized_name = public.normalize_name(r.name) and s.status = 'active'
 );
+
+-- One artist with its members and one event with two dates, so the Artists,
+-- People and Events tabs have something to show on a fresh reset. Saved
+-- through the same functions the forms use.
+select public.save_artist_with_members(
+  '{"name":"Keinemusik","artist_type":"collective","country":"DE","instagram_url":"https://www.instagram.com/keinemusik"}'::jsonb,
+  '[{"new_person":{"display_name":"&ME","country":"DE"},"membership_role":"dj","started_at":"2009-01-01"},
+    {"new_person":{"display_name":"Rampa","country":"DE"},"membership_role":"dj","started_at":"2009-01-01"},
+    {"new_person":{"display_name":"Adam Port","country":"DE"},"membership_role":"dj","started_at":"2009-01-01"}]'::jsonb)
+where not exists (select 1 from public.artist where normalized_name = 'keinemusik');
+
+select public.save_event_with_occurrences(
+  '{"name":"Circoloco","event_type":"party","website_url":"https://circoloco.com","description":"International party brand: Ibiza residencies and tours."}'::jsonb,
+  jsonb_build_array(
+    jsonb_build_object('event_date', '2026-07-17', 'primary_place_id', p.place_id,
+      'starts_at', '2026-07-17T23:30:00+02:00', 'ends_at', '2026-07-18T06:00:00+02:00', 'timezone', 'Europe/Madrid'),
+    jsonb_build_object('event_date', '2026-07-24', 'primary_place_id', p.place_id,
+      'starts_at', '2026-07-24T23:30:00+02:00', 'ends_at', '2026-07-25T06:00:00+02:00', 'timezone', 'Europe/Madrid')))
+from public.place p
+where p.name = 'UNVRS'
+  and not exists (select 1 from public.event where normalized_name = 'circoloco');

@@ -11,8 +11,8 @@ Source: Solution Architecture Document v1.4, §3 and §4.
 - [x] Phase 2 — application shell, login, role-aware navigation
 - [x] Phase 3a — Places list and record with enriched venue fields
 - [x] Phase 3b — nested `place_space` block inside the Place record (2026-09-19; the column drop is still pending)
-- [ ] Phase 4 — People and Artists
-- [ ] Phase 5 — Events and occurrences
+- [x] Phase 4 — People and Artists (2026-09-20)
+- [x] Phase 5 — Events and occurrences (2026-09-20)
 - [x] Phase 6 — Users management
 - [ ] Phase 7 — deployment and acceptance run
 
@@ -65,24 +65,28 @@ Mockup: `design/PlaceEdit.dc.html`. The rooms block is implemented as drawn
 
 ## Phase 4 — people and artists
 
-- People directory: list, search, record.
-- Artist record with a members block: person, role, period.
-- **Person picker** — search existing people, or create one inline. On create,
-  warn about a likely duplicate before saving; one human under several names is
-  normal, two `person` rows for one human is not.
-- Advisory validation: `artist_type` against member count. A mismatch creates a
-  review task and does not block the save.
-- Reverse view on the person record: which names they perform under.
+- ✅ People directory: list (with the names each person performs under), search, record.
+- ✅ Artist record with a members block: person, role, period. Saved with the
+  artist through `save_artist_with_members()` — one RPC, one transaction.
+- ✅ **Person picker** — search existing people, or create one inline (the
+  person is created in the artist's transaction, not by the picker). While
+  typing a new name, a likely duplicate is shown with "use them instead".
+- ✅ Advisory validation: `artist_type` against member count, live in the form
+  and recorded as a `review_task` by the database. Never blocks.
+- ✅ Reverse view on the person record: which names they perform under, with
+  the period of each membership.
 
 Mockups: `design/ArtistEdit.dc.html`, `design/PersonPicker.dc.html`.
 
 ## Phase 5 — events and occurrences
 
-- Event record: name, type, description, site.
-- Occurrences block: business day, default place, window, status.
-- Business day is not the calendar date of `starts_at`. A party running 23:00
-  Friday to 08:00 Saturday is Friday. Say so in the form, not only in the docs.
-- Say in the form that the default place is not the place of a set.
+- ✅ Event record: name, type, description, site.
+- ✅ Occurrences block: business day, default place, start/end wall times in
+  the place's zone, status. Saved through `save_event_with_occurrences()`.
+- ✅ The form says that the business day is the night, not the calendar date
+  of `starts_at`, and that an end time before the start is the next morning.
+- ✅ The form says that the default place is not the place of a set, and that
+  an unattributed multi-venue line-up is one record with an empty `place_id`.
 
 Mockup: `design/EventEdit.dc.html`.
 

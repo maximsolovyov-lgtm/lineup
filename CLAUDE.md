@@ -12,12 +12,13 @@ here when the documents were silent or contradicted each other.
 
 ## Current state
 
-Built and working: authentication with admin/operator roles, Places CRUD with
-enriched venue fields, Users management, RLS across every table.
+Built and working: authentication with admin/operator roles, Places with
+their rooms (`place_space`), People, Artists with their members, Events with
+their occurrences, Users management, RLS across every table. Every parent is
+saved with its children through one RPC (`save_*_with_*` functions).
 
-Next, in this order: **nested place_space editing inside the Place record**,
-then **people and artists** (artist record with its members), then
-**events with occurrences**.
+Next: `docs/pending/DROP_typical_rooms.sql` once the seed and the "rooms
+json" tests stop using the old columns, then the Phase 7 acceptance run.
 
 Schedule tables exist in the database. Their UI does not, and must not be
 built yet — see the stage boundary below.
@@ -114,7 +115,8 @@ to do, that is the trap this paragraph exists to name.
 ```
 npm run dev        # Vite
 npm run dev:full   # Vite behind wrangler pages dev (needed for /api)
-npm run typecheck  # src and functions
+npm run typecheck  # src, tests and functions
+npm run test       # node --test over src/**/*.test.ts
 npm run lint
 npm run build
 npm run db:types   # regenerate database.ts from the local schema
