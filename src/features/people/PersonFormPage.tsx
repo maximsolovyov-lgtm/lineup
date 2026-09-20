@@ -52,7 +52,7 @@ export function PersonFormPage() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/people" title="Back to people"><ArrowLeft /></Link></Button>
-        <h1 className="mr-auto text-xl font-semibold">{isNew ? 'New person' : existing.data?.person.display_name}</h1>
+        <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New person' : existing.data?.person.display_name}</h1>
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? 'Create person' : 'Save changes'}
         </Button>
@@ -82,7 +82,7 @@ export function PersonFormPage() {
       {!isNew && (
         <section className="space-y-3 rounded-xl border bg-card p-5">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="font-semibold">Performs as</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Performs as</h2>
             <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">artist_membership</span>
           </div>
           <p className="text-sm text-muted-foreground">Every stage name this person stands behind. Memberships are edited on the artist record.</p>

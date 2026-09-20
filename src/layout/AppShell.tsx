@@ -1,59 +1,101 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { CalendarDays, Disc3, LogOut, MapPin, User, UserPlus, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/auth/AuthProvider';
 
 /**
- * Object tabs: one tab per data entity (DBML admin UI requirement), grouped as
- * in design/Main.dc.html — master data, then administration. Adding an entity
- * later means adding a route and one entry here.
+ * Layout from design/Main.dc.html: a dark 236px sidebar on the left with the
+ * navigation in two groups — master data, then administration — and the
+ * signed-in user at the bottom; the page fills the rest. One entry per data
+ * entity (DBML admin UI requirement); adding an entity means a route and one
+ * line here.
  */
-const TABS: { to: string; label: string; adminOnly?: boolean; group: 'master' | 'admin' }[] = [
-  { to: '/places', label: 'Places', group: 'master' },
-  { to: '/events', label: 'Events', group: 'master' },
-  { to: '/artists', label: 'Artists', group: 'master' },
-  { to: '/people', label: 'People', group: 'master' },
-  { to: '/users', label: 'Users', adminOnly: true, group: 'admin' },
+const GROUPS: { label: string; items: { to: string; label: string; icon: LucideIcon; adminOnly?: boolean }[]; note?: string }[] = [
+  {
+    label: 'Master data',
+    items: [
+      { to: '/places', label: 'Places', icon: MapPin },
+      { to: '/events', label: 'Events', icon: CalendarDays },
+      { to: '/artists', label: 'Artists', icon: Disc3 },
+      { to: '/people', label: 'People', icon: User },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [{ to: '/users', label: 'Users', icon: UserPlus, adminOnly: true }],
+    note: 'Visible to the admin role only',
+  },
 ];
+
+function initials(name: string | null | undefined, email: string | null | undefined): string {
+  const source = (name || email || '?').trim();
+  const parts = source.split(/[\s@._-]+/).filter(Boolean);
+  return parts.slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
+}
 
 export function AppShell() {
   const { profile, isAdmin, signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-4">
-          <span className="py-3 font-semibold">LineApp Admin</span>
-          <nav className="flex gap-1" aria-label="Objects">
-            {TABS.filter((t) => !t.adminOnly || isAdmin).map((t, i, all) => (
-              <NavLink
-                key={t.to}
-                to={t.to}
-                title={t.adminOnly ? 'Visible to admins only' : undefined}
-                className={({ isActive }) =>
-                  cn(
-                    'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
-                    i > 0 && all[i - 1]!.group !== t.group && 'ml-4 border-l pl-4',
-                    isActive ? 'border-b-primary text-foreground' : 'border-b-transparent text-muted-foreground hover:text-foreground',
-                  )
-                }
-              >
-                {t.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="hidden text-muted-foreground sm:inline">{profile?.full_name || profile?.email}</span>
-            <Badge variant={isAdmin ? 'default' : 'secondary'}>{profile?.role}</Badge>
-            <Button variant="ghost" size="icon" title="Sign out" onClick={() => void signOut()}>
-              <LogOut />
-            </Button>
-          </div>
+    <div className="flex min-h-screen bg-background md:flex-row flex-col">
+      <nav
+        aria-label="Sections"
+        className="flex shrink-0 flex-col gap-[26px] bg-sidebar px-4 py-6 text-sidebar-foreground md:sticky md:top-0 md:h-screen md:w-[236px]"
+      >
+        <div className="flex flex-col gap-0.5 pl-2">
+          <div className="font-display text-xl font-bold tracking-[-0.4px]">LineApp</div>
+          <div className="text-[11px] uppercase tracking-[1.4px] text-sidebar-muted">Admin</div>
         </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">
+
+        {GROUPS.map((g) => {
+          const items = g.items.filter((t) => !t.adminOnly || isAdmin);
+          if (items.length === 0) return null;
+          return (
+            <div key={g.label} className="flex flex-col gap-[3px]">
+              <div className="px-2 pb-2 text-[10px] uppercase tracking-[1.2px] text-sidebar-dim">{g.label}</div>
+              {items.map((t) => (
+                <NavLink
+                  key={t.to}
+                  to={t.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2.5 rounded-lg px-2.5 py-[9px] text-sm transition-colors',
+                      isActive ? 'bg-primary font-medium text-white' : 'text-sidebar-link hover:bg-white/5 hover:text-sidebar-foreground',
+                    )
+                  }
+                >
+                  <t.icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  {t.label}
+                </NavLink>
+              ))}
+              {g.note && <div className="px-2.5 pt-1.5 text-[11px] leading-relaxed text-sidebar-dim">{g.note}</div>}
+            </div>
+          );
+        })}
+
+        <div className="hidden flex-1 md:block" />
+
+        <div className="flex items-center gap-2.5 rounded-[10px] bg-[#262031]/50 p-2.5">
+          <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
+            {initials(profile?.full_name, profile?.email)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-medium text-sidebar-foreground">{profile?.full_name || profile?.email}</div>
+            <div className="text-[11px] text-sidebar-muted">{profile?.role}</div>
+          </div>
+          <button
+            type="button"
+            title="Sign out"
+            onClick={() => void signOut()}
+            className="rounded-md p-1.5 text-sidebar-muted transition-colors hover:bg-white/10 hover:text-sidebar-foreground"
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            <span className="sr-only">Sign out</span>
+          </button>
+        </div>
+      </nav>
+
+      <main className="min-w-0 flex-1 px-5 py-6 md:px-[30px] md:py-[26px]">
         <Outlet />
       </main>
     </div>

@@ -50,7 +50,7 @@ export function EventFormPage() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/events" title="Back to events"><ArrowLeft /></Link></Button>
-        <h1 className="mr-auto text-xl font-semibold">{isNew ? 'New event' : existing.data?.event.name}</h1>
+        <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New event' : existing.data?.event.name}</h1>
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? 'Create event' : 'Save changes'}
         </Button>
@@ -86,7 +86,7 @@ export function EventFormPage() {
 
       <section className="space-y-4 rounded-xl border bg-card p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold">Occurrences</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Occurrences</h2>
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">event_occurrence</span>
         </div>
         <p className="text-sm text-muted-foreground">

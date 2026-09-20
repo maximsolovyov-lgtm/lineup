@@ -34,7 +34,7 @@ export function FormSection({ title, description, children }: { title: string; d
   return (
     <section className="space-y-4 rounded-xl border bg-card p-5">
       <div>
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">{title}</h2>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">{children}</div>

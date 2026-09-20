@@ -66,7 +66,7 @@ export function PlaceFormPage() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/places" title="Back to places"><ArrowLeft /></Link></Button>
-        <h1 className="mr-auto text-xl font-semibold">{isNew ? 'New place' : row?.name}</h1>
+        <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New place' : row?.name}</h1>
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? 'Create place' : 'Save changes'}
         </Button>
@@ -177,7 +177,7 @@ export function PlaceFormPage() {
 
       <section className="space-y-4 rounded-xl border bg-card p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold">Rooms and stages</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Rooms and stages</h2>
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">place_space</span>
         </div>
         <p className="text-sm text-muted-foreground">

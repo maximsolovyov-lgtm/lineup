@@ -60,7 +60,7 @@ export function ArtistFormPage() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/artists" title="Back to artists"><ArrowLeft /></Link></Button>
-        <h1 className="mr-auto text-xl font-semibold">{isNew ? 'New artist' : existing.data?.artist.name}</h1>
+        <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New artist' : existing.data?.artist.name}</h1>
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? 'Create artist' : 'Save changes'}
         </Button>
@@ -97,7 +97,7 @@ export function ArtistFormPage() {
 
       <section className="space-y-4 rounded-xl border bg-card p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-semibold">Members</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Members</h2>
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">artist_membership → person</span>
           <span className="flex-1" />
           <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(true)}><Plus /> Add member</Button>
@@ -112,7 +112,7 @@ export function ArtistFormPage() {
       </section>
 
       <section className="space-y-2 rounded-xl border bg-card p-5">
-        <h2 className="font-semibold">Checks</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Checks</h2>
         <p className={consistent ? 'text-sm text-emerald-700' : 'text-sm text-amber-700'} role="status">
           {expected === null
             ? `Type “${artistType}” has no expected member count.`

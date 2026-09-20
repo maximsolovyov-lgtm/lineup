@@ -37,7 +37,7 @@ export function UsersPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h1 className="mr-auto text-xl font-semibold">Users</h1>
+        <h1 className="mr-auto text-[27px] font-semibold tracking-[-0.5px]">Users</h1>
         <InviteUserDialog />
       </div>
 

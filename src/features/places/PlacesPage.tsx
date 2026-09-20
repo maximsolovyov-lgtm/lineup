@@ -19,17 +19,22 @@ export function PlacesPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-xl font-semibold">Places</h1>
+        <div className="mr-auto">
+          <h1 className="text-[27px] font-semibold tracking-[-0.5px]">Places</h1>
+          <p className="text-[13px] text-muted-foreground">
+            {places.data ? `${places.data.length} records · rooms total: ${places.data.reduce((n, p) => n + p.room_count, 0)}` : 'Venues and their rooms'}
+          </p>
+        </div>
         <Input
           type="search"
           placeholder="Search name, city, Instagram…"
-          className="w-64"
+          className="h-11 w-72"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           aria-label="Search places"
         />
         <Select value={status} onValueChange={(v) => setStatus(v as PlaceListParams['status'])}>
-          <SelectTrigger className="w-36" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}

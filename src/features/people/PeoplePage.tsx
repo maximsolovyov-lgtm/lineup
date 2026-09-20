@@ -19,12 +19,12 @@ export function PeoplePage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold">People</h1>
-          <p className="text-sm text-muted-foreground">The humans behind stage names. Users follow artists, not people.</p>
+          <h1 className="text-[27px] font-semibold tracking-[-0.5px]">People</h1>
+          <p className="text-[13px] text-muted-foreground">The humans behind stage names. Users follow artists, not people.</p>
         </div>
-        <Input type="search" placeholder="Search name, country…" className="w-64" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />
+        <Input type="search" placeholder="Search name, country…" className="h-11 w-72" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />
         <Select value={status} onValueChange={(v) => setStatus(v as PeopleListParams['status'])}>
-          <SelectTrigger className="w-36" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}

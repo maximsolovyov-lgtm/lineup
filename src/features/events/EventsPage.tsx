@@ -19,12 +19,12 @@ export function EventsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold">Events</h1>
-          <p className="text-sm text-muted-foreground">Reusable brands and their dates. Line-ups and timetables come in the next stage.</p>
+          <h1 className="text-[27px] font-semibold tracking-[-0.5px]">Events</h1>
+          <p className="text-[13px] text-muted-foreground">Reusable brands and their dates. Line-ups and timetables come in the next stage.</p>
         </div>
-        <Input type="search" placeholder="Search name…" className="w-64" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search events" />
+        <Input type="search" placeholder="Search name…" className="h-11 w-72" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search events" />
         <Select value={status} onValueChange={(v) => setStatus(v as EventsListParams['status'])}>
-          <SelectTrigger className="w-36" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
