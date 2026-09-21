@@ -491,6 +491,36 @@ select test.run('tags: place_tag_counts lists tags with counts', :operator_id,
 select test.run('tags: anon cannot call place_tag_counts', null,
   $q$ select * from public.place_tag_counts() $q$, false);
 
+-- Occurrences bringing their venue ------------------------------------------------------
+select test.run('events: an occurrence with new_place creates the place, tagged with the event name', :operator_id,
+  $q$ do $x$ declare v uuid; v_p uuid; begin
+        v := public.save_event_with_occurrences(
+          '{"name":"Burning Man","event_type":"festival"}'::jsonb,
+          '[{"event_date":"2026-08-30","starts_at":"2026-08-30T18:00:00-07:00","ends_at":"2026-09-07T12:00:00-07:00","timezone":"America/Los_Angeles",
+             "new_place":{"name":"Black Rock City","region":"Nevada","country":"United States","timezone":"America/Los_Angeles","lifecycle_type":"temporary"}}]'::jsonb);
+        select place_id into v_p from public.place where normalized_name = 'black rock city';
+        if v_p is null
+           or (select primary_place_id from public.event_occurrence where event_id = v) <> v_p
+           or not ((select tags from public.place where place_id = v_p) @> array['Burning Man'])
+           or (select lifecycle_type from public.place where place_id = v_p) <> 'temporary' then
+          raise exception 'new place not created as expected';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('events: new_place with the name of an existing venue reuses it and adds the tag', :operator_id,
+  $q$ do $x$ declare v uuid; v_unvrs uuid; begin
+        select place_id into v_unvrs from public.place where name = 'UNVRS';
+        v := public.save_event_with_occurrences(
+          '{"name":"Afterlife","event_type":"party"}'::jsonb,
+          '[{"event_date":"2026-08-01","starts_at":"2026-08-01T23:30:00+02:00","ends_at":"2026-08-02T06:00:00+02:00",
+             "new_place":{"name":"unvrs","city":"Ibiza","country":"Spain"}}]'::jsonb);
+        if (select primary_place_id from public.event_occurrence where event_id = v) <> v_unvrs
+           or (select count(*) from public.place where normalized_name = 'unvrs') <> 1
+           or not ((select tags from public.place where place_id = v_unvrs) @> array['Afterlife']) then
+          raise exception 'existing place not reused';
+        end if;
+      end $x$ $q$, true);
+
 -- Line-ups and performance sets (stage 2) ---------------------------------------------
 select test.run('lineup: anon cannot call save_lineup', null,
   $q$ select public.save_lineup('{"occurrence_id":"00000000-0000-4000-8000-000000000001"}'::jsonb, '[]'::jsonb) $q$, false);

@@ -191,3 +191,11 @@ Recorded so they are not rediscovered from scratch:
 | "Never UPDATE a performance_set" — how is it enforced and how does the form behave? | `trg_performance_set_immutable` rejects any change except `status`. `save_performance_set()` with a `performance_set_id` supersedes: the old row leaves `active` first (the partial unique indexes only see active rows), the replacement is inserted pointing at it. The form says "Save as new row" and shows both ends of the chain; a superseded row is read-only. Cancelling is a status change through a separate button. |
 | Correcting a line-up vs publishing a new one. | A line-up version is corrected in place (typo, missed name); a new announcement is **Publish as new version**, which clones the form content into `max(version)+1` for the same (occurrence, place) and leaves the old version untouched. |
 | Placeholders. | The same `(artist_id, placeholder_type)` pair on both `lineup_artist` and `performance_set_participant`; the slot editor exposes it as Artist / TBA / Secret guest / Revealed guest / Label only, and never clears the placeholder on reveal. |
+
+## Decision 2026-09-20 — occurrences: start and end day; a venue the row brings with it
+
+| Question | Decision |
+|---|---|
+| "Business day + times, end before start = next morning" could not express a festival. | The occurrences block has a **start day** and an **end day** with a time each. `event_date` = the start day (still the business day); `ends_at` = end day + end time. Typing a start day moves the end day along unless it was set further away. |
+| The event agent names a venue that is not in Places yet (Black Rock City, a beach stage). | The row carries `new_place {name, city, region, country, timezone, lifecycle_type}`. `save_event_with_occurrences()` creates the place in the same transaction — or reuses an active place with the same normalised name — sets it as the default place, and **tags it with the event name** (`20260920170000_occurrence_new_place.sql`). An existing venue used this way gets the tag too. The chip in the form says what will be created; the operator can pick an existing place instead or drop it. |
+| Lifecycle of a venue created this way. | What the agent says (`place_lifecycle_type`), else `temporary` for a festival, `permanent` otherwise. |

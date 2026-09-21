@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeName } from '@/lib/normalize';
 import type { EventDraft } from '@/agents/event/schema';
-import { emptyEventForm, type EventFormValues, type OccurrenceFormValue } from './schema';
+import { addDays, emptyEventForm, type EventFormValues, type OccurrenceFormValue } from './schema';
 
 const str = (v: string | null) => v ?? '';
 
@@ -9,15 +9,16 @@ export interface EventDraftMapping {
   values: EventFormValues;
   /** Venue names the draft used that matched a stored place. */
   matchedPlaces: string[];
-  /** Venue names with no stored place — the operator picks or creates one. */
-  unmatchedPlaces: string[];
+  /** Venue names with no stored place — carried as new_place, created on save and tagged with the event. */
+  newPlaces: string[];
 }
 
 /**
  * The agent's draft as form values. Each date's venue is looked up among
  * stored places by normalised name; a single active match sets the default
- * place and its time zone. Unknown venues stay empty and are named in the
- * occurrence name so nothing is lost.
+ * place and its time zone. An unknown venue travels with the row as
+ * new_place: save_event_with_occurrences() creates it in the same
+ * transaction and tags it with the event name.
  */
 export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
   const names = Array.from(new Set(d.occurrences.map((o) => normalizeName(o.place_name ?? '')).filter(Boolean)));
@@ -31,22 +32,31 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
   }
 
   const matched = new Set<string>();
-  const unmatched = new Set<string>();
+  const created = new Set<string>();
   const occurrences: OccurrenceFormValue[] = d.occurrences.map((o) => {
     const hit = o.place_name ? places.get(normalizeName(o.place_name)) : null;
-    if (o.place_name) (hit ? matched : unmatched).add(o.place_name);
-    const start = o.start_time ?? '23:00';
-    const end = o.end_time ?? '06:00';
-    // The drafted name is the name; a venue that is not in Places yet is appended so it is not lost.
-    const nameBits = [o.occurrence_name, hit ? null : o.place_name ? `(at ${o.place_name}${o.city ? `, ${o.city}` : ''})` : null].filter(Boolean);
+    if (o.place_name) (hit ? matched : created).add(o.place_name);
+    const start_time = o.start_time ?? '23:00';
+    const end_time = o.end_time ?? '06:00';
+    // No end day given: the same night, which is the next morning when the close is before the start.
+    const end_date = o.end_date && o.end_date >= o.event_date ? o.end_date : end_time <= start_time ? addDays(o.event_date, 1) : o.event_date;
     return {
       occurrence_id: null,
-      event_date: o.event_date,
+      start_date: o.event_date,
+      end_date,
       primary_place_id: hit?.place_id ?? null,
+      new_place: !hit && o.place_name ? {
+        name: o.place_name,
+        city: str(o.city),
+        region: str(o.region),
+        country: str(o.country),
+        timezone: str(o.timezone),
+        lifecycle_type: o.place_lifecycle_type ?? (d.event.event_type === 'festival' ? 'temporary' : 'permanent'),
+      } : null,
       timezone: hit?.timezone ?? str(o.timezone),
-      start_time: start,
-      end_time: end,
-      occurrence_name: nameBits.join(' '),
+      start_time,
+      end_time,
+      occurrence_name: str(o.occurrence_name),
       status: 'active',
     };
   });
@@ -62,6 +72,6 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
       occurrences,
     },
     matchedPlaces: Array.from(matched),
-    unmatchedPlaces: Array.from(unmatched),
+    newPlaces: Array.from(created),
   };
 }

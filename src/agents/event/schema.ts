@@ -10,11 +10,14 @@ const nullableStr = z.string().nullable().describe('null when not established fr
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable().describe('HH:MM wall time in the venue zone, or null');
 
 export const EventDraftOccurrenceSchema = z.object({
-  event_date: z.string().describe('YYYY-MM-DD, the BUSINESS DAY: the night the party starts. 23:00 Friday to 08:00 Saturday is Friday'),
-  place_name: nullableStr.describe('Venue name as the announcement gives it'),
+  event_date: z.string().describe('YYYY-MM-DD, the START day = the BUSINESS DAY: the night the party starts. 23:00 Friday to 08:00 Saturday is Friday'),
+  end_date: z.string().nullable().describe('YYYY-MM-DD, the day it ends: the next morning for a club night, days later for a festival. null if it ends the same night or is unknown'),
+  place_name: nullableStr.describe('Venue name as the announcement gives it, e.g. "Black Rock City", "Hï Ibiza"'),
   city: nullableStr,
+  region: nullableStr.describe('State, province or island, e.g. "Nevada", "Balearic Islands"'),
   country: nullableStr.describe('Country name in English'),
-  timezone: nullableStr.describe('IANA zone of the venue'),
+  timezone: nullableStr.describe('IANA zone of the venue, e.g. "America/Los_Angeles"'),
+  place_lifecycle_type: z.enum(['permanent', 'temporary', 'mobile', 'virtual']).nullable().describe('permanent for a club or arena; temporary for a festival site or pop-up; mobile for a boat; virtual for online'),
   start_time: hhmm.describe('Doors/start; null if not announced'),
   end_time: hhmm.describe('Close; null if not announced'),
   occurrence_name: nullableStr.describe('The name of this edition or night as announced, filled whenever one exists: "Tomorrowland Winter", "Opening Party", "Closing Party", "Weekend 2", "Circoloco x DC-10 Season Opening". null only when the date has no name of its own'),

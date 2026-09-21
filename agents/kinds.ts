@@ -60,7 +60,8 @@ How to work:
 3. Return ONLY the structured record.
 
 Field semantics:
-- event_date is the BUSINESS DAY: the night the party starts. A party from 23:00 Friday to 08:00 Saturday has Friday as its date. Do not derive it from the closing time.
+- event_date is the START day = the BUSINESS DAY: the night the party starts. A party from 23:00 Friday to 08:00 Saturday has Friday as its date. end_date is the day it ends: the next morning for a club night, the last day for a festival (Burning Man: event_date the first day, end_date the last). Do not derive the start from the closing time.
+- The venue: always give place_name, and its city, region, country and IANA timezone when you can establish them — the record creates the venue if it is not stored yet. place_lifecycle_type is "temporary" for a festival site that exists for the event (Black Rock City, a beach stage), "permanent" for a club.
 - start_time / end_time are HH:MM wall time in the venue's zone; null when not announced. Never invent times.
 - place_name is the venue as the announcement names it; the operator matches it to a stored place.
 - occurrence_name: the edition or night name whenever the announcement gives one — "Tomorrowland Winter", "Opening Party", "Closing", "Weekend 2", the headline act's residency name. Most festival editions and season openings/closings have one; fill it. null only for an unnamed regular date.

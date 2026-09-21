@@ -27,6 +27,7 @@ export function EventFormPage() {
   const form = useForm<EventFormValues>({ resolver: zodResolver(eventFormSchema), defaultValues: emptyEventForm, mode: 'onBlur' });
   const { register, control, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = form;
   const occurrences = watch('occurrences');
+  const eventName = watch('name');
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.event, existing.data.occurrences));
@@ -71,7 +72,7 @@ export function EventFormPage() {
               <p className="text-xs text-muted-foreground">
                 {r.draft.occurrences.length} date{r.draft.occurrences.length === 1 ? '' : 's'} announced.{' '}
                 {m.matchedPlaces.length > 0 && <>Venues matched to stored places: <b>{m.matchedPlaces.join(', ')}</b>. </>}
-                {m.unmatchedPlaces.length > 0 && <>Not in Places yet — pick or create them: <b>{m.unmatchedPlaces.join(', ')}</b>. </>}
+                {m.newPlaces.length > 0 && <>Not in Places yet, created on save and tagged <code>{r.draft.event.name}</code>: <b>{m.newPlaces.join(', ')}</b>. </>}
                 Times not announced were set to 23:00–06:00; check each row.
                 {r.draft.instagram_url && <> Instagram: <a href={r.draft.instagram_url} target="_blank" rel="noreferrer" className="underline">{r.draft.instagram_url}</a></>}
               </p>
@@ -114,12 +115,11 @@ export function EventFormPage() {
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">event_occurrence</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          The <b>business day</b> is the night of the event, not the calendar date of the start: a party from 23:00 Friday to
-          08:00 Saturday has Friday as its business day. Times are entered in the default place's time zone; an end time at or
-          before the start means the next morning.
+          The <b>start day</b> is the business day — the night of the event, not the calendar date of the close: a party from 23:00 Friday to
+          08:00 Saturday starts Friday and ends Saturday. A festival ends days later. Times are wall clock in the default place's time zone.
         </p>
         <Controller control={control} name="occurrences" render={({ field }) => (
-          <OccurrencesEditor value={field.value} onChange={field.onChange} errors={errors.occurrences as OccurrenceErrors} />
+          <OccurrencesEditor value={field.value} onChange={field.onChange} errors={errors.occurrences as OccurrenceErrors} eventName={eventName} />
         )} />
         <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
           <b>The default place is not the place of a set.</b> If an event runs in two venues, a line-up published without saying
