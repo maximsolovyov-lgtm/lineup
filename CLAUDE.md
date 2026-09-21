@@ -15,13 +15,19 @@ here when the documents were silent or contradicted each other.
 Built and working: authentication with admin/operator roles, Places with
 their rooms (`place_space`), People, Artists with their members, Events with
 their occurrences, Users management, RLS across every table. Every parent is
-saved with its children through one RPC (`save_*_with_*` functions).
+saved with its children through one RPC (`save_*_with_*` functions). Research
+agents (`docs/AGENTS.md`) draft any of the four master-data records from
+keywords.
+
+Stage 2 has started (owner decision 2026-09-20): **Line-ups** and **Sets**
+have their screens. `lineup` + `lineup_artist` say WHO is announced for an
+occurrence and place, official only, one row per publication (version).
+`performance_set` says WHEN and WHERE each set plays — official (linked to
+its line-up) or predicted, full or partial, per room — and is never updated
+with new information.
 
 Next: `docs/pending/DROP_typical_rooms.sql` once the seed and the "rooms
-json" tests stop using the old columns, then the Phase 7 acceptance run.
-
-Schedule tables exist in the database. Their UI does not, and must not be
-built yet — see the stage boundary below.
+json" tests stop using the old columns, then the acceptance run.
 
 ## Invariants
 
@@ -40,11 +46,18 @@ unassigned sets, labelled as such. Same rule one level down for
 and point `supersedes_performance_set_id` at the old one. History is what lets
 predictions be compared against what happened.
 
-**`scenario_version` is advanced by a publication** (`program_release`), not by
-a change to one room. Current official state resolves **per room**:
+**`scenario_version` is advanced by a publication** — a new `lineup` version
+(`program_release` was replaced by `lineup` on 2026-09-20) — not by a change
+to one room. Current official state resolves **per room**:
 `max(scenario_version)` grouped by `(occurrence_id, place_space_id)`. A club
 publishing one room's timetable leaves the other rooms on an earlier version,
-and that is correct.
+and that is correct. The same rule one level up: `lineup.version` resolves per
+`(occurrence_id, place_id)`, and a line-up with `place_id = null` is the
+unattributed announcement, one row.
+
+**`performance_set` rows are immutable except for `status`** — enforced by
+`trg_performance_set_immutable`. `save_performance_set()` with an existing id
+inserts the replacement and marks the old row `superseded`; the form says so.
 
 **`placeholder_type` is never cleared when a slot is revealed.** The pair
 `(artist_id, placeholder_type)` tells the whole story: `null + tbd` shows
@@ -104,11 +117,13 @@ then `npm run db:verify`.
 
 ## Stage boundary
 
-Do not build the schedule entry screen. The tables are there so the versioning
-and integrity decisions were settled before any live data existed — not as an
-invitation. It is the hardest screen in the system, and without proven master
-data behind it, it will be rewritten. If it looks like the obvious next thing
-to do, that is the trap this paragraph exists to name.
+The original boundary — do not build the schedule entry screen until the
+master data behind it is proven — was lifted by the owner on 2026-09-20, once
+Places with rooms, Artists with members and Events with occurrences existed
+and were used. The Line-ups and Sets screens are deliberately plain: a set is
+one row, a line-up is one publication. What is still out of scope: evidence
+and releases beyond `evidence_source`, ingestion, OCR, predictions generated
+by an agent, favourites, notifications, public pages.
 
 ## Commands
 
@@ -126,7 +141,7 @@ npm run db:verify
 ## Layout
 
 ```
-src/features/<area>/   page, api.ts, schema.ts per area
+src/features/<area>/   page, api.ts, schema.ts per area (lineups and sets included)
 src/components/ui/     hand-written shadcn-style components, no CLI
 src/components/form/   shared form pieces
 functions/api/         Hono: service-role operations and the /api/agents routes

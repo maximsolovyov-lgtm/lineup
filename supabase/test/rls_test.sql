@@ -203,9 +203,12 @@ select test.run('roadmap: event/occurrence/space/set with matching place_space',
         insert into public.event_occurrence (event_id, primary_place_id, event_date, starts_at, ends_at)
           values (v_event, v_unvrs, '2026-07-15', '2026-07-15 23:30+02', '2026-07-16 06:00+02') returning occurrence_id into v_occ;
         select space_id into v_space from public.place_space where place_id = v_unvrs and is_primary and status = 'active';
-        insert into public.performance_set
-          (occurrence_id, place_space_id, scenario_type, scenario_version, set_type, scheduled_start_at, scheduled_end_at)
-          values (v_occ, v_space, 'official', 1, 'group', '2026-07-15 23:30+02', '2026-07-16 06:00+02');
+        perform public.save_performance_set(
+          jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs, 'place_space_id', v_space,
+                             'lineup_id', public.save_lineup(jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs), '[]'::jsonb),
+                             'scenario_type', 'official', 'set_type', 'group',
+                             'scheduled_start_at', '2026-07-15T23:30:00+02:00', 'scheduled_end_at', '2026-07-16T06:00:00+02:00'),
+          '[]'::jsonb);
       end $x$ $q$, true);
 
 select test.run('roadmap: place_space from another place rejected', :operator_id,
@@ -216,16 +219,16 @@ select test.run('roadmap: place_space from another place rejected', :operator_id
         select place_id into v_fabric from public.place where name = 'fabric';
         select space_id into v_space from public.place_space where place_id = v_fabric and is_primary and status = 'active';
         insert into public.performance_set
-          (occurrence_id, place_space_id, scenario_type, scenario_version, set_type, scheduled_start_at, scheduled_end_at)
-          values (v_occ, v_space, 'official', 1, 'group', '2026-07-15 23:30+02', '2026-07-16 06:00+02');
+          (occurrence_id, place_id, place_space_id, scenario_type, scenario_version, set_type, confidence_score, scheduled_start_at, scheduled_end_at)
+          values (v_occ, (select place_id from public.place where name = 'UNVRS'), v_space, 'predicted', 1, 'group', 0.5, '2026-07-15 23:30+02', '2026-07-16 06:00+02');
       end $x$ $q$, false);
 
 select test.run('roadmap: set ending before it starts rejected', :operator_id,
   $q$ do $x$ declare v_occ uuid; begin
         select occurrence_id into v_occ from public.event_occurrence limit 1;
         insert into public.performance_set
-          (occurrence_id, scenario_type, scenario_version, set_type, scheduled_start_at, scheduled_end_at)
-          values (v_occ, 'predicted', 1, 'single_artist_set', '2026-07-16 06:00+02', '2026-07-16 03:00+02');
+          (occurrence_id, scenario_type, scenario_version, set_type, confidence_score, scheduled_start_at, scheduled_end_at)
+          values (v_occ, 'predicted', 1, 'single_artist_set', 0.5, '2026-07-16 06:00+02', '2026-07-16 03:00+02');
       end $x$ $q$, false);
 
 select test.run('roadmap: participant with neither artist nor label rejected', :operator_id,
@@ -487,6 +490,153 @@ select test.run('tags: place_tag_counts lists tags with counts', :operator_id,
 
 select test.run('tags: anon cannot call place_tag_counts', null,
   $q$ select * from public.place_tag_counts() $q$, false);
+
+-- Line-ups and performance sets (stage 2) ---------------------------------------------
+select test.run('lineup: anon cannot call save_lineup', null,
+  $q$ select public.save_lineup('{"occurrence_id":"00000000-0000-4000-8000-000000000001"}'::jsonb, '[]'::jsonb) $q$, false);
+
+select test.run('lineup: a new publication takes the next version for (occurrence, place)', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v_unvrs uuid; v1 uuid; v2 uuid; v_k uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17';
+        select place_id into v_unvrs from public.place where name = 'UNVRS';
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v1 := public.save_lineup(jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs, 'published_at', '2026-05-01T12:00:00Z'),
+          jsonb_build_array(jsonb_build_object('artist_id', v_k, 'is_headliner', true), jsonb_build_object('placeholder_type', 'tbd')));
+        v2 := public.save_lineup(jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs),
+          jsonb_build_array(jsonb_build_object('artist_id', v_k, 'is_headliner', true), jsonb_build_object('placeholder_type', 'secret_guest')));
+        if (select version from public.lineup where lineup_id = v1) <> 1 or (select version from public.lineup where lineup_id = v2) <> 2
+           or (select count(*) from public.lineup_artist where lineup_id = v1 and status = 'active') <> 2 then
+          raise exception 'versions or artists wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: an unattributed line-up is one row with null place, versioned on its own', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ), '[]'::jsonb);
+        if (select version from public.lineup where lineup_id = v) <> 1 then raise exception 'null-place version wrong'; end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: the same version twice for one (occurrence, place) rejected', :operator_id,
+  $q$ do $x$ declare v_occ uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17';
+        perform public.save_lineup(jsonb_build_object('occurrence_id', v_occ, 'version', 1), '[]'::jsonb);
+      end $x$ $q$, false);
+
+select test.run('lineup: an artist row with neither artist nor placeholder nor label rejected', :operator_id,
+  $q$ do $x$ declare v_occ uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24';
+        perform public.save_lineup(jsonb_build_object('occurrence_id', v_occ), jsonb_build_array(jsonb_build_object('is_headliner', true)));
+      end $x$ $q$, false);
+
+select test.run('sets: an official set without a line-up rejected', :operator_id,
+  $q$ do $x$ declare v_occ uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17';
+        perform public.save_performance_set(jsonb_build_object('occurrence_id', v_occ, 'scenario_type', 'official', 'set_type', 'group'), '[]'::jsonb);
+      end $x$ $q$, false);
+
+select test.run('sets: an official set inherits the line-up version and rebuilds the artist cache', :operator_id,
+  $q$ do $x$ declare v_l uuid; v_occ uuid; v_unvrs uuid; v_space uuid; v_k uuid; v_s uuid; begin
+        select l.lineup_id, l.occurrence_id into v_l, v_occ from public.lineup l
+          join public.place p on p.place_id = l.place_id where p.name = 'UNVRS' and l.version = 2;
+        select place_id into v_unvrs from public.place where name = 'UNVRS';
+        select space_id into v_space from public.place_space where place_id = v_unvrs and is_primary;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v_s := public.save_performance_set(
+          jsonb_build_object('occurrence_id', v_occ, 'lineup_id', v_l, 'place_id', v_unvrs, 'place_space_id', v_space,
+                             'scenario_type', 'official', 'completeness', 'full', 'set_type', 'single_artist_set',
+                             'scheduled_start_at', '2026-07-18T03:00:00+02:00', 'scheduled_end_at', '2026-07-18T06:00:00+02:00'),
+          jsonb_build_array(jsonb_build_object('artist_id', v_k, 'participant_role', 'headliner', 'is_headliner', true)));
+        if (select scenario_version from public.performance_set where performance_set_id = v_s) <> 2
+           or (select artist_count from public.performance_set where performance_set_id = v_s) <> 1
+           or (select artist_list_json -> 0 ->> 'name' from public.performance_set where performance_set_id = v_s) <> 'Keinemusik'
+           or (select event_day from public.performance_set where performance_set_id = v_s) <> '2026-07-17' then
+          raise exception 'set not saved as expected';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('sets: UPDATE with new information is refused by the trigger', :operator_id,
+  $q$ update public.performance_set set scheduled_start_at = scheduled_start_at + interval '1 hour'
+      where set_type = 'single_artist_set' and status = 'active' $q$, false);
+
+select test.run('sets: a status change is allowed (cancellation is a status)', :operator_id,
+  $q$ do $x$ declare v uuid; begin
+        select performance_set_id into v from public.performance_set where set_type = 'single_artist_set' and status = 'active';
+        update public.performance_set set status = 'cancelled' where performance_set_id = v;
+        update public.performance_set set status = 'active' where performance_set_id = v;
+      end $x$ $q$, true);
+
+select test.run('sets: saving an existing set inserts a new row and supersedes the old one', :operator_id,
+  $q$ do $x$ declare v_old uuid; v_new uuid; v_k uuid; begin
+        select performance_set_id into v_old from public.performance_set where set_type = 'single_artist_set' and status = 'active';
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v_new := public.save_performance_set(
+          jsonb_build_object('performance_set_id', v_old, 'scheduled_start_at', '2026-07-18T02:00:00+02:00', 'scheduled_end_at', '2026-07-18T06:00:00+02:00',
+                             'lineup_id', (select lineup_id from public.performance_set where performance_set_id = v_old),
+                             'place_id', (select place_id from public.performance_set where performance_set_id = v_old),
+                             'place_space_id', (select place_space_id from public.performance_set where performance_set_id = v_old)),
+          jsonb_build_array(jsonb_build_object('artist_id', v_k, 'participant_role', 'headliner', 'is_headliner', true)));
+        if v_new = v_old
+           or (select status from public.performance_set where performance_set_id = v_old) <> 'superseded'
+           or (select supersedes_performance_set_id from public.performance_set where performance_set_id = v_new) <> v_old
+           or (select scenario_version from public.performance_set where performance_set_id = v_new) <> 2
+           or (select count(*) from public.performance_set_participant where performance_set_id = v_new) <> 1 then
+          raise exception 'supersede chain wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('sets: a superseded row cannot be edited again', :operator_id,
+  $q$ do $x$ declare v_old uuid; begin
+        select performance_set_id into v_old from public.performance_set where status = 'superseded' limit 1;
+        perform public.save_performance_set(jsonb_build_object('performance_set_id', v_old), '[]'::jsonb);
+      end $x$ $q$, false);
+
+select test.run('sets: a room must belong to the line-up place, never the occurrence default', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v_fabric_room uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17';
+        select s.space_id into v_fabric_room from public.place_space s join public.place p on p.place_id = s.place_id where p.name = 'fabric' and s.is_primary;
+        -- unattributed line-up (null place) + a room: no place is known, so refused
+        perform public.save_performance_set(
+          jsonb_build_object('occurrence_id', v_occ, 'lineup_id', (select lineup_id from public.lineup where occurrence_id = v_occ and place_id is null),
+                             'place_space_id', v_fabric_room, 'scenario_type', 'official', 'set_type', 'group'),
+          '[]'::jsonb);
+      end $x$ $q$, false);
+
+select test.run('sets: a prediction without a confidence score rejected', :operator_id,
+  $q$ do $x$ declare v_occ uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24';
+        perform public.save_performance_set(jsonb_build_object('occurrence_id', v_occ, 'scenario_type', 'predicted', 'set_type', 'group'), '[]'::jsonb);
+      end $x$ $q$, false);
+
+select test.run('sets: a partial prediction as a group block with a TBD participant', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v_s uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24';
+        v_s := public.save_performance_set(
+          jsonb_build_object('occurrence_id', v_occ, 'scenario_type', 'predicted', 'completeness', 'partial', 'set_type', 'group', 'confidence_score', 0.4),
+          jsonb_build_array(jsonb_build_object('placeholder_type', 'tbd', 'participant_role', 'placeholder')));
+        if (select artist_list_json -> 0 ->> 'name' from public.performance_set where performance_set_id = v_s) <> 'TBA' then
+          raise exception 'placeholder cache wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: an occurrence with a line-up cannot be removed from its event', :operator_id,
+  $q$ do $x$ declare v uuid; v_keep uuid; begin
+        select event_id into v from public.event where name = 'Circoloco';
+        select occurrence_id into v_keep from public.event_occurrence where event_id = v and event_date = '2026-07-24';
+        perform public.save_event_with_occurrences(jsonb_build_object('event_id', v, 'name', 'Circoloco'),
+          jsonb_build_array(jsonb_build_object('occurrence_id', v_keep, 'event_date', '2026-07-24', 'starts_at', '2026-07-24T23:30:00+02:00', 'ends_at', '2026-07-25T06:00:00+02:00')));
+      end $x$ $q$, false);
+
+select test.run('lineup: nobody can hard-delete a line-up', :admin_id,
+  $q$ delete from public.lineup $q$, false);
 
 -- Report -------------------------------------------------------------------------
 \echo

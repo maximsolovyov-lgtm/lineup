@@ -14,6 +14,10 @@ import { ArtistsPage } from '@/features/artists/ArtistsPage';
 import { ArtistFormPage } from '@/features/artists/ArtistFormPage';
 import { PeoplePage } from '@/features/people/PeoplePage';
 import { PersonFormPage } from '@/features/people/PersonFormPage';
+import { LineupsPage } from '@/features/lineups/LineupsPage';
+import { LineupFormPage } from '@/features/lineups/LineupFormPage';
+import { SetsPage } from '@/features/sets/SetsPage';
+import { SetFormPage } from '@/features/sets/SetFormPage';
 import { UsersPage } from '@/features/users/UsersPage';
 
 const queryClient = new QueryClient({
@@ -43,6 +47,12 @@ export function App() {
                 <Route path="/people" element={<PeoplePage />} />
                 <Route path="/people/new" element={<PersonFormPage />} />
                 <Route path="/people/:personId" element={<PersonFormPage />} />
+                <Route path="/lineups" element={<LineupsPage />} />
+                <Route path="/lineups/new" element={<LineupFormPage />} />
+                <Route path="/lineups/:lineupId" element={<LineupFormPage />} />
+                <Route path="/sets" element={<SetsPage />} />
+                <Route path="/sets/new" element={<SetFormPage />} />
+                <Route path="/sets/:setId" element={<SetFormPage />} />
                 <Route element={<RequireAdmin />}>
                   <Route path="/users" element={<UsersPage />} />
                 </Route>

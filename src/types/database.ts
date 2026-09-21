@@ -265,10 +265,132 @@ export type Database = {
         }
         Relationships: []
       }
+      lineup: {
+        Row: {
+          created_at: string
+          lineup_id: string
+          notes: string | null
+          occurrence_id: string
+          place_id: string | null
+          published_at: string | null
+          source_id: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          lineup_id?: string
+          notes?: string | null
+          occurrence_id: string
+          place_id?: string | null
+          published_at?: string | null
+          source_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          lineup_id?: string
+          notes?: string | null
+          occurrence_id?: string
+          place_id?: string | null
+          published_at?: string | null
+          source_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lineup_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "event_occurrence"
+            referencedColumns: ["occurrence_id"]
+          },
+          {
+            foreignKeyName: "lineup_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["place_id"]
+          },
+          {
+            foreignKeyName: "lineup_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_source"
+            referencedColumns: ["source_id"]
+          },
+        ]
+      }
+      lineup_artist: {
+        Row: {
+          artist_id: string | null
+          billing_order: number | null
+          created_at: string
+          display_name_override: string | null
+          is_headliner: boolean
+          lineup_artist_id: string
+          lineup_id: string
+          placeholder_type:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          artist_id?: string | null
+          billing_order?: number | null
+          created_at?: string
+          display_name_override?: string | null
+          is_headliner?: boolean
+          lineup_artist_id?: string
+          lineup_id: string
+          placeholder_type?:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          artist_id?: string | null
+          billing_order?: number | null
+          created_at?: string
+          display_name_override?: string | null
+          is_headliner?: boolean
+          lineup_artist_id?: string
+          lineup_id?: string
+          placeholder_type?:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lineup_artist_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "lineup_artist_lineup_id_fkey"
+            columns: ["lineup_id"]
+            isOneToOne: false
+            referencedRelation: "lineup"
+            referencedColumns: ["lineup_id"]
+          },
+        ]
+      }
       performance_set: {
         Row: {
           artist_count: number | null
           artist_list_json: Json | null
+          completeness: Database["public"]["Enums"]["set_completeness"]
           confidence_score: number | null
           confirmation_status: Database["public"]["Enums"]["confirmation_status"]
           created_at: string
@@ -278,13 +400,13 @@ export type Database = {
             | Database["public"]["Enums"]["information_origin"]
             | null
           lineup_complete: boolean
+          lineup_id: string | null
           notes: string | null
           occurrence_id: string
           performance_set_id: string
           place_id: string | null
           place_role: Database["public"]["Enums"]["place_role"] | null
           place_space_id: string | null
-          release_id: string | null
           scenario_type: Database["public"]["Enums"]["set_scenario_type"]
           scenario_version: number
           scheduled_end_at: string | null
@@ -300,6 +422,7 @@ export type Database = {
         Insert: {
           artist_count?: number | null
           artist_list_json?: Json | null
+          completeness?: Database["public"]["Enums"]["set_completeness"]
           confidence_score?: number | null
           confirmation_status?: Database["public"]["Enums"]["confirmation_status"]
           created_at?: string
@@ -309,13 +432,13 @@ export type Database = {
             | Database["public"]["Enums"]["information_origin"]
             | null
           lineup_complete?: boolean
+          lineup_id?: string | null
           notes?: string | null
           occurrence_id: string
           performance_set_id?: string
           place_id?: string | null
           place_role?: Database["public"]["Enums"]["place_role"] | null
           place_space_id?: string | null
-          release_id?: string | null
           scenario_type: Database["public"]["Enums"]["set_scenario_type"]
           scenario_version: number
           scheduled_end_at?: string | null
@@ -331,6 +454,7 @@ export type Database = {
         Update: {
           artist_count?: number | null
           artist_list_json?: Json | null
+          completeness?: Database["public"]["Enums"]["set_completeness"]
           confidence_score?: number | null
           confirmation_status?: Database["public"]["Enums"]["confirmation_status"]
           created_at?: string
@@ -340,13 +464,13 @@ export type Database = {
             | Database["public"]["Enums"]["information_origin"]
             | null
           lineup_complete?: boolean
+          lineup_id?: string | null
           notes?: string | null
           occurrence_id?: string
           performance_set_id?: string
           place_id?: string | null
           place_role?: Database["public"]["Enums"]["place_role"] | null
           place_space_id?: string | null
-          release_id?: string | null
           scenario_type?: Database["public"]["Enums"]["set_scenario_type"]
           scenario_version?: number
           scheduled_end_at?: string | null
@@ -360,6 +484,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "performance_set_lineup_id_fkey"
+            columns: ["lineup_id"]
+            isOneToOne: false
+            referencedRelation: "lineup"
+            referencedColumns: ["lineup_id"]
+          },
           {
             foreignKeyName: "performance_set_occurrence_id_fkey"
             columns: ["occurrence_id"]
@@ -380,13 +511,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "place_space"
             referencedColumns: ["space_id"]
-          },
-          {
-            foreignKeyName: "performance_set_release_id_fkey"
-            columns: ["release_id"]
-            isOneToOne: false
-            referencedRelation: "program_release"
-            referencedColumns: ["release_id"]
           },
           {
             foreignKeyName: "performance_set_source_id_fkey"
@@ -763,57 +887,6 @@ export type Database = {
           },
         ]
       }
-      program_release: {
-        Row: {
-          created_at: string
-          occurrence_id: string
-          published_at: string | null
-          release_id: string
-          release_kind: Database["public"]["Enums"]["release_kind"]
-          source_id: string | null
-          status: Database["public"]["Enums"]["record_status"]
-          summary: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          occurrence_id: string
-          published_at?: string | null
-          release_id?: string
-          release_kind?: Database["public"]["Enums"]["release_kind"]
-          source_id?: string | null
-          status?: Database["public"]["Enums"]["record_status"]
-          summary?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          occurrence_id?: string
-          published_at?: string | null
-          release_id?: string
-          release_kind?: Database["public"]["Enums"]["release_kind"]
-          source_id?: string | null
-          status?: Database["public"]["Enums"]["record_status"]
-          summary?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "program_release_occurrence_id_fkey"
-            columns: ["occurrence_id"]
-            isOneToOne: false
-            referencedRelation: "event_occurrence"
-            referencedColumns: ["occurrence_id"]
-          },
-          {
-            foreignKeyName: "program_release_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "evidence_source"
-            referencedColumns: ["source_id"]
-          },
-        ]
-      }
       review_task: {
         Row: {
           created_at: string
@@ -874,6 +947,14 @@ export type Database = {
       }
       save_event_with_occurrences: {
         Args: { p_event: Json; p_occurrences?: Json }
+        Returns: string
+      }
+      save_lineup: {
+        Args: { p_artists?: Json; p_lineup: Json }
+        Returns: string
+      }
+      save_performance_set: {
+        Args: { p_participants?: Json; p_set: Json }
         Returns: string
       }
       save_place_with_spaces: {
@@ -955,6 +1036,7 @@ export type Database = {
         | "cancellation"
         | "replacement"
         | "other"
+      set_completeness: "full" | "partial"
       set_scenario_type: "official" | "predicted" | "actual" | "manual"
     }
     CompositeTypes: {
@@ -1164,6 +1246,7 @@ export const Constants = {
         "replacement",
         "other",
       ],
+      set_completeness: ["full", "partial"],
       set_scenario_type: ["official", "predicted", "actual", "manual"],
     },
   },

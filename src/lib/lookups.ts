@@ -63,3 +63,98 @@ export function personLookup(): Lookup {
     },
   };
 }
+
+const dateLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+
+/** Occurrences: "Circoloco · 17 Jul 2026 · UNVRS". Upcoming first. */
+export function occurrenceLookup(): Lookup {
+  const select = 'occurrence_id,event_date,occurrence_name,status,event(name,normalized_name),place:primary_place_id(name)';
+  const toOption = (o: { occurrence_id: string; event_date: string; occurrence_name: string | null; status: string; event: { name: string } | null; place: { name: string } | null }): LookupOption => ({
+    id: o.occurrence_id,
+    label: `${o.event?.name ?? '?'} · ${dateLabel(o.event_date)}`,
+    sublabel: [o.occurrence_name, o.place?.name, o.status !== 'active' ? o.status : null].filter(Boolean).join(' · '),
+  });
+  return {
+    search: async (q) => {
+      let query = supabase.from('event_occurrence').select(select).in('status', ['active', 'draft', 'cancelled'])
+        .order('event_date', { ascending: false }).limit(30);
+      const term = safeFilterTerm(q);
+      if (term) {
+        // The event name lives on the joined row: filter the embedded resource and drop rows that lost it.
+        query = query.not('event', 'is', null).ilike('event.normalized_name', `%${normalizeName(term)}%`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data.filter((o) => o.event).map(toOption);
+    },
+    resolve: async (id) => {
+      const { data } = await supabase.from('event_occurrence').select(select).eq('occurrence_id', id).maybeSingle();
+      return data ? toOption(data) : null;
+    },
+  };
+}
+
+/** Line-ups of one occurrence: "v2 · UNVRS · published 15 May". */
+export function lineupLookup(occurrenceId?: string | null): Lookup {
+  const select = 'lineup_id,version,published_at,status,occurrence_id,place(name),event_occurrence(event_date,event(name))';
+  const toOption = (l: { lineup_id: string; version: number; published_at: string | null; status: string; place: { name: string } | null; event_occurrence: { event_date: string; event: { name: string } | null } | null }): LookupOption => ({
+    id: l.lineup_id,
+    label: `v${l.version} · ${l.place?.name ?? 'place not announced'}`,
+    sublabel: [l.event_occurrence?.event?.name, l.event_occurrence ? dateLabel(l.event_occurrence.event_date) : null,
+      l.published_at ? `published ${new Date(l.published_at).toLocaleDateString()}` : null, l.status !== 'active' ? l.status : null].filter(Boolean).join(' · '),
+  });
+  return {
+    search: async () => {
+      if (!occurrenceId) return [];
+      const { data, error } = await supabase.from('lineup').select(select).eq('occurrence_id', occurrenceId).eq('status', 'active')
+        .order('version', { ascending: false }).limit(30);
+      if (error) throw error;
+      return data.map(toOption);
+    },
+    resolve: async (id) => {
+      const { data } = await supabase.from('lineup').select(select).eq('lineup_id', id).maybeSingle();
+      return data ? toOption(data) : null;
+    },
+  };
+}
+
+export function artistLookup(): Lookup {
+  const toOption = (a: { artist_id: string; name: string; artist_type: string | null; country: string | null }): LookupOption =>
+    ({ id: a.artist_id, label: a.name, sublabel: [a.artist_type, a.country].filter(Boolean).join(' · ') });
+  return {
+    search: async (q) => {
+      let query = supabase.from('artist').select('artist_id,name,artist_type,country').eq('status', 'active').order('name').limit(20);
+      const f = nameFilter(q);
+      if (f) query = query.or(f);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data.map(toOption);
+    },
+    resolve: async (id) => {
+      const { data } = await supabase.from('artist').select('artist_id,name,artist_type,country').eq('artist_id', id).maybeSingle();
+      return data ? toOption(data) : null;
+    },
+  };
+}
+
+/** Rooms of one place — a set's room must belong to the set's place. */
+export function placeSpaceLookup(placeId?: string | null): Lookup {
+  const toOption = (s: { space_id: string; name: string; space_type: string | null; is_primary: boolean }): LookupOption =>
+    ({ id: s.space_id, label: s.name, sublabel: [s.space_type, s.is_primary ? 'primary' : null].filter(Boolean).join(' · ') || undefined });
+  return {
+    search: async (q) => {
+      if (!placeId) return [];
+      let query = supabase.from('place_space').select('space_id,name,space_type,is_primary').eq('place_id', placeId).eq('status', 'active')
+        .order('display_order', { ascending: true, nullsFirst: false }).limit(30);
+      const f = nameFilter(q);
+      if (f) query = query.or(f);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data.map(toOption);
+    },
+    resolve: async (id) => {
+      const { data } = await supabase.from('place_space').select('space_id,name,space_type,is_primary').eq('space_id', id).maybeSingle();
+      return data ? toOption(data) : null;
+    },
+  };
+}

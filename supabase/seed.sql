@@ -99,3 +99,28 @@ where p.name = 'UNVRS'
 update public.place set tags = array['IBIZA', 'BIG5'] where name = 'UNVRS';
 update public.place set tags = array['MIAMI', 'BIG5'] where name = 'Club Space';
 update public.place set tags = array['LONDON'] where name = 'fabric';
+
+-- One official line-up and one set for the first Circoloco date, so the
+-- Line-ups and Sets tabs have something to show.
+do $$
+declare v_occ uuid; v_unvrs uuid; v_room uuid; v_k uuid; v_l uuid;
+begin
+  select eo.occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+   where e.normalized_name = 'circoloco' and eo.event_date = '2026-07-17';
+  select place_id into v_unvrs from public.place where name = 'UNVRS';
+  select space_id into v_room from public.place_space where place_id = v_unvrs and is_primary and status = 'active';
+  select artist_id into v_k from public.artist where normalized_name = 'keinemusik';
+  if v_occ is null or v_k is null or exists (select 1 from public.lineup where occurrence_id = v_occ) then return; end if;
+
+  v_l := public.save_lineup(
+    jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs, 'published_at', '2026-05-15T10:00:00Z', 'notes', 'Season opening announcement on Instagram.'),
+    jsonb_build_array(jsonb_build_object('artist_id', v_k, 'is_headliner', true), jsonb_build_object('placeholder_type', 'secret_guest')));
+
+  perform public.save_performance_set(
+    jsonb_build_object('occurrence_id', v_occ, 'lineup_id', v_l, 'place_id', v_unvrs, 'place_space_id', v_room,
+                       'scenario_type', 'official', 'completeness', 'partial', 'set_type', 'group',
+                       'scheduled_start_at', '2026-07-17T23:30:00+02:00', 'scheduled_end_at', '2026-07-18T06:00:00+02:00',
+                       'lineup_complete', false),
+    jsonb_build_array(jsonb_build_object('artist_id', v_k, 'participant_role', 'headliner', 'is_headliner', true),
+                      jsonb_build_object('placeholder_type', 'secret_guest', 'participant_role', 'placeholder')));
+end $$;
