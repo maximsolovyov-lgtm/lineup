@@ -199,3 +199,12 @@ Recorded so they are not rediscovered from scratch:
 | "Business day + times, end before start = next morning" could not express a festival. | The occurrences block has a **start day** and an **end day** with a time each. `event_date` = the start day (still the business day); `ends_at` = end day + end time. Typing a start day moves the end day along unless it was set further away. |
 | The event agent names a venue that is not in Places yet (Black Rock City, a beach stage). | The row carries `new_place {name, city, region, country, timezone, lifecycle_type}`. `save_event_with_occurrences()` creates the place in the same transaction — or reuses an active place with the same normalised name — sets it as the default place, and **tags it with the event name** (`20260920170000_occurrence_new_place.sql`). An existing venue used this way gets the tag too. The chip in the form says what will be created; the operator can pick an existing place instead or drop it. |
 | Lifecycle of a venue created this way. | What the agent says (`place_lifecycle_type`), else `temporary` for a festival, `permanent` otherwise. |
+
+## Decision 2026-09-20 — AI actualization of a place
+
+| Question | Decision |
+|---|---|
+| How does a stored venue get refreshed from the web? | **AI actualization** on the Place record: the place agent runs with keywords built from the record (name, city, country, site, Instagram); the draft is laid over the form as a diff (`src/features/places/actualize.ts`). Nothing is written until Save; Discard restores the stored values. |
+| Which of the two values wins? | The agent's, in the field, with the stored value in red underneath and a blue frame — the operator sees both and can retype. A field the agent left empty **never** overwrites what is stored. Tags, status and parent are never touched. |
+| Rooms. | Matched by normalised name. New → added row (blue). Changed type/capacity/notes/primary → blue field with the old value in red. Not found by the agent → flagged in red and **deactivated on save**, with a "Keep this room" link — and only when the agent found rooms at all, because an empty answer means "did not look", not "there are none". |
+| Ambiguous or not found. | No diff is applied; the operator is told to refine name, city or links first. |

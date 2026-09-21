@@ -21,6 +21,12 @@ export const spaceSchema = z.object({
   capacity: optionalInt(),
   notes: z.string().max(2000),
   is_primary: z.boolean(),
+  // Actualization marks — display only, never sent. A removed room is left
+  // out of the payload and so becomes inactive on save.
+  client_key: z.string().optional(),
+  change: z.enum(['added', 'changed']).optional(),
+  previous: z.record(z.string()).optional(),
+  removed: z.boolean().optional(),
 });
 export type SpaceFormValue = z.infer<typeof spaceSchema>;
 
@@ -38,7 +44,7 @@ const spacesSchema = z.array(spaceSchema).superRefine((spaces, ctx) => {
       seen.set(key, i);
     }
   });
-  const primaries = spaces.flatMap((sp, i) => (sp.is_primary ? [i] : []));
+  const primaries = spaces.flatMap((sp, i) => (sp.is_primary && !sp.removed ? [i] : []));
   primaries.slice(1).forEach((i) => {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'is_primary'], message: 'Only one primary room' });
   });
@@ -173,7 +179,7 @@ export function toPayload(v: PlaceFormValues, placeId: string | null): SavePlace
     lineup_pattern_sample_size: intOrNull(v.lineup_pattern_sample_size),
     lineup_pattern_notes: nullIfEmpty(v.lineup_pattern_notes),
   };
-  const p_spaces = v.spaces.map((sp) => ({
+  const p_spaces = v.spaces.filter((sp) => !sp.removed).map((sp) => ({
     space_id: sp.space_id,
     name: sp.name.trim(),
     space_type: nullIfEmpty(sp.space_type),

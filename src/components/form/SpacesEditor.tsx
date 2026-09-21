@@ -46,7 +46,17 @@ export function SpacesEditor({ value, onChange, errors, disabled }: SpacesEditor
       {value.map((sp, i) => {
         const err = errors?.[i];
         return (
-          <div key={sp.space_id ?? `new-${i}`} className="space-y-2 rounded-lg border bg-muted/20 p-2">
+          <div
+            key={sp.client_key ?? sp.space_id ?? `new-${i}`}
+            className={`space-y-2 rounded-lg border p-2 ${sp.removed ? 'border-red-400 bg-red-50/60' : sp.change ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-500' : 'bg-muted/20'}`}
+          >
+            {sp.removed && (
+              <p className="flex flex-wrap items-center gap-2 px-1 text-xs text-red-600">
+                Not found by the actualization — <b>deactivated on save</b>.
+                <button type="button" className="underline" onClick={() => update(i, { removed: false })}>Keep this room</button>
+              </p>
+            )}
+            {sp.change === 'added' && <p className="px-1 text-xs text-blue-700">New room from the actualization.</p>}
             <div className={ROW_GRID}>
               <div>
                 <Input
@@ -55,7 +65,8 @@ export function SpacesEditor({ value, onChange, errors, disabled }: SpacesEditor
                   value={sp.name}
                   onChange={(e) => update(i, { name: e.target.value })}
                   aria-invalid={!!err?.name}
-                  disabled={disabled}
+                  disabled={disabled || sp.removed}
+                  className={sp.removed ? 'line-through' : ''}
                 />
                 {err?.name?.message && <p className="mt-1 text-xs text-destructive" role="alert">{err.name.message}</p>}
               </div>
@@ -67,8 +78,10 @@ export function SpacesEditor({ value, onChange, errors, disabled }: SpacesEditor
                   value={sp.space_type}
                   onChange={(e) => update(i, { space_type: e.target.value })}
                   aria-invalid={!!err?.space_type}
-                  disabled={disabled}
+                  disabled={disabled || sp.removed}
+                  className={sp.previous?.space_type !== undefined ? 'border-blue-500' : ''}
                 />
+                {sp.previous?.space_type !== undefined && <p className="mt-1 text-xs text-red-600">was: {sp.previous.space_type || <i>empty</i>}</p>}
                 {err?.space_type?.message && <p className="mt-1 text-xs text-destructive" role="alert">{err.space_type.message}</p>}
               </div>
               <div>
@@ -79,8 +92,10 @@ export function SpacesEditor({ value, onChange, errors, disabled }: SpacesEditor
                   value={sp.capacity}
                   onChange={(e) => update(i, { capacity: e.target.value })}
                   aria-invalid={!!err?.capacity}
-                  disabled={disabled}
+                  disabled={disabled || sp.removed}
+                  className={sp.previous?.capacity !== undefined ? 'border-blue-500' : ''}
                 />
+                {sp.previous?.capacity !== undefined && <p className="mt-1 text-xs text-red-600">was: {sp.previous.capacity || <i>empty</i>}</p>}
                 {err?.capacity?.message && <p className="mt-1 text-xs text-destructive" role="alert">{err.capacity.message}</p>}
               </div>
               <div>
@@ -97,6 +112,7 @@ export function SpacesEditor({ value, onChange, errors, disabled }: SpacesEditor
                   />
                   <span className="text-xs text-muted-foreground">{sp.is_primary ? 'primary' : ''}</span>
                 </label>
+                {sp.previous?.is_primary !== undefined && <p className="mt-1 text-xs text-red-600">was: {sp.previous.is_primary}</p>}
                 {err?.is_primary?.message && <p className="mt-1 text-xs text-destructive" role="alert">{err.is_primary.message}</p>}
               </div>
               <Button
@@ -110,11 +126,12 @@ export function SpacesEditor({ value, onChange, errors, disabled }: SpacesEditor
             <Input
               aria-label={`Room ${i + 1} notes`}
               placeholder="Notes"
-              className="h-8 text-sm"
+              className={`h-8 text-sm ${sp.previous?.notes !== undefined ? 'border-blue-500' : ''}`}
               value={sp.notes}
               onChange={(e) => update(i, { notes: e.target.value })}
-              disabled={disabled}
+              disabled={disabled || sp.removed}
             />
+            {sp.previous?.notes !== undefined && <p className="px-1 text-xs text-red-600">was: {sp.previous.notes || <i>empty</i>}</p>}
           </div>
         );
       })}
