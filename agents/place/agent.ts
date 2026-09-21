@@ -19,7 +19,7 @@ Field semantics that operators get wrong:
 - typical_* fields describe how a usual night runs: doors, closing, when the headliner plays. Day offsets are relative to the event date: a night that opens 23:00 and closes 06:00 next morning has end offset 1. Use HH:MM 24-hour wall time in the venue's own zone.
 - news_pattern: where and when the venue publishes announcements (site event pages, Instagram posts/stories, RA listings), phrased as advice for an operator who will watch those channels.
 - lineup_pattern: opening window, days, room count, which room the headliner plays and around what time.
-- spaces: the rooms/stages the venue documents (e.g. "Terrace", "Main Room", "Room 2"). Exactly one is_primary — the main room. If rooms are not documented, return an empty array rather than guessing.
+- spaces: the rooms/stages the venue documents (e.g. "Terrace", "Main Room", "Room 2"). Exactly one is_primary — the main room. If rooms are not documented, return an empty array rather than guessing. Name each room the way the venue itself does, once: "Theatre", "The Theatre" and "Theatre Room" are one room — pick the venue's own spelling and do not list it twice.
 - instagram_account is the bare handle; instagram_url is the full profile URL.
 - lineup_pattern_confidence_score is your confidence in the typical-night pattern specifically, from 0 to 1. lineup_pattern_sample_size is how many concrete nights you read it from.`;
 

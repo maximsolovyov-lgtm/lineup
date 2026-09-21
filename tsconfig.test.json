@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": ["node"], "lib": ["ES2022"] },
-  "include": ["src/**/*.test.ts", "src/lib/datetime.ts"],
+  "include": ["src/**/*.test.ts", "src/lib/datetime.ts", "src/lib/matching.ts", "src/lib/normalize.ts"],
   "exclude": []
 }
