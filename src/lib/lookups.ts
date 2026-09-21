@@ -158,3 +158,21 @@ export function placeSpaceLookup(placeId?: string | null): Lookup {
     },
   };
 }
+
+export function eventLookup(): Lookup {
+  const toOption = (e: { event_id: string; name: string; event_type: string }): LookupOption => ({ id: e.event_id, label: e.name, sublabel: e.event_type });
+  return {
+    search: async (q) => {
+      let query = supabase.from('event').select('event_id,name,event_type').eq('status', 'active').order('name').limit(20);
+      const f = nameFilter(q);
+      if (f) query = query.or(f);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data.map(toOption);
+    },
+    resolve: async (id) => {
+      const { data } = await supabase.from('event').select('event_id,name,event_type').eq('event_id', id).maybeSingle();
+      return data ? toOption(data) : null;
+    },
+  };
+}

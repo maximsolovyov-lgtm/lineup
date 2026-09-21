@@ -929,6 +929,27 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      find_lineups: {
+        Args: {
+          p_artist_id?: string
+          p_date?: string
+          p_days?: number
+          p_event_id?: string
+          p_occurrence_id?: string
+          p_place_id?: string
+        }
+        Returns: {
+          event_date: string
+          event_id: string
+          event_name: string
+          lineups: Json
+          occurrence_id: string
+          occurrence_name: string
+          occurrence_status: Database["public"]["Enums"]["record_status"]
+          primary_place_id: string
+          primary_place_name: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_operator_or_admin: { Args: never; Returns: boolean }
       is_valid_rooms_json: { Args: { j: Json }; Returns: boolean }

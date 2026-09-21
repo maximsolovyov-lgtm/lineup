@@ -74,6 +74,17 @@ export function useLineupVersions(occurrenceId: string | undefined, placeId: str
   });
 }
 
+/** A line-up and its active artists, to start the next version from. */
+export async function fetchLineupForClone(lineupId: string) {
+  const [lineup, artists] = await Promise.all([
+    supabase.from('lineup').select('*').eq('lineup_id', lineupId).maybeSingle(),
+    supabase.from('lineup_artist').select('*').eq('lineup_id', lineupId).eq('status', 'active').order('billing_order', { ascending: true, nullsFirst: false }),
+  ]);
+  if (lineup.error) throw lineup.error;
+  if (artists.error) throw artists.error;
+  return lineup.data ? { lineup: lineup.data, artists: artists.data } : null;
+}
+
 export function useSaveLineup() {
   const qc = useQueryClient();
   return useMutation({

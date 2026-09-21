@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { RECORD_STATUSES } from '@/types/enums';
 import { useLineups, type LineupsListParams } from './api';
+import { LineupFinder } from './LineupFinder';
 
 export function LineupsPage() {
   const navigate = useNavigate();
@@ -32,6 +33,8 @@ export function LineupsPage() {
         </Select>
         <Button asChild><Link to="/lineups/new"><Plus /> New line-up</Link></Button>
       </div>
+
+      <LineupFinder />
 
       <div className="rounded-xl border bg-card">
         <Table>

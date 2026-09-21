@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Copy } from 'lucide-react';
@@ -15,11 +15,13 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { occurrenceLookup, placeLookup } from '@/lib/lookups';
 import { RECORD_STATUSES } from '@/types/enums';
 import { emptyLineupForm, fromRow, lineupFormSchema, toPayload, type LineupFormValues } from './schema';
-import { useLineup, useLineupVersions, useSaveLineup } from './api';
+import { useLineup, useLineupVersions, useSaveLineup, fetchLineupForClone } from './api';
 
 export function LineupFormPage() {
   const { lineupId } = useParams<{ lineupId: string }>();
+  const [params] = useSearchParams();
   const isNew = !lineupId;
+  const [clonedFrom, setClonedFrom] = useState<{ id: string; version: number } | null>(null);
   const navigate = useNavigate();
   const existing = useLineup(lineupId);
   const save = useSaveLineup();
@@ -35,6 +37,30 @@ export function LineupFormPage() {
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.lineup, existing.data.artists));
   }, [existing.data, reset]);
+
+  // Arriving from the finder: the occurrence and place are known, and with
+  // ?from=<lineup> the previous version's artists become the starting point
+  // of the next one (their ids dropped — new rows for a new publication).
+  useEffect(() => {
+    if (!isNew) return;
+    const occurrence = params.get('occurrence');
+    const place = params.get('place');
+    const from = params.get('from');
+    if (!occurrence && !from) return;
+    (async () => {
+      let values = { ...emptyLineupForm, occurrence_id: occurrence ?? '', place_id: place };
+      if (from) {
+        const src = await fetchLineupForClone(from);
+        if (src) {
+          values = { ...values, occurrence_id: src.lineup.occurrence_id, place_id: src.lineup.place_id,
+            artists: fromRow(src.lineup, src.artists).artists.map((a) => ({ ...a, id: null })) };
+          setClonedFrom({ id: from, version: src.lineup.version });
+        }
+      }
+      reset(values, { keepDefaultValues: true });
+    })().catch((e) => toast.error((e as Error).message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, params]);
 
   async function onSubmit(values: LineupFormValues) {
     try {
@@ -114,7 +140,18 @@ export function LineupFormPage() {
         <Field label="Notes" htmlFor="notes" className="sm:col-span-2" hint="Where the announcement was seen; what changed against the previous version.">
           <Textarea id="notes" rows={2} {...register('notes')} />
         </Field>
-        {versions.data && versions.data.length > 0 && (
+        {isNew && versions.data && versions.data.length > 0 && (
+          <div className="sm:col-span-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+            <b>A line-up already exists</b> for this occurrence{placeId ? ' and place' : ' (place not announced)'}:{' '}
+            {versions.data.map((v, i) => (
+              <span key={v.lineup_id}>{i > 0 && ', '}<Link to={`/lineups/${v.lineup_id}`} className="underline">v{v.version}</Link>{v.status !== 'active' && ` (${v.status})`}</span>
+            ))}
+            . Publishing creates <b>v{(versions.data.at(-1)?.version ?? 0) + 1}</b>
+            {clonedFrom ? <> starting from v{clonedFrom.version}</> : null}
+            ; to correct an existing version instead, open it.
+          </div>
+        )}
+        {!isNew && versions.data && versions.data.length > 0 && (
           <div className="sm:col-span-2">
             <p className="text-xs text-muted-foreground">
               Versions for this occurrence{placeId ? '' : ' (place not announced)'}:{' '}

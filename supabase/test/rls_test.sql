@@ -668,6 +668,48 @@ select test.run('lineup: an occurrence with a line-up cannot be removed from its
 select test.run('lineup: nobody can hard-delete a line-up', :admin_id,
   $q$ delete from public.lineup $q$, false);
 
+-- find_lineups ---------------------------------------------------------------------
+select test.run('find: anon cannot call find_lineups', null,
+  $q$ select * from public.find_lineups(p_date := '2026-07-17') $q$, false);
+
+select test.run('find: place + date resolves the occurrence and lists its versions, current first', :operator_id,
+  $q$ do $x$ declare r record; begin
+        select * into r from public.find_lineups(p_date := '2026-07-17', p_place_id := (select place_id from public.place where name = 'UNVRS'));
+        -- line-ups of the searched place come first, newest version first, and the newest is the current one
+        if r.event_name <> 'Circoloco' or jsonb_array_length(r.lineups) < 2
+           or r.lineups -> 0 ->> 'place_name' <> 'UNVRS'
+           or (r.lineups -> 0 ->> 'is_current')::boolean is not true
+           or (r.lineups -> 0 ->> 'version')::int < (r.lineups -> 1 ->> 'version')::int then
+          raise exception 'place+date search wrong: %', r.lineups;
+        end if;
+      end $x$ $q$, true);
+
+select test.run('find: artist + date finds the occurrence through the line-up and flags the matching version', :operator_id,
+  $q$ do $x$ declare r record; begin
+        select * into r from public.find_lineups(p_date := '2026-07-17', p_artist_id := (select artist_id from public.artist where name = 'Keinemusik'));
+        if r.occurrence_id is null or not exists (select 1 from jsonb_array_elements(r.lineups) l where (l ->> 'matches_artist')::boolean) then
+          raise exception 'artist+date search wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('find: event + date with no line-up returns the occurrence with an empty list', :operator_id,
+  $q$ do $x$ declare r record; begin
+        select * into r from public.find_lineups(p_date := '2026-07-24', p_event_id := (select event_id from public.event where name = 'Circoloco' order by created_at desc limit 1));
+        if r.occurrence_id is null or r.lineups <> '[]'::jsonb then raise exception 'empty-lineup case wrong'; end if;
+      end $x$ $q$, true);
+
+select test.run('find: a date window of ±3 days catches the neighbouring occurrence', :operator_id,
+  $q$ do $x$ declare n int; begin
+        select count(*) into n from public.find_lineups(p_date := '2026-07-19', p_event_id := (select event_id from public.event where name = 'Circoloco' order by created_at desc limit 1), p_days := 2);
+        if n <> 1 then raise exception 'expected 1 occurrence, got %', n; end if;
+      end $x$ $q$, true);
+
+select test.run('find: no criteria returns nothing', :operator_id,
+  $q$ do $x$ declare n int; begin
+        select count(*) into n from public.find_lineups();
+        if n <> 0 then raise exception 'expected 0, got %', n; end if;
+      end $x$ $q$, true);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

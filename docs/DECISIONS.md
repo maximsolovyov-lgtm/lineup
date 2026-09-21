@@ -215,3 +215,10 @@ Recorded so they are not rediscovered from scratch:
 |---|---|
 | Two rows for one venue appeared after two agent runs. | Every New form (place, event, artist, person) looks up active rows whose normalised name contains or is contained in the typed name (`src/lib/duplicates.ts`, debounced) and shows them under the name with a link to open each. The **same normalised name blocks Create** until the operator presses "Create anyway"; a merely similar name only warns. Applies whether the name was typed or filled by an agent. |
 | Why not a unique index? | Two different venues can legitimately share a name (Club Space Miami / Space Ibiza), and people do; the operator decides, the form makes sure they saw. |
+
+## Decision 2026-09-21 — finding a line-up
+
+| Question | Decision |
+|---|---|
+| An operator knows a date and a place (or event, or artist), not the occurrence id. | `find_lineups()` (`20260921100000_find_lineups.sql`): any combination of occurrence, date (± a window), event, place, artist → the occurrences that fit, each with its active line-ups (version, place, artists, "current", "has this artist"). A place matches through the occurrence's default place, a line-up announced for it, or a set at it; an artist through line-ups and set participants — placeholders never match. Security invoker. |
+| What the interface does with the answer. | The finder on the Line-ups tab lists each occurrence: **Open** an existing version, **Publish new version** from the current one (its artists prefilled, ids dropped, version = next), or **Create the first line-up** when there is none. The New line-up form, given an occurrence and place that already have versions, shows them in an amber notice with the version it will create — a second first version by accident is the mistake this prevents. |
