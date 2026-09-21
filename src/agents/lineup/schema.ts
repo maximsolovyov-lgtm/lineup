@@ -18,7 +18,8 @@ export const LineupDraftSlotSchema = z.object({
   name: z.string().describe('The act exactly as the announcement prints it, e.g. "Solomun", "Tale Of Us", "Keinemusik"'),
   is_headliner: z.boolean().describe('true for the headliner(s) the announcement emphasises'),
   placeholder: z.enum(['tbd', 'secret_guest']).nullable().describe('"tbd" for a slot printed as TBA/TBC; "secret_guest" for "special guest"/"secret guest"; null for a named act'),
-  room: nullableStr.describe('The room or stage the announcement assigns the act to, if it does'),
+  place: nullableStr.describe('The VENUE the announcement assigns the act to, only when the publication spreads its acts over several venues (Sónar by Day / by Night, "Ushuaïa & Hï"); null when the whole line-up is at one venue or none is named'),
+  room: nullableStr.describe('The room or stage WITHIN the venue the announcement assigns the act to, if it does'),
   note: nullableStr.describe('"b2b with X", "live", "closing set", "all night long" — only if printed'),
 });
 

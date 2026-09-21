@@ -84,6 +84,8 @@ export function EventFormPage() {
                 {r.draft.occurrences.length} date{r.draft.occurrences.length === 1 ? '' : 's'} announced.{' '}
                 {m.matchedPlaces.length > 0 && <>Venues matched to stored places: <b>{m.matchedPlaces.join(', ')}</b>. </>}
                 {m.newPlaces.length > 0 && <>Not in Places yet, created on save and tagged <code>{r.draft.event.name}</code>: <b>{m.newPlaces.join(', ')}</b>. </>}
+                {m.matchedUmbrellas.length > 0 && <>Part of: <b>{m.matchedUmbrellas.join(', ')}</b>. </>}
+                {m.unmatchedUmbrellas.length > 0 && <><span className="text-amber-700">Announced as part of <b>{m.unmatchedUmbrellas.join(', ')}</b>, which is not stored for these dates — create that event first, then pick it under “Part of”.</span> </>}
                 Times not announced were set to 23:00–06:00; check each row.
                 {r.draft.instagram_url && <> Instagram: <a href={r.draft.instagram_url} target="_blank" rel="noreferrer" className="underline">{r.draft.instagram_url}</a></>}
               </p>

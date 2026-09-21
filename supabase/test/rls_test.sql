@@ -521,6 +521,47 @@ select test.run('events: new_place with the name of an existing venue reuses it 
         end if;
       end $x$ $q$, true);
 
+-- Umbrella occurrences (Miami Music Week, ADE) -------------------------------------------
+select test.run('events: a party can be part of an umbrella occurrence, and the umbrella lists its parts', :operator_id,
+  $q$ do $x$ declare v_mmw uuid; v_umb uuid; v_ev uuid; v_part uuid; n int; begin
+        v_mmw := public.save_event_with_occurrences(
+          '{"name":"Miami Music Week","event_type":"festival"}'::jsonb,
+          '[{"event_date":"2027-03-23","starts_at":"2027-03-23T12:00:00-04:00","ends_at":"2027-03-28T23:59:00-04:00","timezone":"America/New_York","occurrence_name":"MMW 2027"}]'::jsonb);
+        select occurrence_id into v_umb from public.event_occurrence where event_id = v_mmw;
+        v_ev := public.save_event_with_occurrences(
+          '{"name":"Circoloco Miami","event_type":"party"}'::jsonb,
+          jsonb_build_array(jsonb_build_object('event_date','2027-03-26','starts_at','2027-03-26T22:00:00-04:00','ends_at','2027-03-27T06:00:00-04:00',
+                                               'timezone','America/New_York','part_of_occurrence_id', v_umb)));
+        select occurrence_id into v_part from public.event_occurrence where event_id = v_ev;
+        if (select part_of_occurrence_id from public.event_occurrence where occurrence_id = v_part) <> v_umb then
+          raise exception 'part_of not stored';
+        end if;
+        select count(*) into n from public.find_lineups(p_occurrence_id => v_umb) f where f.occurrence_id = v_part and f.part_of_name like 'Miami Music Week%';
+        if n <> 1 then raise exception 'umbrella occurrence does not list its part (%)', n; end if;
+        select count(*) into n from public.find_lineups(p_event_id => v_mmw, p_date => '2027-03-26') f where f.occurrence_id = v_part;
+        if n <> 1 then raise exception 'umbrella event does not list its part on the date (%)', n; end if;
+      end $x$ $q$, true);
+
+select test.run('events: an umbrella cannot itself be part of another, and a part cannot be an umbrella', :operator_id,
+  $q$ do $x$ declare v_umb uuid; v_part uuid; v_other uuid; ok boolean := false; begin
+        select eo.occurrence_id into v_umb from public.event_occurrence eo join public.event e on e.event_id = eo.event_id where e.name = 'Miami Music Week';
+        select eo.occurrence_id into v_part from public.event_occurrence eo join public.event e on e.event_id = eo.event_id where e.name = 'Circoloco Miami';
+        select eo.occurrence_id into v_other from public.event_occurrence eo join public.event e on e.event_id = eo.event_id where e.name = 'Burning Man' limit 1;
+        begin
+          update public.event_occurrence set part_of_occurrence_id = v_other where occurrence_id = v_umb;
+        exception when check_violation then ok := true; end;
+        if not ok then raise exception 'umbrella accepted a parent'; end if;
+        ok := false;
+        begin
+          update public.event_occurrence set part_of_occurrence_id = v_part where occurrence_id = v_other;
+        exception when check_violation then ok := true; end;
+        if not ok then raise exception 'a part accepted children'; end if;
+        begin
+          update public.event_occurrence set part_of_occurrence_id = v_umb where occurrence_id = v_umb;
+          raise exception 'self-reference accepted';
+        exception when check_violation then null; end;
+      end $x$ $q$, true);
+
 -- Line-ups and performance sets (stage 2) ---------------------------------------------
 select test.run('lineup: anon cannot call save_lineup', null,
   $q$ select public.save_lineup('{"occurrence_id":"00000000-0000-4000-8000-000000000001"}'::jsonb, '[]'::jsonb) $q$, false);

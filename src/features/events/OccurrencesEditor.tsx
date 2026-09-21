@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LookupField } from '@/components/form/LookupField';
-import { placeLookup } from '@/lib/lookups';
+import { occurrenceLookup, placeLookup } from '@/lib/lookups';
 import { formatInZone } from '@/lib/datetime';
 import { RECORD_STATUSES } from '@/types/enums';
 import { addDays, emptyOccurrence, occurrenceWindow, type OccurrenceFormValue } from './schema';
@@ -37,6 +37,10 @@ const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[9.5rem_5.5rem_9.5r
  */
 export function OccurrencesEditor({ value, onChange, errors, eventName, disabled }: OccurrencesEditorProps) {
   const lookup = useMemo(() => placeLookup(), []);
+  // Umbrellas a date can be part of: any occurrence but this event's own rows.
+  const own = new Set(value.map((o) => o.occurrence_id).filter(Boolean));
+  const umbrellas = useMemo(() => occurrenceLookup(), []);
+  const umbrellaSearch = async (q: string) => (await umbrellas.search(q)).filter((o) => !own.has(o.id));
 
   function update(i: number, patch: Partial<OccurrenceFormValue>) {
     onChange(value.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
@@ -100,7 +104,7 @@ export function OccurrencesEditor({ value, onChange, errors, eventName, disabled
                 <Trash2 />
               </Button>
             </div>
-            <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)_4.5rem_minmax(0,18rem)]">
               <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Default place</span>
               {o.new_place && !o.primary_place_id ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-[#C9BCE6] bg-secondary/40 px-3 py-1.5 text-sm">
@@ -117,6 +121,8 @@ export function OccurrencesEditor({ value, onChange, errors, eventName, disabled
               ) : (
                 <LookupField value={o.primary_place_id} onChange={(id) => void setPlace(i, id)} search={lookup.search} resolve={lookup.resolve} placeholder="Search places… (empty = not the place of any set, just the default)" disabled={disabled} />
               )}
+              <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" title="The umbrella this date belongs to — Miami Music Week, ADE, a closing weekend">Part of</span>
+              <LookupField value={o.part_of_occurrence_id} onChange={(id) => update(i, { part_of_occurrence_id: id })} search={umbrellaSearch} resolve={umbrellas.resolve} placeholder="Umbrella, e.g. Miami Music Week 2027" disabled={disabled} />
             </div>
             <div className="flex flex-wrap items-center gap-x-3 px-1 text-xs text-muted-foreground">
               <span>{o.timezone || 'browser zone'}</span>

@@ -59,7 +59,9 @@ and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
   `save_event_with_occurrences()`; `draft.occurrences` are the announced
   dates from today on (business day, venue name and city, times when
   announced). The UI matches each venue to a stored place by name; unmatched
-  venues stay in the occurrence name for the operator to resolve.
+  venues stay in the occurrence name for the operator to resolve. `part_of`
+  names the umbrella a date is announced under (Miami Music Week, ADE); the
+  form resolves it to the stored umbrella occurrence covering that date.
 - **lineup** — reads labelled keywords (`event: …; date: …; place: …;
   occurrence: none in the system; current line-up: …`) and answers two
   questions in one draft: `draft.occurrence` — the night itself, filled when
@@ -68,7 +70,9 @@ and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
   and `draft.lineup` — the announced roster as printed (billing order,
   headliner flags, `tbd`/`secret_guest` placeholders, room, note), `complete`
   false for "+ more TBA", `place_name` only when the announcement names the
-  venue, `published_at` and `source_url` when shown. `lineup` is null when
+  venue, `published_at` and `source_url` when shown. Each act may carry
+  `place` when the publication spreads its acts over several venues; the
+  generator then asks which venue to fill. `lineup` is null when
   nothing is published yet. Never invents names. The request may carry
   `site: https://…` (the venue's and the event's `website_url`): before the
   model runs, `agents/sitemap.ts` reads that site's sitemap and puts the

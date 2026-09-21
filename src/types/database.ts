@@ -180,6 +180,7 @@ export type Database = {
           event_id: string
           occurrence_id: string
           occurrence_name: string | null
+          part_of_occurrence_id: string | null
           primary_place_id: string | null
           starts_at: string
           status: Database["public"]["Enums"]["record_status"]
@@ -193,6 +194,7 @@ export type Database = {
           event_id: string
           occurrence_id?: string
           occurrence_name?: string | null
+          part_of_occurrence_id?: string | null
           primary_place_id?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["record_status"]
@@ -206,6 +208,7 @@ export type Database = {
           event_id?: string
           occurrence_id?: string
           occurrence_name?: string | null
+          part_of_occurrence_id?: string | null
           primary_place_id?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["record_status"]
@@ -219,6 +222,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "event"
             referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_occurrence_part_of_occurrence_id_fkey"
+            columns: ["part_of_occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "event_occurrence"
+            referencedColumns: ["occurrence_id"]
           },
           {
             foreignKeyName: "event_occurrence_primary_place_id_fkey"
@@ -946,6 +956,8 @@ export type Database = {
           occurrence_id: string
           occurrence_name: string
           occurrence_status: Database["public"]["Enums"]["record_status"]
+          part_of_name: string
+          part_of_occurrence_id: string
           primary_place_id: string
           primary_place_name: string
         }[]

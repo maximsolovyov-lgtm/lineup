@@ -178,6 +178,7 @@ Table event_occurrence {
   occurrence_id uuid [pk]
   event_id uuid [not null, ref: > event.event_id, note: 'Searchable Event lookup']
   primary_place_id uuid [ref: > place.place_id, note: 'Searchable Place lookup. Main/default location for the occurrence. Multi-venue detail lives on PerformanceSet.place_id.']
+  part_of_occurrence_id uuid [ref: > event_occurrence.occurrence_id, note: 'Repo addition 2026-09-21 (docs/DECISIONS.md): the umbrella occurrence this date is part of — Miami Music Week 2027, ADE 2026. One level only. Null for a stand-alone date.']
   occurrence_name varchar
   starts_at timestamptz [not null]
   ends_at timestamptz [not null]

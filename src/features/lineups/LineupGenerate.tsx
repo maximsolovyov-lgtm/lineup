@@ -32,7 +32,23 @@ type Stage =
   | { kind: 'done'; message: ReactNode; tone: 'ok' | 'warn' | 'info' }
   | { kind: 'proposeOccurrence'; draft: LineupDraft; result: AgentResult<LineupDraft>; params: FinderParams }
   | { kind: 'proposeVersion'; occ: FoundOccurrence; current: FoundLineup; draft: LineupDraft; diff: RosterDiff; result: AgentResult<LineupDraft> }
-  | { kind: 'candidates'; candidates: Candidate[]; keywords: string; occ: FoundOccurrence | null; params: FinderParams };
+  | { kind: 'candidates'; candidates: Candidate[]; keywords: string; occ: FoundOccurrence | null; params: FinderParams }
+  | { kind: 'chooseVenue'; groups: VenueGroup[]; result: AgentResult<LineupDraft>; occ: FoundOccurrence; params: FinderParams };
+
+type PublishedLineup = NonNullable<LineupDraft['lineup']>;
+interface VenueGroup { place: string | null; acts: PublishedLineup['artists'] }
+
+/** The acts of a publication grouped by the venue it assigns them to; one group when it assigns none. */
+function venueGroups(lineup: PublishedLineup): VenueGroup[] {
+  const groups = new Map<string | null, PublishedLineup['artists']>();
+  for (const a of lineup.artists) {
+    const key = a.place?.trim() || null;
+    groups.set(key, [...(groups.get(key) ?? []), a]);
+  }
+  const named = [...groups.entries()].filter(([k]) => k !== null);
+  if (named.length === 0) return [{ place: null, acts: lineup.artists }];
+  return [...named, ...(groups.has(null) ? [[null, groups.get(null)!] as const] : [])].map(([place, acts]) => ({ place, acts }));
+}
 
 /**
  * "Find and AI generate" on the New line-up page. The finder resolves the
@@ -98,13 +114,19 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
       const keywords = keywordsFor(params, occ, current ? current.artists : null, await siteHints(params.placeId ?? occ.primary_place_id, occ.event_id));
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ, params }); return; }
-      await afterResearch(r, occ, current, params);
+      await afterResearch(r, occ, params);
     } catch (e) {
       setStage({ kind: 'done', tone: 'warn', message: <>{(e as Error).message}</> });
     }
   }
 
-  async function afterResearch(r: AgentResult<LineupDraft>, occ: FoundOccurrence, current: FoundLineup | null, params: FinderParams) {
+  /**
+   * The publication is in hand. A publication that spreads its acts over
+   * several venues is one line-up per venue (version per (occurrence, place)):
+   * the operator picks which venue to fill — `venue` undefined means not asked
+   * yet, null means the acts the publication attributes to no venue.
+   */
+  async function afterResearch(r: AgentResult<LineupDraft>, occ: FoundOccurrence, params: FinderParams, venue?: string | null) {
     const draft = r.draft;
     if (r.outcome !== 'draft' || !draft || !draft.lineup) {
       setStage({ kind: 'done', tone: 'info', message: <><b>No line-up published yet</b> for {occ.event_name} on {occ.event_date}. {r.notes}{sourcesLine(r)}</> });
@@ -112,19 +134,36 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
       onFill({ occurrence_id: occ.occurrence_id, place_id: params.placeId ?? occ.primary_place_id, published_at: '', notes: '', artists: [], fromLineupId: null });
       return;
     }
-    const placeId = await resolvePlace(draft.lineup.place_name, params.placeId ?? occ.primary_place_id, occ);
+    const groups = venueGroups(draft.lineup);
+    if (venue === undefined && groups.length > 1) {
+      setStage({ kind: 'chooseVenue', groups, result: r, occ, params });
+      return;
+    }
+    const group = venue === undefined ? groups[0]! : groups.find((g) => g.place === venue) ?? groups[0]!;
+    const lineup: PublishedLineup = venue === undefined ? draft.lineup : { ...draft.lineup, artists: group.acts, place_name: venue };
+    // A venue the publication names is the line-up's place when it is stored. Acts attributed
+    // to a venue that is not stored get place null — attributing them to the default place
+    // would assert something the publication did not say.
+    const announced = lineup.place_name;
+    const stored = announced ? await resolvePlace(announced, null, occ) : null;
+    const placeId = announced ? stored : (params.placeId ?? occ.primary_place_id);
+    const placeNote = announced && !stored ? `The publication puts these acts at "${announced}", which is not a stored place — the line-up is saved with place not announced; create the place and pick it if that is wrong.` : null;
+    const lineups = (occ.lineups as unknown as FoundLineup[]) ?? [];
+    const current = lineups.find((l) => l.is_current && (l.place_id ?? null) === placeId) ?? null;
+    const others = groups.filter((g) => g !== group).map((g) => `${g.place ?? 'not attributed'} (${g.acts.length})`);
+    const tail = [placeNote, others.length > 0 ? `The publication also covers ${others.join(', ')}: run “Find & AI generate” again for those after saving.` : null].filter(Boolean).join(' ');
+    const r2: AgentResult<LineupDraft> = tail ? { ...r, notes: [r.notes, tail].filter(Boolean).join(' ') } : r;
     if (!current) {
-      await fillFrom(occ, placeId, draft.lineup, r, null);
+      await fillFrom(occ, placeId, lineup, r2, null);
       return;
     }
-    const stored = current.artists.map((n) => ({ name: n, is_headliner: false }));
     // Headliner flags are not in the finder's summary; compare names and placeholders only.
-    const diff = compareRosters(stored, draft.lineup.artists.map((a) => ({ ...a, is_headliner: false })));
+    const diff = compareRosters(current.artists.map((n) => ({ name: n, is_headliner: false })), lineup.artists.map((a) => ({ ...a, is_headliner: false })));
     if (diff.same) {
-      setStage({ kind: 'done', tone: 'ok', message: <><b>Nothing changed.</b> The published line-up matches v{current.version} ({current.artist_count} artists).{sourcesLine(r)}</> });
+      setStage({ kind: 'done', tone: 'ok', message: <><b>Nothing changed.</b> The published line-up matches v{current.version} ({current.artist_count} artists){current.place_name ? ` at ${current.place_name}` : ''}.{tail && <> {tail}</>}{sourcesLine(r)}</> });
       return;
     }
-    setStage({ kind: 'proposeVersion', occ, current, draft, diff, result: r });
+    setStage({ kind: 'proposeVersion', occ, current, draft: { ...draft, lineup }, diff, result: r2 });
   }
 
   // Scenario 4: nothing stored — research the night itself.
@@ -190,7 +229,11 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
                 <li key={o.occurrence_id} className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <span className="font-medium">{o.event_name}</span>
                   <span className="text-muted-foreground">· {o.event_date}{o.occurrence_name ? ` · ${o.occurrence_name}` : ''} · {o.primary_place_name ?? 'no default place'}</span>
+                  {o.part_of_name && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">part of {o.part_of_name}</span>}
                   <span className="text-xs text-muted-foreground">{n === 0 ? 'no line-up yet' : `${n} line-up version${n === 1 ? '' : 's'}`}</span>
+                  {stage.params.placeId && o.primary_place_id !== stage.params.placeId && ((o.lineups as unknown as FoundLineup[]) ?? []).some((l) => l.place_id === stage.params.placeId) && (
+                    <span className="text-xs text-muted-foreground">found through its line-up at the searched place</span>
+                  )}
                   <span className="flex-1" />
                   <Button type="button" size="sm" onClick={() => void handleOccurrence(o, stage.params)}>This one</Button>
                 </li>
@@ -213,8 +256,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
                   try {
                     const r = await research(stage.keywords, c);
                     if (stage.occ) {
-                      const lineups = (stage.occ.lineups as unknown as FoundLineup[]) ?? [];
-                      await afterResearch(r, stage.occ, lineups.find((l) => l.is_current) ?? null, stage.params);
+                      await afterResearch(r, stage.occ, stage.params);
                     } else if (r.outcome === 'draft' && r.draft?.occurrence) {
                       setStage({ kind: 'proposeOccurrence', draft: r.draft, result: r, params: stage.params });
                     } else {
@@ -225,6 +267,23 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {stage.kind === 'chooseVenue' && (
+        <div className="space-y-2 rounded-md border p-3 text-sm">
+          <b>The publication covers {stage.groups.filter((g) => g.place).length} venues.</b> A line-up is one publication for one place — which one to fill?
+          <ul className="divide-y rounded-md border">
+            {stage.groups.map((g) => (
+              <li key={g.place ?? '∅'} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <span className={g.place ? 'font-medium' : 'italic'}>{g.place ?? 'Not attributed to a venue'}</span>
+                <span className="text-xs text-muted-foreground">{g.acts.length} act{g.acts.length === 1 ? '' : 's'}: {g.acts.slice(0, 6).map((a) => a.name).join(', ')}{g.acts.length > 6 ? '…' : ''}</span>
+                <span className="flex-1" />
+                <Button type="button" size="sm" onClick={() => void afterResearch(stage.result, stage.occ, stage.params, g.place).catch((e) => setStage({ kind: 'done', tone: 'warn', message: <>{(e as Error).message}</> }))}>Fill this one</Button>
+              </li>
+            ))}
+          </ul>
+          <span className="block text-xs text-muted-foreground">{stage.result.notes}{sourcesLine(stage.result)}</span>
         </div>
       )}
 
@@ -282,7 +341,7 @@ function describeOcc(o: LineupDraft['occurrence']): string {
   return `${o.event_name} on ${o.event_date}${o.place_name ? ` at ${o.place_name}` : ''}${o.city ? `, ${o.city}` : ''}`;
 }
 
-/** The place a published line-up is for: the announced venue if it is stored, else the default given. */
+/** The place a published line-up is for: the announced venue if it is stored, else the fallback given (null = not announced). */
 async function resolvePlace(announced: string | null, fallback: string | null, occ: FoundOccurrence): Promise<string | null> {
   if (!announced) return fallback;
   const { supabase } = await import('@/lib/supabase');

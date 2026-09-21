@@ -126,6 +126,10 @@ export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'se
                   <Link to={`/events/${r.event_id}`} className="font-medium underline-offset-2 hover:underline">{r.event_name}</Link>
                   <span className="text-muted-foreground">· {r.event_date}{r.occurrence_name ? ` · ${r.occurrence_name}` : ''}</span>
                   <span className={r.primary_place_name ? 'text-muted-foreground' : 'italic text-muted-foreground'}>· {r.primary_place_name ?? 'no default place'}</span>
+                  {r.part_of_name && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground" title="This date is part of an umbrella occurrence">part of {r.part_of_name}</span>}
+                  {placeId && r.primary_place_id !== placeId && lineups.some((l) => l.place_id === placeId) && (
+                    <span className="text-xs text-muted-foreground" title="The searched place is not this occurrence's default place; it was found through a line-up announced for it">found through its line-up at the searched place</span>
+                  )}
                   {r.occurrence_status !== 'active' && <StatusBadge status={r.occurrence_status} />}
                 </div>
                 {lineups.length === 0 ? (

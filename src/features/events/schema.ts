@@ -32,6 +32,8 @@ export const occurrenceSchema = z.object({
   end_date: date,
   primary_place_id: z.string().uuid().nullable(),
   new_place: newPlaceSchema.nullable(),
+  /** The umbrella occurrence (Miami Music Week 2027, ADE) this date is part of. */
+  part_of_occurrence_id: z.string().uuid().nullable(),
   timezone: z.string(),
   start_time: time,
   end_time: time,
@@ -61,7 +63,7 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 export function emptyOccurrence(timezone: string): OccurrenceFormValue {
-  return { occurrence_id: null, start_date: '', end_date: '', primary_place_id: null, new_place: null, timezone, start_time: '23:00', end_time: '06:00', occurrence_name: '', status: 'active' };
+  return { occurrence_id: null, start_date: '', end_date: '', primary_place_id: null, new_place: null, part_of_occurrence_id: null, timezone, start_time: '23:00', end_time: '06:00', occurrence_name: '', status: 'active' };
 }
 
 export function fromRow(row: EventRow, occurrences: OccurrenceRow[]): EventFormValues {
@@ -80,6 +82,7 @@ export function fromRow(row: EventRow, occurrences: OccurrenceRow[]): EventFormV
         end_date: end.slice(0, 10) || o.event_date,
         primary_place_id: o.primary_place_id,
         new_place: null,
+        part_of_occurrence_id: o.part_of_occurrence_id,
         timezone: o.timezone ?? '',
         start_time: start.slice(11, 16),
         end_time: end.slice(11, 16),
@@ -133,6 +136,7 @@ export function toPayload(v: EventFormValues, eventId: string | null): SaveEvent
         ends_at: w?.ends_at ?? null,
         timezone: nullIfEmpty(o.timezone),
         occurrence_name: nullIfEmpty(o.occurrence_name),
+        part_of_occurrence_id: o.part_of_occurrence_id,
         status: o.status,
       };
     }),

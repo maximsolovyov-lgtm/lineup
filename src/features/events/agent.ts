@@ -11,6 +11,36 @@ export interface EventDraftMapping {
   matchedPlaces: string[];
   /** Venue names with no stored place — carried as new_place, created on save and tagged with the event. */
   newPlaces: string[];
+  /** Umbrellas the draft named that matched a stored occurrence covering the date. */
+  matchedUmbrellas: string[];
+  /** Umbrellas named but not stored (or not covering the date): create the umbrella event first, then pick it. */
+  unmatchedUmbrellas: string[];
+}
+
+/**
+ * "Part of Miami Music Week" → the stored occurrence of that event whose
+ * days cover the date. Matched by the event's normalised name; the umbrella
+ * must exist already — creating it here would hide a second brand inside
+ * one save.
+ */
+async function resolveUmbrellas(occurrences: EventDraft['occurrences']): Promise<Map<string, string | null>> {
+  const wanted = new Map<string, string>(); // normalised → as printed
+  for (const o of occurrences) if (o.part_of) wanted.set(normalizeName(o.part_of), o.part_of);
+  const out = new Map<string, string | null>();
+  if (wanted.size === 0) return out;
+  const { data } = await supabase.from('event_occurrence')
+    .select('occurrence_id,event_date,starts_at,ends_at,event!inner(normalized_name)')
+    .in('status', ['active', 'draft']).in('event.normalized_name', [...wanted.keys()]);
+  for (const o of occurrences) {
+    if (!o.part_of) continue;
+    const key = `${normalizeName(o.part_of)}|${o.event_date}`;
+    if (out.has(key)) continue;
+    const day = Date.parse(`${o.event_date}T12:00:00Z`);
+    const hit = (data ?? []).find((u) => (u.event as unknown as { normalized_name: string }).normalized_name === normalizeName(o.part_of!)
+      && Date.parse(u.starts_at) - 36e5 * 36 <= day && day <= Date.parse(u.ends_at) + 36e5 * 36);
+    out.set(key, hit?.occurrence_id ?? null);
+  }
+  return out;
 }
 
 /**
@@ -31,11 +61,16 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
     }
   }
 
+  const umbrellas = await resolveUmbrellas(d.occurrences);
   const matched = new Set<string>();
   const created = new Set<string>();
+  const matchedUmbrellas = new Set<string>();
+  const unmatchedUmbrellas = new Set<string>();
   const occurrences: OccurrenceFormValue[] = d.occurrences.map((o) => {
     const hit = o.place_name ? places.get(normalizeName(o.place_name)) : null;
     if (o.place_name) (hit ? matched : created).add(o.place_name);
+    const umbrella = o.part_of ? umbrellas.get(`${normalizeName(o.part_of)}|${o.event_date}`) ?? null : null;
+    if (o.part_of) (umbrella ? matchedUmbrellas : unmatchedUmbrellas).add(o.part_of);
     const start_time = o.start_time ?? '23:00';
     const end_time = o.end_time ?? '06:00';
     // No end day given: the same night, which is the next morning when the close is before the start.
@@ -53,6 +88,7 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
         timezone: str(o.timezone),
         lifecycle_type: o.place_lifecycle_type ?? (d.event.event_type === 'festival' ? 'temporary' : 'permanent'),
       } : null,
+      part_of_occurrence_id: umbrella,
       timezone: hit?.timezone ?? str(o.timezone),
       start_time,
       end_time,
@@ -73,5 +109,7 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
     },
     matchedPlaces: Array.from(matched),
     newPlaces: Array.from(created),
+    matchedUmbrellas: Array.from(matchedUmbrellas),
+    unmatchedUmbrellas: Array.from(unmatchedUmbrellas),
   };
 }

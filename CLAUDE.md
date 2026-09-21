@@ -14,7 +14,8 @@ here when the documents were silent or contradicted each other.
 
 Built and working: authentication with admin/operator roles, Places with
 their rooms (`place_space`), People, Artists with their members, Events with
-their occurrences, Users management, RLS across every table. Every parent is
+their occurrences (an occurrence may be *part of* an umbrella one — Miami
+Music Week, ADE), Users management, RLS across every table. Every parent is
 saved with its children through one RPC (`save_*_with_*` functions). Research
 agents (`docs/AGENTS.md`) draft any of the four master-data records from
 keywords.

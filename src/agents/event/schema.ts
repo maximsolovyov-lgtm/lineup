@@ -21,6 +21,7 @@ export const EventDraftOccurrenceSchema = z.object({
   start_time: hhmm.describe('Doors/start; null if not announced'),
   end_time: hhmm.describe('Close; null if not announced'),
   occurrence_name: nullableStr.describe('The name of this edition or night as announced, filled whenever one exists: "Tomorrowland Winter", "Opening Party", "Closing Party", "Weekend 2", "Circoloco x DC-10 Season Opening". null only when the date has no name of its own'),
+  part_of: nullableStr.describe('The umbrella week or festival this date is announced as part of — "Miami Music Week", "ADE", "Ibiza Closing Weekend" — null when it stands alone'),
   source: nullableStr.describe('URL of the announcement'),
 });
 
