@@ -22,8 +22,22 @@ export interface FinderParams {
   artistName: string | null;
 }
 
+/**
+ * The venue's and the event's own sites. The agent's web_fetch can only open
+ * URLs it has been given or found; the venue's site is where the line-up is
+ * published, and its sitemap names the page for the night.
+ */
+export async function siteHints(placeId: string | null, eventId: string | null): Promise<string[]> {
+  const [pl, ev] = await Promise.all([
+    placeId ? supabase.from('place').select('website_url').eq('place_id', placeId).maybeSingle() : null,
+    eventId ? supabase.from('event').select('website_url').eq('event_id', eventId).maybeSingle() : null,
+  ]);
+  const sites = [pl?.data?.website_url, ev?.data?.website_url].filter((u): u is string => !!u && /^https?:\/\//i.test(u));
+  return [...new Set(sites)].map((u) => `site: ${u}`);
+}
+
 /** The labelled keywords the line-up agent reads. */
-export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, current: string[] | null): string {
+export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, current: string[] | null, sites: string[] = []): string {
   const parts: string[] = [];
   if (occ) {
     parts.push(`occurrence: ${occ.event_name} on ${occ.event_date}${occ.occurrence_name ? ` (${occ.occurrence_name})` : ''}${occ.primary_place_name ? ` at ${occ.primary_place_name}` : ''}`);
@@ -37,6 +51,7 @@ export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, curren
   }
   if (p.artistName) parts.push(`artist: ${p.artistName}`);
   if (current && current.length > 0) parts.push(`current line-up: ${current.join(', ')}`);
+  parts.push(...sites);
   return parts.join('; ');
 }
 

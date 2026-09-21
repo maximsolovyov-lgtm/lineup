@@ -7,6 +7,7 @@ import { ArtistDraftSchema, type ArtistDraft } from '../src/agents/artist/schema
 import { PersonDraftSchema, type PersonDraft } from '../src/agents/person/schema';
 import { EventDraftSchema, type EventDraft } from '../src/agents/event/schema';
 import { LineupDraftSchema, type LineupDraft } from '../src/agents/lineup/schema';
+import { findPagesOnSite } from './sitemap';
 import type { AgentKind } from '../src/agents/common';
 import type { AgentKindDefinition } from './research';
 import { placeAgent } from './place/agent';
@@ -70,21 +71,40 @@ Field semantics:
 - Do not include past dates and do not include line-ups: this record is the brand and its calendar, the line-ups come later.`,
 };
 
+/** The labelled keywords the line-up agent receives: "label: value". */
+function labelled(keywords: string[], label: string): string[] {
+  const re = new RegExp(`^${label}\\s*:\\s*(.+)$`, 'i');
+  return keywords.map((k) => re.exec(k.trim())?.[1]?.trim()).filter((v): v is string => !!v);
+}
+
 export const lineupAgent: AgentKindDefinition<LineupDraft> = {
   kind: 'lineup',
   noun: 'published line-up',
   draftSchema: LineupDraftSchema,
   maxSearches: 8,
-  maxFetches: 8,
-  systemPrompt: `You are the line-up research agent of LineApp, an admin tool for nightlife and electronic-music line-ups. The operator describes ONE night — a date and an event brand, a venue, or an artist, as labelled keywords such as "event: Solomun +1; date: 2026-10-04; place: Pacha Ibiza, Ibiza; current line-up: Solomun, Adriatique" — and you find whether a line-up has been PUBLISHED for that night and what it says.
+  maxFetches: 10,
+  // "site: https://…" keywords name the venue's and the event's own sites:
+  // their sitemaps give the page for the night, which the model could not
+  // otherwise reach (see agents/sitemap.ts).
+  prepare: async (keywords) => {
+    const sites = [...new Set(labelled(keywords, '(?:place |event |venue )?site'))];
+    if (sites.length === 0) return null;
+    const date = labelled(keywords, 'date')[0]?.slice(0, 10) ?? null;
+    const terms = [...labelled(keywords, 'event'), ...labelled(keywords, 'artist')];
+    const found = (await Promise.all(sites.map((s) => findPagesOnSite(s, date, terms)))).flat();
+    const urls = [...new Set(found)];
+    if (urls.length === 0) return `The venue/event sites (${sites.join(', ')}) are known; their sitemaps list no page for this night. Search for the announcement elsewhere (Resident Advisor, the promoter, Instagram, ticket sites).`;
+    return `Pages on the venue's or event's own site for this night, taken from its sitemap — fetch these FIRST, they are the announcement itself:\n${urls.map((u) => `- ${u}`).join('\n')}`;
+  },
+  systemPrompt: `You are the line-up research agent of LineApp, an admin tool for nightlife and electronic-music line-ups. The operator describes ONE night — a date and an event brand, a venue, or an artist, as labelled keywords such as "event: Solomun +1; date: 2026-10-04; place: Pacha Ibiza, Ibiza; site: https://pacha.com; current line-up: Solomun, Adriatique" — and you find whether a line-up has been PUBLISHED for that night and what it says.
 
 How to work:
-1. Find the announcement: web_search the event, venue and date; web_fetch the venue's event page, the promoter's site or Instagram, Resident Advisor (ra.co) or the ticket page. The announcement itself is the source — a listing that merely repeats it is second best.
-2. Read the roster exactly as printed: every act, in billing order, who is emphasised as the headliner, which slots are "TBA"/"TBC" (placeholder tbd) or "special/secret guest" (placeholder secret_guest), whether more names are promised ("+ more TBA" → complete = false), and the venue and date the announcement states.
+1. Find the announcement. When the request lists pages from the venue's own site, fetch them first: a venue's date page that names the acts IS the published line-up for that date. Otherwise web_search the event, venue and date — try the date in several forms ("26 September 2026", "Sept 26", "2026-09-26", "26/09") and the venue's own domain — and web_fetch the venue's event page, the promoter's site or Instagram, Resident Advisor (ra.co) or the ticket page. The announcement itself is the source — a listing that merely repeats it is second best. You can only fetch URLs that appeared in the request, in search results or in a page you fetched; venue listing pages are often JavaScript-rendered and show no links, so search for the date page directly rather than browsing.
+2. Read the roster exactly as printed: every act, in billing order, who is emphasised as the headliner, which slots are "TBA"/"TBC" (placeholder tbd) or "special/secret guest" (placeholder secret_guest), whether more names are promised ("+ more TBA" → complete = false), and the venue and date the announcement states. A page that lists acts per room (Theatre, Club Room, Main Room…) is a line-up: keep every room's acts, with room filled.
 3. Return ONLY the structured answer.
 
 Rules:
-- If NO line-up has been published for that night, return lineup = null and say so in notes — do not invent a roster from residents or past nights, and do not use another date's line-up.
+- If NO line-up has been published for that night, return lineup = null and say so in notes — do not invent a roster from a residency's general description or from past nights, and do not use another date's line-up. But the acts a residency's page names FOR THAT DATE are published: return them.
 - Names as printed, once each. Do not expand a collective into its members, do not rename acts. A "b2b" is one slot per act with note "b2b with X".
 - lineup.place_name only when the announcement names the venue; a multi-venue event without attribution is null.
 - occurrence: when the request names no stored night ("occurrence: none in the system"), describe the night you found (event brand, business day, venue, city, country, times). When the request names a night and the publication agrees, occurrence = null. When the publication gives a different date or venue, fill occurrence with what it says and set date_or_venue_changed = true — never silently agree.

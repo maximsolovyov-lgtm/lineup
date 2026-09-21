@@ -23,6 +23,13 @@ export interface AgentKindDefinition<TDraft> {
   systemPrompt: string;
   maxSearches?: number;
   maxFetches?: number;
+  /**
+   * Runs before the model is called; whatever it returns is appended to the
+   * user message. The line-up agent uses it to list the venue site's pages
+   * for the night — web_fetch opens only URLs that already appeared in the
+   * conversation, and a JavaScript-rendered listing shows the model none.
+   */
+  prepare?: (keywords: string[]) => Promise<string | null>;
   /** Runs on a draft outcome before it is returned; may enrich the draft and the notes/sources. */
   postProcess?: (draft: TDraft, ctx: { notes: string; sources: string[] }) => Promise<{ draft: TDraft; notes: string; sources: string[] }>;
 }
@@ -54,8 +61,9 @@ export async function runResearch<TDraft>(
   const chosen = candidate
     ? `\n\nThe operator chose this candidate from an earlier "ambiguous" answer — research exactly this one:\n${JSON.stringify(candidate)}`
     : '';
+  const prepared = def.prepare ? await def.prepare(keywords).catch(() => null) : null;
   const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: `Today is ${today}.\nKeywords: ${keywords.map((k) => JSON.stringify(k)).join('; ')}${chosen}\n\nResearch this ${def.noun} and answer with the structured outcome.` },
+    { role: 'user', content: `Today is ${today}.\nKeywords: ${keywords.map((k) => JSON.stringify(k)).join('; ')}${chosen}${prepared ? `\n\n${prepared}` : ''}\n\nResearch this ${def.noun} and answer with the structured outcome.` },
   ];
 
   let usage = { input_tokens: 0, output_tokens: 0, web_searches: 0 };

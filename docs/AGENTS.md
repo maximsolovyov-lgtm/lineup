@@ -69,7 +69,14 @@ and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
   headliner flags, `tbd`/`secret_guest` placeholders, room, note), `complete`
   false for "+ more TBA", `place_name` only when the announcement names the
   venue, `published_at` and `source_url` when shown. `lineup` is null when
-  nothing is published yet. Never invents names.
+  nothing is published yet. Never invents names. The request may carry
+  `site: https://…` (the venue's and the event's `website_url`): before the
+  model runs, `agents/sitemap.ts` reads that site's sitemap and puts the
+  page URLs for the date (or the brand) into the user message — web_fetch
+  can only open URLs that already appeared in the conversation, and venue
+  listings are JavaScript-rendered, so without this the model never reaches
+  `hiibiza.com/events/2026/black-coffee/2026-09-26` and reports "not
+  published".
 
 ### Names
 

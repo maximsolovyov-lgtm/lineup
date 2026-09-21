@@ -9,7 +9,7 @@ import type { AgentResult, Candidate } from '@/agents/common';
 import type { LineupDraft } from '@/agents/lineup/schema';
 import type { SlotFormValue } from '@/components/form/SlotsEditor';
 import { LineupFinder } from './LineupFinder';
-import { compareRosters, createOccurrenceFromDraft, keywordsFor, resolveRoster, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
+import { compareRosters, createOccurrenceFromDraft, keywordsFor, resolveRoster, siteHints, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
 
 export interface GeneratedFill {
   occurrence_id: string;
@@ -93,9 +93,9 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
     }
     const lineups = (occ.lineups as unknown as FoundLineup[]) ?? [];
     const current = lineups.find((l) => l.is_current && (params.placeId ? l.place_id === params.placeId : true)) ?? lineups.find((l) => l.is_current) ?? null;
-    const keywords = keywordsFor(params, occ, current ? current.artists : null);
     setStage({ kind: 'researching', what: `${occ.event_name} · ${occ.event_date}` });
     try {
+      const keywords = keywordsFor(params, occ, current ? current.artists : null, await siteHints(params.placeId ?? occ.primary_place_id, occ.event_id));
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ, params }); return; }
       await afterResearch(r, occ, current, params);
@@ -129,9 +129,9 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
 
   // Scenario 4: nothing stored — research the night itself.
   async function discover(params: FinderParams) {
-    const keywords = keywordsFor(params, null, null);
     setStage({ kind: 'researching', what: 'a night matching the search on the web' });
     try {
+      const keywords = keywordsFor(params, null, null, await siteHints(params.placeId, params.eventId));
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ: null, params }); return; }
       if (r.outcome !== 'draft' || !r.draft?.occurrence) {
