@@ -444,6 +444,50 @@ select test.run('events: deactivated user cannot call save_event_with_occurrence
 select test.run('review_task: nobody can hard-delete one', :admin_id,
   $q$ delete from public.review_task $q$, false);
 
+-- Tags on place ---------------------------------------------------------------------
+select test.run('tags: seed tagged UNVRS as IBIZA and BIG5', :operator_id,
+  $q$ do $x$ begin
+        if not exists (select 1 from public.place where name = 'UNVRS' and tags @> array['IBIZA','BIG5']) then
+          raise exception 'UNVRS tags missing';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('tags: save_place_with_spaces writes tags from the JSON array', :operator_id,
+  $q$ do $x$ declare v uuid; begin
+        v := public.save_place_with_spaces('{"name":"Tagged Venue","city":"Boom","country":"Belgium","lifecycle_type":"temporary","tags":["Tomorrowland","FESTIVAL"]}'::jsonb, '[]'::jsonb);
+        if (select tags from public.place where place_id = v) <> array['Tomorrowland','FESTIVAL'] then
+          raise exception 'tags not saved';
+        end if;
+        perform public.save_place_with_spaces(jsonb_build_object('place_id', v, 'name', 'Tagged Venue', 'tags', jsonb_build_array('Tomorrowland')), '[]'::jsonb);
+        if (select tags from public.place where place_id = v) <> array['Tomorrowland'] then
+          raise exception 'tags not updated';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('tags: duplicate tag (case-insensitive) rejected', :operator_id,
+  $q$ update public.place set tags = array['Ibiza','IBIZA'] where name = 'UNVRS' $q$, false);
+
+select test.run('tags: untrimmed or empty tag rejected', :operator_id,
+  $q$ update public.place set tags = array['IBIZA', ' BIG5'] where name = 'UNVRS' $q$, false);
+
+select test.run('tags: filter by containment finds the tagged venues', :operator_id,
+  $q$ do $x$ begin
+        if (select count(*) from public.place where tags @> array['IBIZA'] and status = 'active') <> 1 then
+          raise exception 'containment filter wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('tags: place_tag_counts lists tags with counts', :operator_id,
+  $q$ do $x$ begin
+        if (select place_count from public.place_tag_counts() where tag = 'BIG5') <> 2
+           or not exists (select 1 from public.place_tag_counts() where tag = 'Tomorrowland') then
+          raise exception 'tag counts wrong';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('tags: anon cannot call place_tag_counts', null,
+  $q$ select * from public.place_tag_counts() $q$, false);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

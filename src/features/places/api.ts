@@ -7,11 +7,13 @@ import type { SavePlaceArgs } from './schema';
 
 // place_space(count) is an embedded aggregate: one query, no N+1 for the rooms column.
 export const PLACE_LIST_COLUMNS =
-  'place_id,name,city,country,lifecycle_type,status,updated_at,created_at,updated_by_user_id,created_by_user_id,place_space(count)' as const;
+  'place_id,name,city,country,lifecycle_type,status,tags,updated_at,created_at,updated_by_user_id,created_by_user_id,place_space(count)' as const;
 
 export interface PlaceListParams {
   q: string;
   status: Enums<'record_status'> | 'all';
+  /** Only places carrying this tag; '' = any. */
+  tag: string;
 }
 
 function applySearch<T extends { or: (f: string) => T }>(query: T, q: string): T {
@@ -27,6 +29,7 @@ export function usePlaces(params: PlaceListParams) {
     queryFn: async () => {
       let query = supabase.from('place').select(PLACE_LIST_COLUMNS).eq('place_space.status', 'active').order('name').limit(200);
       if (params.status !== 'all') query = query.eq('status', params.status);
+      if (params.tag) query = query.contains('tags', [params.tag]);
       query = applySearch(query, params.q);
       const { data, error } = await query;
       if (error) throw error;
@@ -49,6 +52,19 @@ export function usePlace(placeId: string | undefined) {
       if (place.error) throw place.error;
       if (spaces.error) throw spaces.error;
       return { place: place.data, spaces: spaces.data };
+    },
+  });
+}
+
+/** Every tag in use with its count — the vocabulary for autocomplete and the list filter. */
+export function useTagCounts() {
+  return useQuery({
+    queryKey: ['place-tags'],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('place_tag_counts');
+      if (error) throw error;
+      return data;
     },
   });
 }
@@ -81,6 +97,7 @@ export function useSavePlace() {
     onSuccess: ({ place_id }) => {
       void qc.invalidateQueries({ queryKey: ['places'] });
       void qc.invalidateQueries({ queryKey: ['place', place_id] });
+      void qc.invalidateQueries({ queryKey: ['place-tags'] });
     },
   });
 }

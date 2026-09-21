@@ -7,13 +7,15 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RECORD_STATUSES } from '@/types/enums';
-import { usePlaces, useProfileNames, type PlaceListParams } from './api';
+import { usePlaces, useProfileNames, useTagCounts, type PlaceListParams } from './api';
 
 export function PlacesPage() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<PlaceListParams['status']>('active');
-  const places = usePlaces({ q, status });
+  const [tag, setTag] = useState('');
+  const places = usePlaces({ q, status, tag });
+  const tagCounts = useTagCounts();
   const names = useProfileNames();
 
   return (
@@ -33,6 +35,13 @@ export function PlacesPage() {
           onChange={(e) => setQ(e.target.value)}
           aria-label="Search places"
         />
+        <Select value={tag || '_all'} onValueChange={(v) => setTag(v === '_all' ? '' : v)}>
+          <SelectTrigger className="h-11 w-44" aria-label="Tag filter"><SelectValue placeholder="Tag: all" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">Tag: all</SelectItem>
+            {(tagCounts.data ?? []).map((t) => <SelectItem key={t.tag} value={t.tag}>{t.tag} · {t.place_count}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={status} onValueChange={(v) => setStatus(v as PlaceListParams['status'])}>
           <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -53,6 +62,7 @@ export function PlacesPage() {
               <TableHead>City</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Lifecycle</TableHead>
+              <TableHead>Tags</TableHead>
               <TableHead className="text-right">Rooms</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last change</TableHead>
@@ -60,7 +70,7 @@ export function PlacesPage() {
           </TableHeader>
           <TableBody>
             {places.isLoading && (
-              <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
             )}
             {places.isError && (
               <TableRow><TableCell colSpan={7} className="py-8 text-center text-destructive">{(places.error as Error).message}</TableCell></TableRow>
@@ -77,6 +87,16 @@ export function PlacesPage() {
                   <TableCell>{p.city}</TableCell>
                   <TableCell>{p.country}</TableCell>
                   <TableCell className="capitalize">{p.lifecycle_type}</TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap gap-1">
+                      {p.tags.map((t) => (
+                        <button key={t} type="button" onClick={(e) => { e.stopPropagation(); setTag(t); }}
+                          className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70" title={`Filter by ${t}`}>
+                          {t}
+                        </button>
+                      ))}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground">{p.room_count || '—'}</TableCell>
                   <TableCell><StatusBadge status={p.status} /></TableCell>
                   <TableCell className="text-muted-foreground">{when}{who && ` · ${who}`}</TableCell>

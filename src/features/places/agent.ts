@@ -12,6 +12,7 @@ export function fromDraft(d: PlaceDraft): PlaceFormValues {
     name: p.name,
     lifecycle_type: p.lifecycle_type,
     status: 'active',
+    tags: [],
     address: str(p.address), city: str(p.city), region: str(p.region), country: str(p.country),
     latitude: num(p.latitude), longitude: num(p.longitude), timezone: str(p.timezone), capacity: num(p.capacity),
     website_url: str(p.website_url),

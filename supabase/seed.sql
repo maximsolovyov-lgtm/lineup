@@ -94,3 +94,8 @@ select public.save_event_with_occurrences(
 from public.place p
 where p.name = 'UNVRS'
   and not exists (select 1 from public.event where normalized_name = 'circoloco');
+
+-- Tags: the operator vocabulary the list filters on.
+update public.place set tags = array['IBIZA', 'BIG5'] where name = 'UNVRS';
+update public.place set tags = array['MIAMI', 'BIG5'] where name = 'Club Space';
+update public.place set tags = array['LONDON'] where name = 'fabric';

@@ -585,6 +585,7 @@ export type Database = {
           place_id: string
           region: string | null
           status: Database["public"]["Enums"]["record_status"]
+          tags: string[]
           timezone: string | null
           typical_headliner_end_day_offset: number | null
           typical_headliner_end_time: string | null
@@ -626,6 +627,7 @@ export type Database = {
           place_id?: string
           region?: string | null
           status?: Database["public"]["Enums"]["record_status"]
+          tags?: string[]
           timezone?: string | null
           typical_headliner_end_day_offset?: number | null
           typical_headliner_end_time?: string | null
@@ -667,6 +669,7 @@ export type Database = {
           place_id?: string
           region?: string | null
           status?: Database["public"]["Enums"]["record_status"]
+          tags?: string[]
           timezone?: string | null
           typical_headliner_end_day_offset?: number | null
           typical_headliner_end_time?: string | null
@@ -856,7 +859,15 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_operator_or_admin: { Args: never; Returns: boolean }
       is_valid_rooms_json: { Args: { j: Json }; Returns: boolean }
+      is_valid_tags: { Args: { t: string[] }; Returns: boolean }
       normalize_name: { Args: { p_name: string }; Returns: string }
+      place_tag_counts: {
+        Args: never
+        Returns: {
+          place_count: number
+          tag: string
+        }[]
+      }
       save_artist_with_members: {
         Args: { p_artist: Json; p_members?: Json }
         Returns: string

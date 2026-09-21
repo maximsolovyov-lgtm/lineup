@@ -12,9 +12,10 @@ import { Field, FormSection } from '@/components/form/Field';
 import { LookupField } from '@/components/form/LookupField';
 import { SpacesEditor, type SpaceErrors } from '@/components/form/SpacesEditor';
 import { TimezoneInput } from '@/components/form/TimezoneInput';
+import { TagsInput } from '@/components/form/TagsInput';
 import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/enums';
 import { emptyPlaceForm, fromRow, placeFormSchema, toPayload, type PlaceFormValues } from './schema';
-import { placeLookup, usePlace, useProfileNames, useSavePlace } from './api';
+import { placeLookup, usePlace, useProfileNames, useSavePlace, useTagCounts } from './api';
 import { fromDraft } from './agent';
 import { useGeocode } from '@/agents/client';
 import { AgentPanel } from '@/agents/AgentPanel';
@@ -29,6 +30,7 @@ export function PlaceFormPage() {
   const save = useSavePlace();
   const lookup = useMemo(() => placeLookup(placeId), [placeId]);
   const geocoder = useGeocode();
+  const tagCounts = useTagCounts();
 
   const form = useForm<PlaceFormValues>({
     resolver: zodResolver(placeFormSchema),
@@ -130,6 +132,12 @@ export function PlaceFormPage() {
         </Field>
         <Field label="Capacity" htmlFor="capacity" error={errors.capacity?.message}>
           <Input id="capacity" inputMode="numeric" {...register('capacity')} aria-invalid={!!errors.capacity} />
+        </Field>
+        <Field label="Tags" htmlFor="tags" className="sm:col-span-2" error={errors.tags?.message}
+          hint="Operator vocabulary, several per venue: IBIZA, BIG5 (the five biggest clubs on the island), Tomorrowland (a temporary festival site). Enter adds one; existing tags are suggested.">
+          <Controller control={control} name="tags" render={({ field }) => (
+            <TagsInput id="tags" value={field.value} onChange={field.onChange} suggestions={(tagCounts.data ?? []).map((t) => t.tag)} invalid={!!errors.tags} />
+          )} />
         </Field>
       </FormSection>
 

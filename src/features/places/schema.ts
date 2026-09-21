@@ -49,6 +49,7 @@ export const placeFormSchema = z.object({
   parent_place_id: z.string().uuid().nullable(),
   lifecycle_type: z.enum(PLACE_LIFECYCLE_TYPES as [string, ...string[]]),
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
+  tags: z.array(z.string().trim().min(1).max(64)).max(32),
 
   address: z.string().max(2000),
   city: z.string().trim().max(256),
@@ -86,7 +87,7 @@ export type PlaceRow = Tables<'place'>;
 export type SpaceRow = Tables<'place_space'>;
 
 export const emptyPlaceForm: PlaceFormValues = {
-  name: '', parent_place_id: null, lifecycle_type: 'permanent', status: 'active',
+  name: '', parent_place_id: null, lifecycle_type: 'permanent', status: 'active', tags: [],
   address: '', city: '', region: '', country: '', latitude: '', longitude: '', timezone: '', capacity: '',
   website_url: '', instagram_account: '', instagram_url: '', facebook_account: '', facebook_url: '',
   news_pattern: '', lineup_pattern: '',
@@ -108,6 +109,7 @@ export function fromRow(row: PlaceRow, spaces: SpaceRow[]): PlaceFormValues {
     parent_place_id: row.parent_place_id,
     lifecycle_type: row.lifecycle_type,
     status: row.status,
+    tags: row.tags,
     address: str(row.address), city: str(row.city), region: str(row.region), country: str(row.country),
     latitude: num(row.latitude), longitude: num(row.longitude), timezone: str(row.timezone), capacity: num(row.capacity),
     website_url: str(row.website_url), instagram_account: str(row.instagram_account), instagram_url: str(row.instagram_url),
@@ -152,6 +154,7 @@ export function toPayload(v: PlaceFormValues, placeId: string | null): SavePlace
     parent_place_id: v.parent_place_id,
     lifecycle_type: v.lifecycle_type,
     status: v.status,
+    tags: v.tags,
     address: nullIfEmpty(v.address), city: nullIfEmpty(v.city), region: nullIfEmpty(v.region), country: nullIfEmpty(v.country),
     latitude: floatOrNull(v.latitude), longitude: floatOrNull(v.longitude), timezone: nullIfEmpty(v.timezone), capacity: intOrNull(v.capacity),
     website_url: nullIfEmpty(v.website_url),

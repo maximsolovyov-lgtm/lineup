@@ -170,3 +170,11 @@ Recorded so they are not rediscovered from scratch:
 | Venues the event agent names. | Matched to stored places by normalised name and the place's time zone is used; an unmatched venue stays in the occurrence name (`at <venue>, <city>`) so nothing is lost and the operator picks or creates the place. Times not announced default to 23:00–06:00 and the note says so. |
 | The person agent and memberships. | It lists the acts the person performs under, but memberships are only editable on the artist record; the list is kept in the person's note rather than half-modelled. |
 | Legal names. | Both prompts carry the CLAUDE.md rule verbatim: only publicly known names, never a legal or birth name the artist has not published. |
+
+## Decision 2026-09-20 — tags on place
+
+| Question | Decision |
+|---|---|
+| How to model an operator vocabulary like IBIZA, BIG5, Tomorrowland with several values per venue? | `place.tags text[]` with a GIN index (`20260920120000_place_tags.sql`). Not a tag table: the vocabulary is small, invented by operators as they go, and only ever filtered on. The list of existing tags with counts is derived by `place_tag_counts()` for autocomplete and the list filter, never maintained by hand. |
+| Case: `Ibiza` vs `IBIZA`? | Stored as typed, but a place cannot carry two tags that differ only in case (`is_valid_tags` CHECK), and the form compares case-insensitively when adding. Renaming a tag across all places is an `update … set tags = array_replace(...)` for now. |
+| Does the agent suggest tags? | No. Tags are operator meaning (BIG5 is a judgement, Tomorrowland is a relationship to an event), not a web fact; the draft leaves them empty. |
