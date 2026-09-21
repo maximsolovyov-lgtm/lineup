@@ -12,6 +12,7 @@ export const slotSchema = z.object({
   display_name_override: z.string().trim().max(512),
   is_headliner: z.boolean(),
   participant_role: z.string(),
+  create_artist: z.boolean().optional(),
 }).refine((s) => !!s.artist_id || !!s.placeholder_type || s.display_name_override.length > 0, {
   message: 'Pick an artist, a placeholder, or type a label', path: ['display_name_override'],
 });
@@ -82,12 +83,16 @@ export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVer
       notes: nullIfEmpty(v.notes),
       status: asNewVersion ? 'active' : v.status,
     },
-    p_artists: v.artists.map((a) => ({
-      lineup_artist_id: fresh ? null : a.id,
-      artist_id: a.artist_id,
-      placeholder_type: a.placeholder_type || null,
-      display_name_override: nullIfEmpty(a.display_name_override),
-      is_headliner: a.is_headliner,
-    })),
+    p_artists: v.artists.map((a) => {
+      const create = !a.artist_id && !a.placeholder_type && a.create_artist && nullIfEmpty(a.display_name_override);
+      return {
+        lineup_artist_id: fresh ? null : a.id,
+        artist_id: a.artist_id,
+        placeholder_type: a.placeholder_type || null,
+        display_name_override: create ? null : nullIfEmpty(a.display_name_override),
+        new_artist: create ? { name: a.display_name_override.trim() } : null,
+        is_headliner: a.is_headliner,
+      };
+    }),
   };
 }

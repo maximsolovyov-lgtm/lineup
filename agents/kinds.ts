@@ -6,6 +6,7 @@
 import { ArtistDraftSchema, type ArtistDraft } from '../src/agents/artist/schema';
 import { PersonDraftSchema, type PersonDraft } from '../src/agents/person/schema';
 import { EventDraftSchema, type EventDraft } from '../src/agents/event/schema';
+import { LineupDraftSchema, type LineupDraft } from '../src/agents/lineup/schema';
 import type { AgentKind } from '../src/agents/common';
 import type { AgentKindDefinition } from './research';
 import { placeAgent } from './place/agent';
@@ -69,9 +70,32 @@ Field semantics:
 - Do not include past dates and do not include line-ups: this record is the brand and its calendar, the line-ups come later.`,
 };
 
+export const lineupAgent: AgentKindDefinition<LineupDraft> = {
+  kind: 'lineup',
+  noun: 'published line-up',
+  draftSchema: LineupDraftSchema,
+  maxSearches: 8,
+  maxFetches: 8,
+  systemPrompt: `You are the line-up research agent of LineApp, an admin tool for nightlife and electronic-music line-ups. The operator describes ONE night — a date and an event brand, a venue, or an artist, as labelled keywords such as "event: Solomun +1; date: 2026-10-04; place: Pacha Ibiza, Ibiza; current line-up: Solomun, Adriatique" — and you find whether a line-up has been PUBLISHED for that night and what it says.
+
+How to work:
+1. Find the announcement: web_search the event, venue and date; web_fetch the venue's event page, the promoter's site or Instagram, Resident Advisor (ra.co) or the ticket page. The announcement itself is the source — a listing that merely repeats it is second best.
+2. Read the roster exactly as printed: every act, in billing order, who is emphasised as the headliner, which slots are "TBA"/"TBC" (placeholder tbd) or "special/secret guest" (placeholder secret_guest), whether more names are promised ("+ more TBA" → complete = false), and the venue and date the announcement states.
+3. Return ONLY the structured answer.
+
+Rules:
+- If NO line-up has been published for that night, return lineup = null and say so in notes — do not invent a roster from residents or past nights, and do not use another date's line-up.
+- Names as printed, once each. Do not expand a collective into its members, do not rename acts. A "b2b" is one slot per act with note "b2b with X".
+- lineup.place_name only when the announcement names the venue; a multi-venue event without attribution is null.
+- occurrence: when the request names no stored night ("occurrence: none in the system"), describe the night you found (event brand, business day, venue, city, country, times). When the request names a night and the publication agrees, occurrence = null. When the publication gives a different date or venue, fill occurrence with what it says and set date_or_venue_changed = true — never silently agree.
+- When the request gives "current line-up: …", still return the published roster in full; the comparison is done afterwards.
+- Several different nights fit the keywords (a brand that played two venues that night, or the date is a range) → outcome "ambiguous" with the candidates.`,
+};
+
 export const AGENTS: Record<AgentKind, AgentKindDefinition<unknown>> = {
   place: placeAgent as AgentKindDefinition<unknown>,
   artist: artistAgent as AgentKindDefinition<unknown>,
   person: personAgent as AgentKindDefinition<unknown>,
   event: eventAgent as AgentKindDefinition<unknown>,
+  lineup: lineupAgent as AgentKindDefinition<unknown>,
 };

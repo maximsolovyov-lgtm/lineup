@@ -710,6 +710,26 @@ select test.run('find: no criteria returns nothing', :operator_id,
         if n <> 0 then raise exception 'expected 0, got %', n; end if;
       end $x$ $q$, true);
 
+-- Line-up slots that name an unknown artist -------------------------------------------
+select test.run('lineup: new_artist creates the act once, reuses it, and opens a review task', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_a uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24' and eo.status = 'active' order by eo.created_at desc limit 1;
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          '[{"new_artist":{"name":"Brand New Act"},"is_headliner":true},{"new_artist":{"name":"Keinemusik"}}]'::jsonb);
+        -- a second publication naming the same unknown act reuses the record
+        perform public.save_lineup(jsonb_build_object('occurrence_id', v_occ), '[{"new_artist":{"name":"brand new act"}}]'::jsonb);
+        select artist_id into v_a from public.artist where normalized_name = 'brand new act';
+        if v_a is null
+           or (select count(*) from public.artist where normalized_name = 'brand new act') <> 1
+           or (select artist_type from public.artist where artist_id = v_a) <> 'unknown'
+           or not exists (select 1 from public.review_task where entity_type = 'artist' and entity_id = v_a and kind = 'artist_created_from_lineup' and status = 'active')
+           or (select count(*) from public.artist where normalized_name = 'keinemusik') <> 1
+           or (select count(*) from public.lineup_artist where lineup_id = v and status = 'active') <> 2 then
+          raise exception 'new_artist handling wrong';
+        end if;
+      end $x$ $q$, true);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

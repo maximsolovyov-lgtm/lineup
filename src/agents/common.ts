@@ -58,7 +58,7 @@ export interface AgentResult<TDraft> {
   usage: AgentUsage;
 }
 
-export const AGENT_KINDS = ['place', 'artist', 'person', 'event'] as const;
+export const AGENT_KINDS = ['place', 'artist', 'person', 'event', 'lineup'] as const;
 export type AgentKind = (typeof AGENT_KINDS)[number];
 
 export function splitKeywords(raw: string): string[] {

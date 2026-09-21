@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Search, Sparkles } from 'lucide-react';
+import type { FinderParams } from './generate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +25,15 @@ interface FoundLineup {
  * returns each with its line-ups, so the operator opens the right version
  * or publishes the next one — never a second first version by accident.
  */
-export function LineupFinder() {
+interface LineupFinderProps {
+  /** Given, the finder hands the raw results over instead of rendering them: the New line-up page drives the AI flow from them. */
+  onResults?: (results: Found[], params: FinderParams) => void;
+  submitLabel?: string;
+  submitIcon?: 'search' | 'sparkles';
+  busy?: boolean;
+}
+
+export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'search', busy = false }: LineupFinderProps = {}) {
   const navigate = useNavigate();
   const events = useMemo(() => eventLookup(), []);
   const places = useMemo(() => placeLookup(), []);
@@ -34,7 +43,6 @@ export function LineupFinder() {
   const [eventId, setEventId] = useState<string | null>(null);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [artistId, setArtistId] = useState<string | null>(null);
-
   const search = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('find_lineups', {
@@ -45,12 +53,20 @@ export function LineupFinder() {
         p_artist_id: artistId ?? undefined,
       });
       if (error) throw error;
-      return data as Found[];
+      const results = data as Found[];
+      if (onResults) {
+        // Names of the chosen event/place/artist travel with the params — the agent reads names, not ids.
+        const [ev, pl, ar] = await Promise.all([
+          eventId ? events.resolve(eventId) : null, placeId ? places.resolve(placeId) : null, artistId ? artists.resolve(artistId) : null,
+        ]);
+        onResults(results, { date, days: Number.parseInt(days, 10) || 0, eventId, eventName: ev?.label ?? null, placeId, placeName: pl?.label ?? null, artistId, artistName: ar?.label ?? null });
+      }
+      return results;
     },
   });
 
   const canSearch = !!(date || eventId || placeId || artistId);
-  const results = search.data;
+  const results = onResults ? undefined : search.data;
 
   function newLineup(occurrenceId: string, placeId: string | null, fromLineupId?: string) {
     const q = new URLSearchParams({ occurrence: occurrenceId });
@@ -62,7 +78,7 @@ export function LineupFinder() {
   return (
     <section className="space-y-3 rounded-xl border bg-card p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Find a line-up</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">{onResults ? 'Find the night and generate the line-up' : 'Find a line-up'}</h2>
         <span className="text-xs text-muted-foreground">a date and any of event, place or artist — the occurrence is resolved for you</span>
       </div>
       <form
@@ -90,7 +106,9 @@ export function LineupFinder() {
           <LookupField value={artistId} onChange={setArtistId} search={artists.search} resolve={artists.resolve} placeholder="Any artist" />
         </div>
         <div className="flex items-end">
-          <Button type="submit" disabled={!canSearch || search.isPending} className="h-10"><Search /> {search.isPending ? 'Searching…' : 'Find'}</Button>
+          <Button type="submit" disabled={!canSearch || search.isPending || busy} className="h-10">
+            {submitIcon === 'sparkles' ? <Sparkles /> : <Search />} {search.isPending ? 'Searching…' : submitLabel}
+          </Button>
         </div>
       </form>
 

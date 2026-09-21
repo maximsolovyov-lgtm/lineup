@@ -22,6 +22,8 @@ export interface SlotFormValue {
   display_name_override: string;
   is_headliner: boolean;
   participant_role: string;
+  /** Label-only slot the publication names: create the artist record on save (type unknown, review task). */
+  create_artist?: boolean;
 }
 
 export const PARTICIPANT_ROLES = Constants.public.Enums.participant_role;
@@ -102,8 +104,16 @@ export function SlotsEditor({ value, onChange, errors, showRole = false, disable
               {kind === 'artist' || kind === 'revealed' ? (
                 <LookupField value={s.artist_id} onChange={(id) => update(i, { artist_id: id })} search={lookup.search} resolve={lookup.resolve} placeholder="Search artists…" invalid={!!err?.artist_id || !!err?.display_name_override} disabled={disabled} />
               ) : (
-                <Input aria-label={`Slot ${i + 1} label`} placeholder={kind === 'label' ? 'Name as printed, not yet an artist record' : 'Optional label, e.g. "Special guest"'}
-                  value={s.display_name_override} onChange={(e) => update(i, { display_name_override: e.target.value })} aria-invalid={!!err?.display_name_override} disabled={disabled} />
+                <>
+                  <Input aria-label={`Slot ${i + 1} label`} placeholder={kind === 'label' ? 'Name as printed, not yet an artist record' : 'Optional label, e.g. "Special guest"'}
+                    value={s.display_name_override} onChange={(e) => update(i, { display_name_override: e.target.value })} aria-invalid={!!err?.display_name_override} disabled={disabled} />
+                  {kind === 'label' && (
+                    <label className="mt-1 flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+                      <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={!!s.create_artist} onChange={(e) => update(i, { create_artist: e.target.checked })} disabled={disabled} />
+                      create an artist record on save
+                    </label>
+                  )}
+                </>
               )}
               {(err?.artist_id?.message || err?.display_name_override?.message) && (
                 <p className="mt-1 text-xs text-destructive" role="alert">{err?.artist_id?.message ?? err?.display_name_override?.message}</p>

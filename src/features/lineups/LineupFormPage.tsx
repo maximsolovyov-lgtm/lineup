@@ -16,6 +16,7 @@ import { occurrenceLookup, placeLookup } from '@/lib/lookups';
 import { RECORD_STATUSES } from '@/types/enums';
 import { emptyLineupForm, fromRow, lineupFormSchema, toPayload, type LineupFormValues } from './schema';
 import { useLineup, useLineupVersions, useSaveLineup, fetchLineupForClone } from './api';
+import { LineupGenerate, type GeneratedFill } from './LineupGenerate';
 
 export function LineupFormPage() {
   const { lineupId } = useParams<{ lineupId: string }>();
@@ -62,6 +63,17 @@ export function LineupFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew, params]);
 
+  // The AI flow hands over a filled form: the occurrence it resolved (or
+  // created), the roster matched to artist records, and — for a next version —
+  // the line-up it supersedes, so the banner can say so.
+  function applyGenerated(fill: GeneratedFill) {
+    reset({ ...emptyLineupForm, occurrence_id: fill.occurrence_id, place_id: fill.place_id, published_at: fill.published_at, notes: fill.notes, artists: fill.artists }, { keepDefaultValues: true });
+    setClonedFrom(null);
+    if (fill.fromLineupId) {
+      void fetchLineupForClone(fill.fromLineupId).then((src) => { if (src) setClonedFrom({ id: fill.fromLineupId!, version: src.lineup.version }); });
+    }
+  }
+
   async function onSubmit(values: LineupFormValues) {
     try {
       const saved = await save.mutateAsync(toPayload(values, lineupId ?? null));
@@ -97,6 +109,8 @@ export function LineupFormPage() {
   const title = isNew ? 'New line-up' : `${row?.event_occurrence?.event?.name ?? 'Line-up'} · ${row?.event_occurrence?.event_date ?? ''} · v${row?.version}`;
 
   return (
+    <div className="space-y-4">
+    {isNew && <LineupGenerate onFill={applyGenerated} />}
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/lineups" title="Back to line-ups"><ArrowLeft /></Link></Button>
@@ -216,5 +230,6 @@ export function LineupFormPage() {
         </Button>
       </div>
     </form>
+    </div>
   );
 }

@@ -6,9 +6,10 @@ search and web fetch tools; the Anthropic key is a Pages secret and never
 reaches the browser. Nothing they return is written to the database — the
 caller (the admin UI, or another agent) decides what to save.
 
-## One shape for four kinds
+## One shape for five kinds
 
-`POST /api/agents/:kind` — `kind` is `place`, `artist`, `person` or `event`.
+`POST /api/agents/:kind` — `kind` is `place`, `artist`, `person`, `event` or
+`lineup`.
 
 ```json
 { "keywords": "Tale Of Us; Berlin; https://www.instagram.com/taleofus" }
@@ -59,6 +60,16 @@ and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
   dates from today on (business day, venue name and city, times when
   announced). The UI matches each venue to a stored place by name; unmatched
   venues stay in the occurrence name for the operator to resolve.
+- **lineup** — reads labelled keywords (`event: …; date: …; place: …;
+  occurrence: none in the system; current line-up: …`) and answers two
+  questions in one draft: `draft.occurrence` — the night itself, filled when
+  no stored occurrence was named or when the publication gives a different
+  date or venue (`date_or_venue_changed`), null when the stored one is right;
+  and `draft.lineup` — the announced roster as printed (billing order,
+  headliner flags, `tbd`/`secret_guest` placeholders, room, note), `complete`
+  false for "+ more TBA", `place_name` only when the announcement names the
+  venue, `published_at` and `source_url` when shown. `lineup` is null when
+  nothing is published yet. Never invents names.
 
 ### Names
 
@@ -118,3 +129,17 @@ from keywords* block: enter the keywords, press **Fill the form**. If several
 things fit, a chooser lists them with a line that tells them apart; pick one
 and the agent researches exactly that one. The form is filled, sources and
 confidence are shown, and only **Create** writes anything.
+
+**New line-up** has *Find & AI generate* instead (`src/features/lineups/
+LineupGenerate.tsx`): the finder resolves the night from the database, then
+the line-up agent reads the publication. One occurrence without a line-up →
+the form is filled (artists matched by normalised name; unknown names become
+label rows flagged *create an artist record on save*, which `save_lineup()`
+turns into `unknown`-type artists with a review task). One occurrence with a
+line-up → the published roster is compared with the current version; if it
+differs, the added and dropped names are shown and *Create v(n+1)* fills the
+form, otherwise "nothing changed". Several occurrences → pick one. None →
+the agent researches the night; *Create the night* stores event, occurrence
+and, if missing, the place (tagged with the event name) and then fills the
+form. A cancelled occurrence stops the flow; a publication with another date
+or venue is noted for the operator, not applied.
