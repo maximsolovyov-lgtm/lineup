@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,9 @@ import { EVENT_TYPES, emptyEventForm, eventFormSchema, fromRow, toPayload, type 
 import { useEvent, useSaveEvent } from './api';
 import { OccurrencesEditor, type OccurrenceErrors } from './OccurrencesEditor';
 import { AgentPanel } from '@/agents/AgentPanel';
+import { useDuplicates } from '@/lib/duplicates';
+import { DuplicateWarning } from '@/components/form/DuplicateWarning';
+
 import type { EventDraft } from '@/agents/event/schema';
 import { fromDraft } from './agent';
 
@@ -28,12 +31,20 @@ export function EventFormPage() {
   const { register, control, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = form;
   const occurrences = watch('occurrences');
   const eventName = watch('name');
+  // Duplicate guard for a new record: warn on similar names, block Create on the same name until "anyway".
+  const nameForDup = eventName;
+  const dup = useDuplicates('event', nameForDup, isNew);
+  const [dupAck, setDupAck] = useState(false);
+  useEffect(() => { setDupAck(false); }, [nameForDup]);
+  const dupBlocked = isNew && !dupAck && (dup.data ?? []).some((m) => m.exact);
+
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.event, existing.data.occurrences));
   }, [existing.data, reset]);
 
   async function onSubmit(values: EventFormValues) {
+    if (dupBlocked) { toast.error('A record with this name already exists — open it, or press "Create anyway"'); return; }
     try {
       const saved = await save.mutateAsync(toPayload(values, eventId ?? null));
       if (isNew) {
@@ -85,6 +96,11 @@ export function EventFormPage() {
         <Field label="Name" htmlFor="name" required error={errors.name?.message} className="sm:col-span-2">
           <Input id="name" {...register('name')} aria-invalid={!!errors.name} autoFocus={isNew} />
         </Field>
+        {isNew && (dup.data?.length ?? 0) > 0 && (
+          <div className="sm:col-span-2">
+            <DuplicateWarning matches={dup.data ?? []} noun="event" blocked={dupBlocked} onCreateAnyway={() => setDupAck(true)} />
+          </div>
+        )}
         <Field label="Type" htmlFor="event_type" required error={errors.event_type?.message}>
           <Controller control={control} name="event_type" render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>

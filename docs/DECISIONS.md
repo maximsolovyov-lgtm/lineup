@@ -208,3 +208,10 @@ Recorded so they are not rediscovered from scratch:
 | Which of the two values wins? | The agent's, in the field, with the stored value in red underneath and a blue frame — the operator sees both and can retype. A field the agent left empty **never** overwrites what is stored. Tags, status and parent are never touched. |
 | Rooms. | Matched by normalised name. New → added row (blue). Changed type/capacity/notes/primary → blue field with the old value in red. Not found by the agent → flagged in red and **deactivated on save**, with a "Keep this room" link — and only when the agent found rooms at all, because an empty answer means "did not look", not "there are none". |
 | Ambiguous or not found. | No diff is applied; the operator is told to refine name, city or links first. |
+
+## Decision 2026-09-20 — duplicate guard on every new record
+
+| Question | Decision |
+|---|---|
+| Two rows for one venue appeared after two agent runs. | Every New form (place, event, artist, person) looks up active rows whose normalised name contains or is contained in the typed name (`src/lib/duplicates.ts`, debounced) and shows them under the name with a link to open each. The **same normalised name blocks Create** until the operator presses "Create anyway"; a merely similar name only warns. Applies whether the name was typed or filled by an agent. |
+| Why not a unique index? | Two different venues can legitimately share a name (Club Space Miami / Space Ibiza), and people do; the operator decides, the form makes sure they saw. |

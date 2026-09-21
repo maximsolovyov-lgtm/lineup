@@ -14,6 +14,9 @@ import { useArtist, useSaveArtist } from './api';
 import { MembersEditor, type MemberErrors } from './MembersEditor';
 import { PersonPickerDialog } from './PersonPickerDialog';
 import { AgentPanel } from '@/agents/AgentPanel';
+import { useDuplicates } from '@/lib/duplicates';
+import { DuplicateWarning } from '@/components/form/DuplicateWarning';
+
 import type { ArtistDraft } from '@/agents/artist/schema';
 import { fromDraft } from './agent';
 
@@ -30,12 +33,20 @@ export function ArtistFormPage() {
   const members = watch('members');
   const artistType = watch('artist_type');
   const name = watch('name');
+  // Duplicate guard for a new record: warn on similar names, block Create on the same name until "anyway".
+  const nameForDup = name;
+  const dup = useDuplicates('artist', nameForDup, isNew);
+  const [dupAck, setDupAck] = useState(false);
+  useEffect(() => { setDupAck(false); }, [nameForDup]);
+  const dupBlocked = isNew && !dupAck && (dup.data ?? []).some((m) => m.exact);
+
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.artist, existing.data.members));
   }, [existing.data, reset]);
 
   async function onSubmit(values: ArtistFormValues) {
+    if (dupBlocked) { toast.error('A record with this name already exists — open it, or press "Create anyway"'); return; }
     try {
       const saved = await save.mutateAsync(toPayload(values, artistId ?? null));
       if (isNew) {
@@ -92,6 +103,11 @@ export function ArtistFormPage() {
         <Field label="Name" htmlFor="name" required error={errors.name?.message} className="sm:col-span-2">
           <Input id="name" {...register('name')} aria-invalid={!!errors.name} autoFocus={isNew} />
         </Field>
+        {isNew && (dup.data?.length ?? 0) > 0 && (
+          <div className="sm:col-span-2">
+            <DuplicateWarning matches={dup.data ?? []} noun="artist" blocked={dupBlocked} onCreateAnyway={() => setDupAck(true)} />
+          </div>
+        )}
         <Field label="Type" htmlFor="artist_type" required error={errors.artist_type?.message}
           hint="B2B is not a type: it is the format of one set, not the nature of an artist.">
           <Controller control={control} name="artist_type" render={({ field }) => (

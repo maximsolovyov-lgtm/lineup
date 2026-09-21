@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,9 @@ import { RECORD_STATUSES } from '@/types/enums';
 import { emptyPersonForm, fromRow, personFormSchema, toPayload, type PersonFormValues } from './schema';
 import { usePerson, useSavePerson } from './api';
 import { AgentPanel } from '@/agents/AgentPanel';
+import { useDuplicates } from '@/lib/duplicates';
+import { DuplicateWarning } from '@/components/form/DuplicateWarning';
+
 import type { PersonDraft } from '@/agents/person/schema';
 
 export function PersonFormPage() {
@@ -24,13 +27,20 @@ export function PersonFormPage() {
   const save = useSavePerson(personId);
 
   const form = useForm<PersonFormValues>({ resolver: zodResolver(personFormSchema), defaultValues: emptyPersonForm, mode: 'onBlur' });
-  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting, isDirty } } = form;
+  const { register, control, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = form;
+  // Duplicate guard for a new record: warn on similar names, block Create on the same name until "anyway".
+  const nameForDup = watch('display_name');
+  const dup = useDuplicates('person', nameForDup, isNew);
+  const [dupAck, setDupAck] = useState(false);
+  useEffect(() => { setDupAck(false); }, [nameForDup]);
+  const dupBlocked = isNew && !dupAck && (dup.data ?? []).some((m) => m.exact);
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.person));
   }, [existing.data, reset]);
 
   async function onSubmit(values: PersonFormValues) {
+    if (dupBlocked) { toast.error('A record with this name already exists — open it, or press "Create anyway"'); return; }
     try {
       const saved = await save.mutateAsync(toPayload(values));
       if (isNew) {
@@ -88,6 +98,11 @@ export function PersonFormPage() {
           hint="The name this person is publicly known by. Legal or birth names are not stored unless the artist has published them.">
           <Input id="display_name" {...register('display_name')} aria-invalid={!!errors.display_name} autoFocus={isNew} />
         </Field>
+        {isNew && (dup.data?.length ?? 0) > 0 && (
+          <div className="sm:col-span-2">
+            <DuplicateWarning matches={dup.data ?? []} noun="person" blocked={dupBlocked} onCreateAnyway={() => setDupAck(true)} />
+          </div>
+        )}
         <Field label="Country" htmlFor="country" error={errors.country?.message} hint="ISO code or name, e.g. DE">
           <Input id="country" {...register('country')} />
         </Field>

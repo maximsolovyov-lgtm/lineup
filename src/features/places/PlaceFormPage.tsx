@@ -18,6 +18,9 @@ import { emptyPlaceForm, fromRow, placeFormSchema, toPayload, type PlaceFormValu
 import { placeLookup, usePlace, useProfileNames, useSavePlace, useTagCounts } from './api';
 import { fromDraft } from './agent';
 import { useAgent, useGeocode } from '@/agents/client';
+import { useDuplicates } from '@/lib/duplicates';
+import { DuplicateWarning } from '@/components/form/DuplicateWarning';
+
 import { actualize, keywordsFor, type ActualizedField, type Actualization } from './actualize';
 import { AgentPanel } from '@/agents/AgentPanel';
 import type { PlaceDraft } from '@/agents/place/schema';
@@ -34,6 +37,7 @@ export function PlaceFormPage() {
   const tagCounts = useTagCounts();
   const refresher = useAgent<PlaceDraft>('place');
   const [actual, setActual] = useState<Actualization | null>(null);
+
   // Marks for a scalar field: blue ring + the stored value in red, once the actualization changed it.
   const prev = (key: ActualizedField) => actual?.previous[key];
 
@@ -44,6 +48,12 @@ export function PlaceFormPage() {
   });
   const { register, control, handleSubmit, reset, watch, getValues, setValue, formState: { errors, isSubmitting, isDirty } } = form;
   const spaces = watch('spaces');
+  // Duplicate guard for a new record: warn on similar names, block Create on the same name until "anyway".
+  const nameForDup = watch('name');
+  const dup = useDuplicates('place', nameForDup, isNew);
+  const [dupAck, setDupAck] = useState(false);
+  useEffect(() => { setDupAck(false); }, [nameForDup]);
+  const dupBlocked = isNew && !dupAck && (dup.data ?? []).some((m) => m.exact);
 
   // Fills latitude/longitude from the address fields as they stand in the form.
   async function findCoordinates() {
@@ -89,6 +99,7 @@ export function PlaceFormPage() {
   // One RPC call saves the place and its rooms in one transaction; on any
   // error nothing is written, so the form simply stays dirty.
   async function onSubmit(values: PlaceFormValues) {
+    if (dupBlocked) { toast.error('A record with this name already exists — open it, or press "Create anyway"'); return; }
     try {
       const saved = await save.mutateAsync(toPayload(values, placeId ?? null));
       setActual(null);
@@ -124,7 +135,7 @@ export function PlaceFormPage() {
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
-          {isSubmitting ? 'Saving…' : isNew ? 'Create place' : 'Save changes'}
+          {isSubmitting ? 'Saving…' : isNew ? (dupBlocked ? 'Same name exists' : 'Create place') : 'Save changes'}
         </Button>
       </div>
       {audit && <p className="text-xs text-muted-foreground">{audit}</p>}
@@ -149,6 +160,11 @@ export function PlaceFormPage() {
         <Field label="Name" htmlFor="name" previous={prev('name')} required error={errors.name?.message} className="sm:col-span-2">
           <Input id="name" {...register('name')} aria-invalid={!!errors.name} autoFocus={isNew} />
         </Field>
+        {isNew && (dup.data?.length ?? 0) > 0 && (
+          <div className="sm:col-span-2">
+            <DuplicateWarning matches={dup.data ?? []} noun="venue" blocked={dupBlocked} onCreateAnyway={() => setDupAck(true)} />
+          </div>
+        )}
         <Field label="Parent place" htmlFor="parent_place_id" hint="For a club inside a hotel, a stage area inside a festival site, etc." error={errors.parent_place_id?.message}>
           <Controller control={control} name="parent_place_id" render={({ field }) => (
             <LookupField id="parent_place_id" value={field.value} onChange={field.onChange} search={lookup.search} resolve={lookup.resolve} placeholder="Search places…" invalid={!!errors.parent_place_id} />
