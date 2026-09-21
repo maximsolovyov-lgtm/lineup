@@ -63,6 +63,7 @@ Field semantics:
 - event_date is the BUSINESS DAY: the night the party starts. A party from 23:00 Friday to 08:00 Saturday has Friday as its date. Do not derive it from the closing time.
 - start_time / end_time are HH:MM wall time in the venue's zone; null when not announced. Never invent times.
 - place_name is the venue as the announcement names it; the operator matches it to a stored place.
+- occurrence_name: the edition or night name whenever the announcement gives one — "Tomorrowland Winter", "Opening Party", "Closing", "Weekend 2", the headline act's residency name. Most festival editions and season openings/closings have one; fill it. null only for an unnamed regular date.
 - description: what the brand is, who runs it, where it usually happens — two or three sentences.
 - Do not include past dates and do not include line-ups: this record is the brand and its calendar, the line-ups come later.`,
 };

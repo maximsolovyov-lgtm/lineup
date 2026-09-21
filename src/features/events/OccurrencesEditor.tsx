@@ -24,8 +24,8 @@ interface OccurrencesEditorProps {
 // will not happen.
 const ROW_STATUSES = RECORD_STATUSES.filter((s) => ['draft', 'active', 'cancelled'].includes(s));
 
-const HEADER = 'hidden gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid sm:grid-cols-[9.5rem_minmax(0,1fr)_6rem_6rem_7.5rem_2.25rem]';
-const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[9.5rem_minmax(0,1fr)_6rem_6rem_7.5rem_2.25rem]';
+const HEADER = 'hidden gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid sm:grid-cols-[9.5rem_minmax(0,1.2fr)_minmax(0,1fr)_6rem_6rem_7.5rem_2.25rem]';
+const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[9.5rem_minmax(0,1.2fr)_minmax(0,1fr)_6rem_6rem_7.5rem_2.25rem]';
 
 /** Occurrences block of the event record: one row per date (design/EventEdit.dc.html). */
 export function OccurrencesEditor({ value, onChange, errors, disabled }: OccurrencesEditorProps) {
@@ -53,7 +53,7 @@ export function OccurrencesEditor({ value, onChange, errors, disabled }: Occurre
   return (
     <div className="space-y-2">
       {value.length > 0 && (
-        <div className={HEADER}><div>Business day</div><div>Default place</div><div>Start</div><div>End</div><div>Status</div><div /></div>
+        <div className={HEADER}><div>Business day</div><div>Occurrence name</div><div>Default place</div><div>Start</div><div>End</div><div>Status</div><div /></div>
       )}
       {value.length === 0 && <p className="text-sm text-muted-foreground">No dates yet.</p>}
       {value.map((o, i) => {
@@ -66,6 +66,7 @@ export function OccurrencesEditor({ value, onChange, errors, disabled }: Occurre
                 <Input type="date" aria-label={`Date ${i + 1} business day`} value={o.event_date} onChange={(e) => update(i, { event_date: e.target.value })} aria-invalid={!!err?.event_date} disabled={disabled} />
                 {err?.event_date?.message && <p className="mt-1 text-xs text-destructive" role="alert">{err.event_date.message}</p>}
               </div>
+              <Input aria-label={`Date ${i + 1} name`} placeholder="Edition or night, e.g. Tomorrowland Winter" value={o.occurrence_name} onChange={(e) => update(i, { occurrence_name: e.target.value })} disabled={disabled} />
               <LookupField value={o.primary_place_id} onChange={(id) => void setPlace(i, id)} search={lookup.search} resolve={lookup.resolve} placeholder="Search places…" disabled={disabled} />
               <div>
                 <Input type="time" aria-label={`Date ${i + 1} start`} value={o.start_time} onChange={(e) => update(i, { start_time: e.target.value })} aria-invalid={!!err?.start_time} disabled={disabled} />
@@ -91,7 +92,6 @@ export function OccurrencesEditor({ value, onChange, errors, disabled }: Occurre
             <div className="mt-1 flex flex-wrap items-center gap-x-3 px-1 text-xs text-muted-foreground">
               <span>{o.timezone || 'browser zone'}</span>
               {w && <span>{formatInZone(w.starts_at, o.timezone)} → {formatInZone(w.ends_at, o.timezone)}{w.nextDay && ' (next morning)'}</span>}
-              <Input className="ml-auto h-7 max-w-xs text-xs" placeholder="Occurrence name (optional)" value={o.occurrence_name} onChange={(e) => update(i, { occurrence_name: e.target.value })} disabled={disabled} aria-label={`Date ${i + 1} name`} />
             </div>
           </div>
         );

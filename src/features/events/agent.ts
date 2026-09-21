@@ -37,7 +37,8 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
     if (o.place_name) (hit ? matched : unmatched).add(o.place_name);
     const start = o.start_time ?? '23:00';
     const end = o.end_time ?? '06:00';
-    const nameBits = [o.occurrence_name, hit ? null : o.place_name ? `at ${o.place_name}${o.city ? `, ${o.city}` : ''}` : null].filter(Boolean);
+    // The drafted name is the name; a venue that is not in Places yet is appended so it is not lost.
+    const nameBits = [o.occurrence_name, hit ? null : o.place_name ? `(at ${o.place_name}${o.city ? `, ${o.city}` : ''})` : null].filter(Boolean);
     return {
       occurrence_id: null,
       event_date: o.event_date,
@@ -45,7 +46,7 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
       timezone: hit?.timezone ?? str(o.timezone),
       start_time: start,
       end_time: end,
-      occurrence_name: nameBits.join(' — '),
+      occurrence_name: nameBits.join(' '),
       status: 'active',
     };
   });
