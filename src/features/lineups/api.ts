@@ -49,6 +49,20 @@ export function usePlaceholderArtists() {
   });
 }
 
+/** The rooms of the line-up's place, by id: a collapsed slot shows a name, not a picker. */
+export function usePlaceSpaces(placeId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['place-spaces', placeId],
+    enabled: !!placeId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('place_space').select('space_id,name').eq('place_id', placeId!).eq('status', 'active');
+      if (error) throw error;
+      return new Map(data.map((s) => [s.space_id, s.name]));
+    },
+  });
+}
+
 /** The acts of one slot in printed order. */
 function actNames(slot: { lineup_artist_participant?: { participant_order: number; artist: { name: string } | null }[] | null }): string[] {
   return [...(slot.lineup_artist_participant ?? [])]

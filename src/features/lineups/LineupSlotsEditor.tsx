@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Star, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LookupField } from '@/components/form/LookupField';
 import { artistLookup, placeSpaceLookup } from '@/lib/lookups';
-import { usePlaceholderArtists } from './api';
 import { slotJoinWord, slotLabel } from '@/lib/slot-label';
+import { usePlaceSpaces, usePlaceholderArtists } from './api';
 import { LINEUP_SLOT_KINDS, LINEUP_SLOT_TAGS, PERFORMANCE_FORMATS, SLOT_FORMAT_INFO, SLOT_KIND_INFO, SLOT_TAG_INFO, emptySlot,
   type LineupSlotKind, type LineupSlotTag, type LineupSlotValue, type PerformanceFormat } from './schema';
 
@@ -26,6 +26,7 @@ interface LineupSlotsEditorProps {
 }
 
 const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[10.5rem_minmax(0,1fr)_9rem_5rem_6rem]';
+const CHIP = 'rounded-full border px-2 py-0.5 font-mono text-[11px]';
 
 /**
  * The slots of a line-up: one row per announced LINE, not per artist.
@@ -34,25 +35,52 @@ const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[10.5rem_minmax(0,1
  * Secret guest and Unknown are artists too, so a slot can be half-known
  * ("Solomun b2b TBA") and a reveal is just swapping the act, with
  * placeholder_type kept so the badge survives.
+ *
+ * A bill is read far more often than it is edited, so a slot is one line —
+ * day, kind, acts, room, the tags it actually carries — and opens into the
+ * full editor on demand. A row with something to fix opens itself.
  */
 export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId = null, run = null, splitByDay = false }: LineupSlotsEditorProps) {
   const lookup = useMemo(() => artistLookup(), []);
   const rooms = useMemo(() => placeSpaceLookup(placeId), [placeId]);
-  const multiDay = !!run && run.to > run.from;
+  const roomNames = usePlaceSpaces(placeId);
   const placeholders = usePlaceholderArtists();
+  const multiDay = !!run && run.to > run.from;
   // LookupField keeps the act it picked; remounting it after each add clears it.
   const [addKey, setAddKey] = useState(0);
   const [typed, setTyped] = useState<Record<number, string>>({});
+  const [open, setOpen] = useState<Set<number>>(new Set());
 
   function update(i: number, patch: Partial<LineupSlotValue>) {
     onChange(value.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  }
+  function toggleOpen(i: number) {
+    const next = new Set(open);
+    if (next.has(i)) next.delete(i); else next.add(i);
+    setOpen(next);
   }
   function move(i: number, dir: -1 | 1) {
     const j = i + dir;
     if (j < 0 || j >= value.length) return;
     const next = [...value];
     [next[i], next[j]] = [next[j]!, next[i]!];
+    // What is open follows the row it belongs to.
+    const o = new Set(open);
+    const hadI = o.has(i);
+    const hadJ = o.has(j);
+    o.delete(i); o.delete(j);
+    if (hadI) o.add(j);
+    if (hadJ) o.add(i);
+    setOpen(o);
     onChange(next);
+  }
+  function remove(i: number) {
+    setOpen(new Set([...open].filter((x) => x !== i).map((x) => (x > i ? x - 1 : x))));
+    onChange(value.filter((_, idx) => idx !== i));
+  }
+  function add() {
+    setOpen(new Set([...open, value.length]));
+    onChange([...value, emptySlot()]);
   }
   // Adding an act may settle the kind: two acts on a line that was solo is a b2b.
   function addAct(i: number, act: { artist_id: string | null; name: string; create: boolean }) {
@@ -79,7 +107,7 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId =
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {value.length === 0 && <p className="text-sm text-muted-foreground">No slots yet.</p>}
       {value.map((s, i) => {
         const err = errors?.[i];
@@ -87,6 +115,10 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId =
         const label = slotLabel(s.kind, s.artists.map((a) => a.name), s.display_name_override);
         const mismatch = info.acts !== null ? s.artists.length !== info.acts
           : ['collaboration', 'featuring', 'multiple_guests'].includes(s.kind) && s.artists.length < 2;
+        const blank = s.artists.length === 0 && s.display_name_override.trim() === '';
+        // Nothing to read yet, or something to fix: the row shows itself.
+        const expanded = open.has(i) || !!err || blank;
+
         function addTyped(idx: number) {
           const name = (typed[idx] ?? '').trim();
           if (!name) return;
@@ -97,8 +129,59 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId =
           const opt = await lookup.resolve(id);
           addAct(i, { artist_id: id, name: opt?.label ?? '', create: false });
         }
+
+        const controls = (
+          <div className="flex items-center">
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move up" disabled={disabled || i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move down" disabled={disabled || i === value.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-expanded={expanded}
+              title={expanded ? 'Collapse this line' : 'Open all the fields of this line'} onClick={() => toggleOpen(i)}>
+              {expanded ? <ChevronDown /> : <ChevronRight />}
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Remove" disabled={disabled} onClick={() => remove(i)}><Trash2 /></Button>
+          </div>
+        );
+
+        if (!expanded) {
+          return (
+            <div key={s.id ?? `new-${i}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-muted/20 px-2 py-1.5">
+              {multiDay && splitByDay && (
+                <span className={`${CHIP} ${s.slot_date ? 'bg-card text-muted-foreground' : 'border-dashed text-amber-700'}`} title="The day of the run this line plays">
+                  {s.slot_date || 'no day'}
+                </span>
+              )}
+              <span className={`${CHIP} bg-card text-muted-foreground`} title={info.rule}>{info.label}</span>
+              <button type="button" className="truncate text-left text-sm font-medium underline-offset-2 hover:underline" onClick={() => toggleOpen(i)} title="Open all the fields of this line">
+                {label || '—'}
+              </button>
+              {s.is_headliner && <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-label="Headliner" />}
+              {s.performance_format !== 'dj_set' && (
+                <span className={`${CHIP} bg-secondary text-secondary-foreground`} title={SLOT_FORMAT_INFO[s.performance_format].hint}>
+                  {SLOT_FORMAT_INFO[s.performance_format].label}
+                </span>
+              )}
+              {s.place_space_id && (
+                <span className={`${CHIP} bg-card text-muted-foreground`} title="The room the bill puts this line in">
+                  {roomNames.data?.get(s.place_space_id) ?? 'room'}
+                </span>
+              )}
+              {s.tags.map((t) => (
+                <span key={t} className={`${CHIP} border-primary bg-primary text-primary-foreground`} title={SLOT_TAG_INFO[t].hint}>{SLOT_TAG_INFO[t].label}</span>
+              ))}
+              {s.placeholder_type && s.artists.some((a) => a.artist_id) && (
+                <span className={`${CHIP} bg-secondary text-secondary-foreground`}>
+                  {s.placeholder_type === 'secret_guest' ? 'was a secret guest' : s.placeholder_type === 'tbd' ? 'was TBA' : 'was unidentified'}
+                </span>
+              )}
+              {mismatch && <span className={`${CHIP} border-amber-300 bg-amber-50 text-amber-700`} title={`${info.label} does not fit ${s.artists.length} act(s) — saving opens a review task`}>kind ?</span>}
+              <span className="flex-1" />
+              {controls}
+            </div>
+          );
+        }
+
         return (
-          <div key={s.id ?? `new-${i}`} className="space-y-2 rounded-lg border bg-muted/20 p-2">
+          <div key={s.id ?? `new-${i}`} className="space-y-2 rounded-lg border border-[#C9BCE6] bg-muted/20 p-2">
             <div className={ROW}>
               <Select value={s.kind} onValueChange={(v) => update(i, { kind: v as LineupSlotKind })} disabled={disabled}>
                 <SelectTrigger aria-label={`Slot ${i + 1} kind`}><SelectValue /></SelectTrigger>
@@ -170,11 +253,7 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId =
                 headliner
               </label>
 
-              <div className="flex items-center">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move up" disabled={disabled || i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move down" disabled={disabled || i === value.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Remove" disabled={disabled} onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 /></Button>
-              </div>
+              {controls}
             </div>
 
             <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)_4rem_10rem]">
@@ -233,7 +312,14 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId =
           </div>
         );
       })}
-      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => onChange([...value, emptySlot()])}><Plus /> Add slot</Button>
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={add}><Plus /> Add slot</Button>
+        {value.length > 1 && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(open.size > 0 ? new Set() : new Set(value.map((_, i) => i)))}>
+            {open.size > 0 ? 'Collapse all' : 'Open all'}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
