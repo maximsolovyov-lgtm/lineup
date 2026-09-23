@@ -119,11 +119,13 @@ export function lineupLookup(occurrenceId?: string | null): Lookup {
 }
 
 export function artistLookup(): Lookup {
-  const toOption = (a: { artist_id: string; name: string; artist_type: string | null; country: string | null }): LookupOption =>
-    ({ id: a.artist_id, label: a.name, sublabel: [a.artist_type, a.country].filter(Boolean).join(' · ') });
+  const toOption = (a: { artist_id: string; name: string; artist_type: string | null; country: string | null; is_placeholder?: boolean }): LookupOption =>
+    ({ id: a.artist_id, label: a.name, sublabel: a.is_placeholder ? 'placeholder — a slot with no name yet' : [a.artist_type, a.country].filter(Boolean).join(' · ') });
   return {
     search: async (q) => {
-      let query = supabase.from('artist').select('artist_id,name,artist_type,country').eq('status', 'active').order('name').limit(20);
+      // Placeholders first: "TBA" should be the placeholder act, not a band called TBA.
+      let query = supabase.from('artist').select('artist_id,name,artist_type,country,is_placeholder').eq('status', 'active')
+        .order('is_placeholder', { ascending: false }).order('name').limit(20);
       const f = nameFilter(q);
       if (f) query = query.or(f);
       const { data, error } = await query;
@@ -131,7 +133,7 @@ export function artistLookup(): Lookup {
       return data.map(toOption);
     },
     resolve: async (id) => {
-      const { data } = await supabase.from('artist').select('artist_id,name,artist_type,country').eq('artist_id', id).maybeSingle();
+      const { data } = await supabase.from('artist').select('artist_id,name,artist_type,country,is_placeholder').eq('artist_id', id).maybeSingle();
       return data ? toOption(data) : null;
     },
   };

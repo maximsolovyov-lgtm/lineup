@@ -22,7 +22,9 @@ keywords.
 
 Stage 2 has started (owner decision 2026-09-20): **Line-ups** and **Sets**
 have their screens. `lineup` + `lineup_artist` say WHO is announced for an
-occurrence and place, official only, one row per publication (version).
+occurrence and place, official only, one row per publication (version). A
+`lineup_artist` row is one announced LINE with its `kind` (solo, b2b, feat. …)
+and its acts in `lineup_artist_participant`.
 `performance_set` says WHEN and WHERE each set plays — official (linked to
 its line-up) or predicted, full or partial, per room — and is never updated
 with new information.
@@ -60,12 +62,20 @@ unattributed announcement, one row.
 `trg_performance_set_immutable`. `save_performance_set()` with an existing id
 inserts the replacement and marks the old row `superseded`; the form says so.
 
-**`placeholder_type` is never cleared when a slot is revealed.** The pair
-`(artist_id, placeholder_type)` tells the whole story: `null + tbd` shows
-"TBA"; `null + secret_guest` shows "Secret Guest" with emphasis; `set + null`
-is an ordinary announcement; `set + secret_guest` shows the name with a "was a
-secret guest" badge. A `tbd` slot vanishing from an announcement is normal; a
+**`placeholder_type` is never cleared when a slot is revealed.** TBA,
+Surprise guest, Secret guest and Unknown are **artists** (`is_placeholder`), so
+a slot can be half-known — "Solomun b2b TBA" — and a reveal is swapping the
+act. What the pair says: a placeholder act in the slot shows that placeholder;
+a real act plus `placeholder_type = secret_guest` shows the name with a "was a
+secret guest" badge; a real act and no placeholder_type is an ordinary
+announcement. A `tbd` slot vanishing from an announcement is normal; a
 `secret_guest` vanishing is an anomaly worth a review task.
+
+**A slot's `kind` is the format of the set, never an artist type.** `b2b`,
+`b3b`, `b4b`, `collaboration`, `featuring`, `multiple_guests` describe how the
+acts of one line play together; `duo`, `group`, `collective` stay
+`artist_type`. A kind that disagrees with the number of acts opens a review
+task, it does not block the save.
 
 **A parent and its children are saved in one transaction.** Place with its
 rooms, event with its occurrences, artist with its members. Never a sequence of

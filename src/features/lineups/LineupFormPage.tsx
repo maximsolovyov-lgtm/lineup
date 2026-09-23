@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormSection } from '@/components/form/Field';
 import { LookupField } from '@/components/form/LookupField';
-import { SlotsEditor, type SlotErrors } from '@/components/form/SlotsEditor';
+import { LineupSlotsEditor, type SlotErrors } from './LineupSlotsEditor';
 import { StatusBadge } from '@/components/StatusBadge';
 import { occurrenceLookup, placeLookup } from '@/lib/lookups';
 import { RECORD_STATUSES } from '@/types/enums';
@@ -187,12 +187,12 @@ export function LineupFormPage() {
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">lineup_artist</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          In billing order. <b>TBA</b> is a slot nobody has a name for yet — it may vanish, that is normal. <b>Secret guest</b> is a slot the organiser
-          deliberately withholds — it is guaranteed, and its disappearance is worth a review. When a secret guest is revealed, set the kind to
-          <b> Revealed guest</b> and pick the artist: the placeholder is kept so the badge stays.
+          One row per announced <b>line</b>, in billing order — not per artist. “Solomun b2b Dixon” is one slot of kind <b>B2B</b> with two acts;
+          the kind is the format of the set, never an artist type. <b>TBA</b>, <b>Surprise guest</b>, <b>Secret guest</b> and <b>Unknown</b> are acts
+          too, so half a line can be known (“Solomun b2b TBA”); revealing one is swapping the act, and the badge stays because the placeholder is kept.
         </p>
         <Controller control={control} name="artists" render={({ field }) => (
-          <SlotsEditor value={field.value} onChange={field.onChange} errors={errors.artists as SlotErrors} addLabel="Add artist" />
+          <LineupSlotsEditor value={field.value} onChange={field.onChange} errors={errors.artists as SlotErrors} />
         )} />
       </section>
 

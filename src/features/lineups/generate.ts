@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeName } from '@/lib/normalize';
 import { wallTimeToInstant } from '@/lib/datetime';
-import type { LineupDraft } from '@/agents/lineup/schema';
-import type { SlotFormValue } from '@/components/form/SlotsEditor';
+import type { LineupDraft, LineupDraftSlot } from '@/agents/lineup/schema';
+import { slotLabel, type LineupSlotValue } from './schema';
 import type { Database } from '@/types/database';
 
 export type FoundOccurrence = Database['public']['Functions']['find_lineups']['Returns'][number];
@@ -23,17 +23,33 @@ export interface FinderParams {
 }
 
 /**
- * The venue's and the event's own sites. The agent's web_fetch can only open
- * URLs it has been given or found; the venue's site is where the line-up is
- * published, and its sitemap names the page for the night.
+ * What the agent should know about the place before it reads a publication:
+ * the venue's and the event's own sites — web_fetch can only open URLs it has
+ * been given or found, and the venue's sitemap names the page for the night —
+ * and the venue's line-up pattern, which is what settles an ambiguous "A & B".
  */
-export async function siteHints(placeId: string | null, eventId: string | null): Promise<string[]> {
+export async function placeHints(placeId: string | null, eventId: string | null): Promise<string[]> {
   const [pl, ev] = await Promise.all([
-    placeId ? supabase.from('place').select('website_url').eq('place_id', placeId).maybeSingle() : null,
+    placeId ? supabase.from('place').select('website_url,lineup_pattern').eq('place_id', placeId).maybeSingle() : null,
     eventId ? supabase.from('event').select('website_url').eq('event_id', eventId).maybeSingle() : null,
   ]);
   const sites = [pl?.data?.website_url, ev?.data?.website_url].filter((u): u is string => !!u && /^https?:\/\//i.test(u));
-  return [...new Set(sites)].map((u) => `site: ${u}`);
+  const hints = [...new Set(sites)].map((u) => `site: ${u}`);
+  const pattern = pl?.data?.lineup_pattern?.trim();
+  if (pattern) hints.push(`lineup pattern: ${pattern.replace(/\s+/g, ' ').slice(0, 600)}`);
+  return hints;
+}
+
+/** The venue's line-up pattern as stored — what the operator is asked to confirm or replace. */
+export async function fetchLineupPattern(placeId: string): Promise<string | null> {
+  const { data } = await supabase.from('place').select('lineup_pattern').eq('place_id', placeId).maybeSingle();
+  return data?.lineup_pattern ?? null;
+}
+
+/** Records at the venue what its wording means, so the next parse is not a guess. */
+export async function saveLineupPattern(placeId: string, pattern: string): Promise<void> {
+  const { error } = await supabase.from('place').update({ lineup_pattern: pattern.trim() }).eq('place_id', placeId);
+  if (error) throw error;
 }
 
 /** The labelled keywords the line-up agent reads. */
@@ -56,60 +72,108 @@ export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, curren
 }
 
 export interface ResolvedRoster {
-  slots: SlotFormValue[];
+  slots: LineupSlotValue[];
   matched: string[];
   toCreate: string[];
+  /** Lines the publication printed in a way that allows more than one reading. */
+  unclear: { printed: string; alternatives: string[] }[];
 }
 
 /**
- * Published names → slots. An active artist with the same normalised name
- * is that artist; the rest become label rows flagged to be created as
- * artists (type unknown) when the line-up is saved. Placeholders stay
- * placeholders; "+ more TBA" adds one TBA slot.
+ * Names a publication uses for "no name yet". They resolve to the placeholder
+ * artists, never to a new artist record: "Solomun b2b TBA" is a b2b whose
+ * second act is the TBA placeholder.
+ */
+const PLACEHOLDER_ALIASES: Record<string, string> = {
+  'tba': 'TBA', 'tbc': 'TBA', 'to be announced': 'TBA', 'to be confirmed': 'TBA', 'more tba': 'TBA', 'more to be announced': 'TBA',
+  'secret guest': 'Secret guest', 'secret set': 'Secret guest', 'secret': 'Secret guest',
+  'surprise guest': 'Surprise guest', 'special guest': 'Surprise guest', 'mystery guest': 'Surprise guest', 'guest tba': 'Surprise guest',
+  'unknown': 'Unknown', 'unknown artist': 'Unknown', 'unidentified': 'Unknown', 'tbd': 'TBA',
+};
+
+/**
+ * The published lines → form slots. Every act is matched to a stored artist by
+ * normalised name (placeholder artists first, so TBA never becomes a record);
+ * the rest become acts flagged to be created when the line-up is saved. The
+ * printed line is kept whenever it says more than the acts do.
  */
 export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): Promise<ResolvedRoster> {
-  const names = draft.artists.filter((a) => !a.placeholder).map((a) => normalizeName(a.name)).filter(Boolean);
+  const names = [...new Set(draft.artists.flatMap((s) => s.artists).map((n) => normalizeName(n)).filter(Boolean))];
+  const aliases = [...new Set(Object.values(PLACEHOLDER_ALIASES).map((n) => normalizeName(n)))];
   const byName = new Map<string, { artist_id: string; name: string }>();
-  if (names.length > 0) {
-    const { data } = await supabase.from('artist').select('artist_id,name,normalized_name').eq('status', 'active').in('normalized_name', names);
-    for (const a of data ?? []) if (a.normalized_name && !byName.has(a.normalized_name)) byName.set(a.normalized_name, a);
+  const wanted = [...new Set([...names, ...aliases])];
+  if (wanted.length > 0) {
+    const { data } = await supabase.from('artist').select('artist_id,name,normalized_name,is_placeholder').eq('status', 'active').in('normalized_name', wanted);
+    // A placeholder wins its name: "Unknown" is the placeholder act, not some band called Unknown.
+    for (const a of [...(data ?? [])].sort((x, y) => Number(y.is_placeholder) - Number(x.is_placeholder))) {
+      if (a.normalized_name && !byName.has(a.normalized_name)) byName.set(a.normalized_name, a);
+    }
   }
+  const find = (printed: string) => {
+    const key = normalizeName(printed);
+    const alias = PLACEHOLDER_ALIASES[key];
+    return byName.get(key) ?? (alias ? byName.get(normalizeName(alias)) : undefined);
+  };
+
   const matched: string[] = [];
   const toCreate: string[] = [];
-  const slots: SlotFormValue[] = draft.artists.map((a) => {
-    if (a.placeholder) {
-      return { id: null, artist_id: null, placeholder_type: a.placeholder, display_name_override: a.placeholder === 'tbd' ? '' : a.name.toLowerCase().includes('guest') ? '' : a.name, is_headliner: a.is_headliner, participant_role: 'unknown' };
-    }
-    const hit = byName.get(normalizeName(a.name));
-    if (hit) {
-      matched.push(hit.name);
-      return { id: null, artist_id: hit.artist_id, placeholder_type: '', display_name_override: '', is_headliner: a.is_headliner, participant_role: 'unknown' };
-    }
-    toCreate.push(a.name);
-    return { id: null, artist_id: null, placeholder_type: '', display_name_override: a.name, is_headliner: a.is_headliner, participant_role: 'unknown', create_artist: true };
+  const unclear: { printed: string; alternatives: string[] }[] = [];
+  const slots: LineupSlotValue[] = draft.artists.map((s) => {
+    const artists = s.artists.map((n) => {
+      const hit = find(n);
+      if (hit) {
+        matched.push(hit.name);
+        return { artist_id: hit.artist_id, name: hit.name, create: false };
+      }
+      toCreate.push(n);
+      return { artist_id: null, name: n, create: true };
+    });
+    if (s.kind === 'unknown') unclear.push({ printed: s.printed_as || artists.map((a) => a.name).join(' & '), alternatives: s.kind_alternatives });
+    const label = slotLabel(s.kind, artists.map((a) => a.name), '');
+    return {
+      id: null,
+      kind: s.kind,
+      artists,
+      // Keep the printed line only when the acts do not already spell it out.
+      display_name_override: s.printed_as && normalizeName(s.printed_as) !== normalizeName(label) ? s.printed_as : '',
+      is_headliner: s.is_headliner,
+      placeholder_type: '' as const,
+    };
   });
-  if (!draft.complete && !slots.some((s) => s.placeholder_type === 'tbd')) {
-    slots.push({ id: null, artist_id: null, placeholder_type: 'tbd', display_name_override: '', is_headliner: false, participant_role: 'unknown' });
+  if (!draft.complete && !slots.some((s) => s.artists.some((a) => a.name.toLowerCase() === 'tba'))) {
+    const tba = byName.get(normalizeName('TBA'));
+    slots.push({
+      id: null, kind: 'solo',
+      artists: tba ? [{ artist_id: tba.artist_id, name: tba.name, create: false }] : [],
+      display_name_override: tba ? '' : 'TBA', is_headliner: false, placeholder_type: '',
+    });
   }
-  return { slots, matched, toCreate };
+  return { slots, matched: [...new Set(matched)], toCreate: [...new Set(toCreate)], unclear };
 }
 
 export interface RosterDiff {
   added: string[];
   removed: string[];
-  headlinerChanged: string[];
   same: boolean;
 }
 
-/** Published roster against the stored one, by normalised name; order is not a change. */
-export function compareRosters(stored: { name: string; is_headliner: boolean }[], published: NonNullable<LineupDraft['lineup']>['artists']): RosterDiff {
+/** How one published line reads, for comparison and for the operator. */
+export function draftSlotLabel(s: LineupDraftSlot): string {
+  return slotLabel(s.kind, s.artists, s.printed_as ?? '');
+}
+
+/**
+ * The published lines against the stored ones, by normalised label — order is
+ * not a change, but "Solomun" becoming "Solomun b2b Dixon" is.
+ */
+export function compareRosters(stored: string[], published: LineupDraftSlot[]): RosterDiff {
   const key = (n: string) => normalizeName(n);
-  const s = new Map(stored.map((a) => [key(a.name), a]));
-  const p = new Map(published.map((a) => [a.placeholder ? `#${a.placeholder}` : key(a.name), a]));
-  const added = published.filter((a) => !s.has(a.placeholder ? `#${a.placeholder}` : key(a.name))).map((a) => a.placeholder ? (a.placeholder === 'tbd' ? 'TBA' : 'Secret guest') : a.name);
-  const removed = stored.filter((a) => !p.has(key(a.name))).map((a) => a.name);
-  const headlinerChanged = published.filter((a) => { const o = s.get(key(a.name)); return o && o.is_headliner !== a.is_headliner; }).map((a) => a.name);
-  return { added, removed, headlinerChanged, same: added.length === 0 && removed.length === 0 && headlinerChanged.length === 0 };
+  const s = new Set(stored.map(key));
+  const pub = published.map(draftSlotLabel);
+  const p = new Set(pub.map(key));
+  const added = pub.filter((l) => !s.has(key(l)));
+  const removed = stored.filter((l) => !p.has(key(l)));
+  return { added, removed, same: added.length === 0 && removed.length === 0 };
 }
 
 const nullIfEmpty = (v: string | null | undefined) => (v && v.trim() !== '' ? v.trim() : null);

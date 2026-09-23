@@ -70,9 +70,19 @@ and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
   and `draft.lineup` — the announced roster as printed (billing order,
   headliner flags, `tbd`/`secret_guest` placeholders, room, note), `complete`
   false for "+ more TBA", `place_name` only when the announcement names the
-  venue, `published_at` and `source_url` when shown. Each act may carry
-  `place` when the publication spreads its acts over several venues; the
-  generator then asks which venue to fill. `lineup` is null when
+  venue, `published_at` and `source_url` when shown. **One entry per printed
+  line, not per artist**: `printed_as` (the line verbatim), `artists` (the
+  acts on it) and `kind` — `solo`, `b2b`/`b3b`/`b4b`, `collaboration`,
+  `featuring`, `multiple_guests`, `label_only`, or `unknown` with
+  `kind_alternatives` when the wording allows more than one reading. The
+  classification rules are in the prompt and in `SLOT_KIND_INFO`; the same
+  text is shown to the operator. TBA and the other placeholders are acts, so
+  "Solomun b2b TBA" is one b2b line. A line may carry `place` when the
+  publication spreads its lines over several venues; the generator then asks
+  which venue to fill. `place_lineup_pattern` reports how the venue writes
+  its line-ups — which separator means a shared set — and the generator
+  offers to store it on the place, so the next "A & B" is settled by evidence
+  and not by a guess. `lineup` is null when
   nothing is published yet. Never invents names. The request may carry
   `site: https://…` (the venue's and the event's `website_url`): before the
   model runs, `agents/sitemap.ts` reads that site's sitemap and puts the
@@ -144,9 +154,10 @@ confidence are shown, and only **Create** writes anything.
 **New line-up** has *Find & AI generate* instead (`src/features/lineups/
 LineupGenerate.tsx`): the finder resolves the night from the database, then
 the line-up agent reads the publication. One occurrence without a line-up →
-the form is filled (artists matched by normalised name; unknown names become
-label rows flagged *create an artist record on save*, which `save_lineup()`
-turns into `unknown`-type artists with a review task). One occurrence with a
+the form is filled (acts matched by normalised name, placeholders first;
+unknown names become acts flagged *create*, which `save_lineup()` turns into
+`unknown`-type artists with a review task; lines the agent could not classify
+are listed for the operator to settle). One occurrence with a
 line-up → the published roster is compared with the current version; if it
 differs, the added and dropped names are shown and *Create v(n+1)* fills the
 form, otherwise "nothing changed". Several occurrences → pick one. None →

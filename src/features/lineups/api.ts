@@ -1,7 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Enums } from '@/types/database';
-import type { SaveLineupArgs } from './schema';
+import { slotLabel, type LineupSlotRow, type SaveLineupArgs } from './schema';
+
+/** The acts of a slot, in printed order, for every query that shows a line-up. */
+const SLOT_SELECT = '*,lineup_artist_participant(participant_order,artist_id,artist(name))' as const;
+
+/** TBA, Surprise guest, Secret guest, Unknown — pickable in a slot like any act. */
+export function usePlaceholderArtists() {
+  return useQuery({
+    queryKey: ['placeholder-artists'],
+    staleTime: 60 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('artist').select('artist_id,name,placeholder_type')
+        .eq('is_placeholder', true).eq('status', 'active').order('created_at');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** The acts of one slot in printed order. */
+function actNames(slot: { lineup_artist_participant?: { participant_order: number; artist: { name: string } | null }[] | null }): string[] {
+  return [...(slot.lineup_artist_participant ?? [])]
+    .sort((a, b) => a.participant_order - b.participant_order)
+    .map((p) => p.artist?.name ?? '')
+    .filter(Boolean);
+}
 
 export interface LineupsListParams {
   q: string;
@@ -9,7 +34,7 @@ export interface LineupsListParams {
 }
 
 const LIST_SELECT =
-  'lineup_id,version,published_at,status,updated_at,created_at,place(name),event_occurrence(event_date,occurrence_name,event(name,normalized_name)),lineup_artist(status,is_headliner,artist(name),placeholder_type,display_name_override),performance_set(status)' as const;
+  'lineup_id,version,published_at,status,updated_at,created_at,place(name),event_occurrence(event_date,occurrence_name,event(name,normalized_name)),lineup_artist(status,is_headliner,kind,placeholder_type,display_name_override,lineup_artist_participant(participant_order,artist(name))),performance_set(status)' as const;
 
 export function useLineups(params: LineupsListParams) {
   return useQuery({
@@ -25,11 +50,12 @@ export function useLineups(params: LineupsListParams) {
         .filter((l) => l.event_occurrence)
         .map(({ lineup_artist, performance_set, ...l }) => {
           const active = lineup_artist.filter((a) => a.status === 'active');
-          const names = active.map((a) => a.artist?.name ?? a.display_name_override ?? (a.placeholder_type === 'tbd' ? 'TBA' : 'Secret guest'));
+          const labels = new Map(active.map((a) => [a, slotLabel(a.kind, actNames(a), a.display_name_override ?? '')]));
+          const names = active.map((a) => labels.get(a) || '?');
           return {
             ...l,
-            artist_count: active.length,
-            headliners: active.filter((a) => a.is_headliner).map((a) => a.artist?.name ?? a.display_name_override ?? '?'),
+            artist_count: active.reduce((n, a) => n + actNames(a).length, 0) || active.length,
+            headliners: active.filter((a) => a.is_headliner).map((a) => labels.get(a) || '?'),
             preview: names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4}` : ''),
             set_count: performance_set.filter((s) => s.status === 'active').length,
           };
@@ -46,7 +72,7 @@ export function useLineup(lineupId: string | undefined) {
     queryFn: async () => {
       const [lineup, artists, sets] = await Promise.all([
         supabase.from('lineup').select('*,place(name),event_occurrence(event_date,occurrence_name,event(name))').eq('lineup_id', lineupId!).single(),
-        supabase.from('lineup_artist').select('*').eq('lineup_id', lineupId!).eq('status', 'active')
+        supabase.from('lineup_artist').select(SLOT_SELECT).eq('lineup_id', lineupId!).eq('status', 'active')
           .order('billing_order', { ascending: true, nullsFirst: false }).order('created_at'),
         supabase.from('performance_set').select('performance_set_id,set_type,scenario_type,scheduled_start_at,status,artist_list_json')
           .eq('lineup_id', lineupId!).in('status', ['active', 'cancelled']).order('scheduled_start_at', { ascending: true, nullsFirst: false }),
@@ -54,7 +80,7 @@ export function useLineup(lineupId: string | undefined) {
       if (lineup.error) throw lineup.error;
       if (artists.error) throw artists.error;
       if (sets.error) throw sets.error;
-      return { lineup: lineup.data, artists: artists.data, sets: sets.data };
+      return { lineup: lineup.data, artists: artists.data as LineupSlotRow[], sets: sets.data };
     },
   });
 }
@@ -78,11 +104,11 @@ export function useLineupVersions(occurrenceId: string | undefined, placeId: str
 export async function fetchLineupForClone(lineupId: string) {
   const [lineup, artists] = await Promise.all([
     supabase.from('lineup').select('*').eq('lineup_id', lineupId).maybeSingle(),
-    supabase.from('lineup_artist').select('*').eq('lineup_id', lineupId).eq('status', 'active').order('billing_order', { ascending: true, nullsFirst: false }),
+    supabase.from('lineup_artist').select(SLOT_SELECT).eq('lineup_id', lineupId).eq('status', 'active').order('billing_order', { ascending: true, nullsFirst: false }),
   ]);
   if (lineup.error) throw lineup.error;
   if (artists.error) throw artists.error;
-  return lineup.data ? { lineup: lineup.data, artists: artists.data } : null;
+  return lineup.data ? { lineup: lineup.data, artists: artists.data as LineupSlotRow[] } : null;
 }
 
 export function useSaveLineup() {

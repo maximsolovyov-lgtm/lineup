@@ -46,8 +46,12 @@ export type Database = {
           country: string | null
           created_at: string
           instagram_url: string | null
+          is_placeholder: boolean
           name: string
           normalized_name: string | null
+          placeholder_type:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
           status: Database["public"]["Enums"]["record_status"]
           updated_at: string | null
         }
@@ -57,8 +61,12 @@ export type Database = {
           country?: string | null
           created_at?: string
           instagram_url?: string | null
+          is_placeholder?: boolean
           name: string
           normalized_name?: string | null
+          placeholder_type?:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
         }
@@ -68,8 +76,12 @@ export type Database = {
           country?: string | null
           created_at?: string
           instagram_url?: string | null
+          is_placeholder?: boolean
           name?: string
           normalized_name?: string | null
+          placeholder_type?:
+            | Database["public"]["Enums"]["placeholder_type"]
+            | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
         }
@@ -338,11 +350,11 @@ export type Database = {
       }
       lineup_artist: {
         Row: {
-          artist_id: string | null
           billing_order: number | null
           created_at: string
           display_name_override: string | null
           is_headliner: boolean
+          kind: Database["public"]["Enums"]["lineup_slot_kind"]
           lineup_artist_id: string
           lineup_id: string
           placeholder_type:
@@ -352,11 +364,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          artist_id?: string | null
           billing_order?: number | null
           created_at?: string
           display_name_override?: string | null
           is_headliner?: boolean
+          kind?: Database["public"]["Enums"]["lineup_slot_kind"]
           lineup_artist_id?: string
           lineup_id: string
           placeholder_type?:
@@ -366,11 +378,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          artist_id?: string | null
           billing_order?: number | null
           created_at?: string
           display_name_override?: string | null
           is_headliner?: boolean
+          kind?: Database["public"]["Enums"]["lineup_slot_kind"]
           lineup_artist_id?: string
           lineup_id?: string
           placeholder_type?:
@@ -381,18 +393,44 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "lineup_artist_artist_id_fkey"
+            foreignKeyName: "lineup_artist_lineup_id_fkey"
+            columns: ["lineup_id"]
+            isOneToOne: false
+            referencedRelation: "lineup"
+            referencedColumns: ["lineup_id"]
+          },
+        ]
+      }
+      lineup_artist_participant: {
+        Row: {
+          artist_id: string
+          lineup_artist_id: string
+          participant_order: number
+        }
+        Insert: {
+          artist_id: string
+          lineup_artist_id: string
+          participant_order: number
+        }
+        Update: {
+          artist_id?: string
+          lineup_artist_id?: string
+          participant_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lineup_artist_participant_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artist"
             referencedColumns: ["artist_id"]
           },
           {
-            foreignKeyName: "lineup_artist_lineup_id_fkey"
-            columns: ["lineup_id"]
+            foreignKeyName: "lineup_artist_participant_lineup_artist_id_fkey"
+            columns: ["lineup_artist_id"]
             isOneToOne: false
-            referencedRelation: "lineup"
-            referencedColumns: ["lineup_id"]
+            referencedRelation: "lineup_artist"
+            referencedColumns: ["lineup_artist_id"]
           },
         ]
       }
@@ -966,6 +1004,14 @@ export type Database = {
       is_operator_or_admin: { Args: never; Returns: boolean }
       is_valid_rooms_json: { Args: { j: Json }; Returns: boolean }
       is_valid_tags: { Args: { t: string[] }; Returns: boolean }
+      lineup_slot_label: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["lineup_slot_kind"]
+          p_names: string[]
+          p_printed: string
+        }
+        Returns: string
+      }
       normalize_name: { Args: { p_name: string }; Returns: string }
       place_tag_counts: {
         Args: never
@@ -1020,6 +1066,16 @@ export type Database = {
         | "predicted"
         | "observed"
         | "manual"
+      lineup_slot_kind:
+        | "solo"
+        | "b2b"
+        | "b3b"
+        | "b4b"
+        | "collaboration"
+        | "featuring"
+        | "multiple_guests"
+        | "label_only"
+        | "unknown"
       membership_role:
         | "dj"
         | "producer"
@@ -1051,7 +1107,7 @@ export type Database = {
         | "unknown"
       place_lifecycle_type: "permanent" | "temporary" | "mobile" | "virtual"
       place_role: "main" | "afterparty" | "satellite"
-      placeholder_type: "tbd" | "secret_guest"
+      placeholder_type: "tbd" | "secret_guest" | "unknown"
       record_status:
         | "draft"
         | "active"
@@ -1225,6 +1281,17 @@ export const Constants = {
         "observed",
         "manual",
       ],
+      lineup_slot_kind: [
+        "solo",
+        "b2b",
+        "b3b",
+        "b4b",
+        "collaboration",
+        "featuring",
+        "multiple_guests",
+        "label_only",
+        "unknown",
+      ],
       membership_role: [
         "dj",
         "producer",
@@ -1259,7 +1326,7 @@ export const Constants = {
       ],
       place_lifecycle_type: ["permanent", "temporary", "mobile", "virtual"],
       place_role: ["main", "afterparty", "satellite"],
-      placeholder_type: ["tbd", "secret_guest"],
+      placeholder_type: ["tbd", "secret_guest", "unknown"],
       record_status: [
         "draft",
         "active",

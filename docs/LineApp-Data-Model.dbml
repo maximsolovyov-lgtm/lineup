@@ -207,6 +207,8 @@ Table artist {
   name varchar [not null]
   normalized_name varchar
   artist_type varchar [note: 'solo, duo, group, collective, alias, unknown']
+  is_placeholder boolean [note: 'Repo addition 2026-09-22 (docs/DECISIONS.md): TBA, Surprise guest, Secret guest, Unknown are artist records, so a placeholder can sit inside a multi-act slot.']
+  placeholder_type placeholder_type [note: 'What the placeholder artist stands for. Set only when is_placeholder.']
   status record_status [not null, default: 'active']
   created_at timestamptz [not null]
   updated_at timestamptz

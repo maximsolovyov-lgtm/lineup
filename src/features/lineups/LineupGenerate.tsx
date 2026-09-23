@@ -7,16 +7,16 @@ import { useAgent } from '@/agents/client';
 import { hostnameOf } from '@/agents/client';
 import type { AgentResult, Candidate } from '@/agents/common';
 import type { LineupDraft } from '@/agents/lineup/schema';
-import type { SlotFormValue } from '@/components/form/SlotsEditor';
 import { LineupFinder } from './LineupFinder';
-import { compareRosters, createOccurrenceFromDraft, keywordsFor, resolveRoster, siteHints, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
+import { compareRosters, createOccurrenceFromDraft, draftSlotLabel, fetchLineupPattern, keywordsFor, placeHints, resolveRoster, saveLineupPattern, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
+import type { LineupSlotValue } from './schema';
 
 export interface GeneratedFill {
   occurrence_id: string;
   place_id: string | null;
   published_at: string;
   notes: string;
-  artists: SlotFormValue[];
+  artists: LineupSlotValue[];
   /** When the fill is the next version of this line-up. */
   fromLineupId: string | null;
 }
@@ -63,6 +63,16 @@ function venueGroups(lineup: PublishedLineup): VenueGroup[] {
 export function LineupGenerate({ onFill }: LineupGenerateProps) {
   const agent = useAgent<LineupDraft>('lineup');
   const [stage, setStage] = useState<Stage>({ kind: 'idle' });
+  // What the publication showed about how this venue writes its line-ups. Stored
+  // on the place only when the operator says so — it decides future parses.
+  const [pattern, setPattern] = useState<{ placeId: string; text: string; current: string | null; saved: boolean } | null>(null);
+
+  async function offerPattern(placeId: string | null, text: string | null) {
+    if (!placeId || !text?.trim()) { setPattern(null); return; }
+    const current = await fetchLineupPattern(placeId).catch(() => null);
+    if ((current ?? '').trim() === text.trim()) { setPattern(null); return; }
+    setPattern({ placeId, text: text.trim(), current, saved: false });
+  }
 
   async function research(keywords: string, candidate?: Candidate) {
     return agent.mutateAsync({ keywords, candidate });
@@ -78,6 +88,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
 
   async function fillFrom(occ: FoundOccurrence, placeId: string | null, draft: NonNullable<LineupDraft['lineup']>, r: AgentResult<LineupDraft>, fromLineupId: string | null) {
     const roster = await resolveRoster(draft);
+    void offerPattern(placeId, r.draft?.place_lineup_pattern ?? null);
     onFill({
       occurrence_id: occ.occurrence_id,
       place_id: placeId,
@@ -90,9 +101,16 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
       kind: 'done', tone: 'ok',
       message: (
         <>
-          <b>Form filled from the publication</b> — {roster.slots.length} slot{roster.slots.length === 1 ? '' : 's'}.
-          {roster.matched.length > 0 && <> Matched artists: {roster.matched.join(', ')}.</>}
+          <b>Form filled from the publication</b> — {roster.slots.length} line{roster.slots.length === 1 ? '' : 's'}.
+          {roster.matched.length > 0 && <> Matched acts: {roster.matched.join(', ')}.</>}
           {roster.toCreate.length > 0 && <> <b>Created on save</b> (type unknown, review task): {roster.toCreate.join(', ')}.</>}
+          {roster.unclear.length > 0 && (
+            <span className="mt-1 block text-amber-700">
+              <b>Unclear how {roster.unclear.length === 1 ? 'one line is' : `${roster.unclear.length} lines are`} meant</b>{' '}
+              — {roster.unclear.map((u) => `“${u.printed}”${u.alternatives.length > 0 ? ` (${u.alternatives.join(' / ')})` : ''}`).join('; ')}.
+              Pick the kind on each; saving as <i>Unclear</i> opens a review task.
+            </span>
+          )}
           {!draft.complete && <> The announcement promises more names — a TBA slot was added.</>}
           {r.draft?.date_or_venue_changed && <> <span className="text-amber-700">The publication gives a different date or venue than this occurrence: {describeOcc(r.draft.occurrence)}. Check before saving.</span></>}
           {sourcesLine(r)}
@@ -111,7 +129,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
     const current = lineups.find((l) => l.is_current && (params.placeId ? l.place_id === params.placeId : true)) ?? lineups.find((l) => l.is_current) ?? null;
     setStage({ kind: 'researching', what: `${occ.event_name} · ${occ.event_date}` });
     try {
-      const keywords = keywordsFor(params, occ, current ? current.artists : null, await siteHints(params.placeId ?? occ.primary_place_id, occ.event_id));
+      const keywords = keywordsFor(params, occ, current ? current.artists : null, await placeHints(params.placeId ?? occ.primary_place_id, occ.event_id));
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ, params }); return; }
       await afterResearch(r, occ, params);
@@ -157,8 +175,8 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
       await fillFrom(occ, placeId, lineup, r2, null);
       return;
     }
-    // Headliner flags are not in the finder's summary; compare names and placeholders only.
-    const diff = compareRosters(current.artists.map((n) => ({ name: n, is_headliner: false })), lineup.artists.map((a) => ({ ...a, is_headliner: false })));
+    // The finder returns the stored lines as labels ("Solomun b2b Dixon"); compare those.
+    const diff = compareRosters(current.artists, lineup.artists);
     if (diff.same) {
       setStage({ kind: 'done', tone: 'ok', message: <><b>Nothing changed.</b> The published line-up matches v{current.version} ({current.artist_count} artists){current.place_name ? ` at ${current.place_name}` : ''}.{tail && <> {tail}</>}{sourcesLine(r)}</> });
       return;
@@ -170,7 +188,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
   async function discover(params: FinderParams) {
     setStage({ kind: 'researching', what: 'a night matching the search on the web' });
     try {
-      const keywords = keywordsFor(params, null, null, await siteHints(params.placeId, params.eventId));
+      const keywords = keywordsFor(params, null, null, await placeHints(params.placeId, params.eventId));
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ: null, params }); return; }
       if (r.outcome !== 'draft' || !r.draft?.occurrence) {
@@ -277,7 +295,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
             {stage.groups.map((g) => (
               <li key={g.place ?? '∅'} className="flex flex-wrap items-center gap-2 px-3 py-2">
                 <span className={g.place ? 'font-medium' : 'italic'}>{g.place ?? 'Not attributed to a venue'}</span>
-                <span className="text-xs text-muted-foreground">{g.acts.length} act{g.acts.length === 1 ? '' : 's'}: {g.acts.slice(0, 6).map((a) => a.name).join(', ')}{g.acts.length > 6 ? '…' : ''}</span>
+                <span className="text-xs text-muted-foreground">{g.acts.length} line{g.acts.length === 1 ? '' : 's'}: {g.acts.slice(0, 6).map(draftSlotLabel).join(', ')}{g.acts.length > 6 ? '…' : ''}</span>
                 <span className="flex-1" />
                 <Button type="button" size="sm" onClick={() => void afterResearch(stage.result, stage.occ, stage.params, g.place).catch((e) => setStage({ kind: 'done', tone: 'warn', message: <>{(e as Error).message}</> }))}>Fill this one</Button>
               </li>
@@ -315,6 +333,26 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
             </Button>
             <Button asChild size="sm" variant="outline"><Link to={`/lineups/${stage.current.lineup_id}`}>Open v{stage.current.version}</Link></Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setStage({ kind: 'idle' })}>Dismiss</Button>
+          </div>
+        </div>
+      )}
+
+      {pattern && (
+        <div className="space-y-2 rounded-md border border-dashed p-3 text-sm">
+          <b>How this venue writes its line-ups</b>
+          <p className="text-muted-foreground">{pattern.text}</p>
+          {pattern.current && <p className="text-xs text-muted-foreground">Stored now: <span className="line-through">{pattern.current}</span></p>}
+          <p className="text-xs text-muted-foreground">
+            Stored on the place, this is what settles the next “A &amp; B” — whether it is two sets, a b2b, or A feat. B — instead of the agent guessing.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="outline" disabled={pattern.saved}
+              onClick={() => void saveLineupPattern(pattern.placeId, pattern.text)
+                .then(() => { setPattern({ ...pattern, saved: true }); toast.success('Line-up pattern saved on the place'); })
+                .catch((e) => toast.error((e as Error).message))}>
+              {pattern.saved ? 'Saved' : pattern.current ? 'Replace the stored pattern' : 'Save to the place'}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setPattern(null)}>Dismiss</Button>
           </div>
         </div>
       )}

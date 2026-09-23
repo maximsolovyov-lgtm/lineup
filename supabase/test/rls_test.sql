@@ -771,6 +771,84 @@ select test.run('lineup: new_artist creates the act once, reuses it, and opens a
         end if;
       end $x$ $q$, true);
 
+-- Line-up slots: several acts on one line ------------------------------------------------
+select test.run('lineup: a b2b slot holds two acts and reads "A b2b B"', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_k uuid; v_m uuid; v_slot uuid; v_label text; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        select artist_id into v_m from public.artist where normalized_name = 'brand new act';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          jsonb_build_array(jsonb_build_object('kind', 'b2b', 'is_headliner', true,
+            'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k), jsonb_build_object('artist_id', v_m)))));
+        select lineup_artist_id into v_slot from public.lineup_artist where lineup_id = v and status = 'active';
+        if (select count(*) from public.lineup_artist where lineup_id = v and status = 'active') <> 1
+           or (select count(*) from public.lineup_artist_participant where lineup_artist_id = v_slot) <> 2 then
+          raise exception 'the slot did not keep both acts';
+        end if;
+        select public.lineup_slot_label(la.kind, array_agg(ar.name order by p.participant_order), la.display_name_override)
+          into v_label
+          from public.lineup_artist la
+          join public.lineup_artist_participant p on p.lineup_artist_id = la.lineup_artist_id
+          join public.artist ar on ar.artist_id = p.artist_id
+         where la.lineup_artist_id = v_slot group by la.kind, la.display_name_override;
+        if v_label <> 'Keinemusik b2b Brand New Act' then raise exception 'label is "%"', v_label; end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: a published "TBA" resolves to the placeholder artist and marks the slot', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_tba uuid; v_slot uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_tba from public.artist where is_placeholder and placeholder_type = 'tbd';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          '[{"kind":"b2b","artists":[{"new_artist":{"name":"Keinemusik"}},{"new_artist":{"name":"tba"}}]}]'::jsonb);
+        select lineup_artist_id into v_slot from public.lineup_artist where lineup_id = v and status = 'active';
+        if (select count(*) from public.artist where normalized_name = 'tba') <> 1
+           or not exists (select 1 from public.lineup_artist_participant where lineup_artist_id = v_slot and artist_id = v_tba)
+           or (select placeholder_type from public.lineup_artist where lineup_artist_id = v_slot) <> 'tbd' then
+          raise exception 'the placeholder artist was not reused';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: a kind that disagrees with the number of acts opens a review task', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_k uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          jsonb_build_array(jsonb_build_object('kind', 'b3b', 'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k)))));
+        if not exists (select 1 from public.review_task where entity_type = 'lineup' and entity_id = v and kind = 'lineup_slot_kind_mismatch' and status = 'active') then
+          raise exception 'no review task for the mismatch';
+        end if;
+        if (select count(*) from public.lineup_artist where lineup_id = v and status = 'active') <> 1 then
+          raise exception 'the save was blocked instead of flagged';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: a slot printed in a way that allows more than one reading is flagged', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_k uuid; v_m uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        select artist_id into v_m from public.artist where normalized_name = 'brand new act';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          jsonb_build_array(jsonb_build_object('kind', 'unknown', 'display_name_override', 'Keinemusik & Brand New Act',
+            'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k), jsonb_build_object('artist_id', v_m)))));
+        if not exists (select 1 from public.review_task where entity_type = 'lineup' and entity_id = v and kind = 'lineup_slot_kind_unclear' and status = 'active') then
+          raise exception 'no review task for the unclear slot';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: find_lineups returns slot labels and matches an act inside a b2b', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v_m uuid; n int; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_m from public.artist where normalized_name = 'brand new act';
+        select count(*) into n from public.find_lineups(p_occurrence_id => v_occ, p_artist_id => v_m) f
+         where f.lineups::text like '%Keinemusik b2b Brand New Act%' and f.lineups::text like '%"matches_artist": true%';
+        if n <> 1 then raise exception 'find_lineups did not report the b2b slot (%)', n; end if;
+      end $x$ $q$, true);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

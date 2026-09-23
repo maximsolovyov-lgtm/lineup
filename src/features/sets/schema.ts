@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Constants, type Json, type Tables } from '@/types/database';
 import { RECORD_STATUSES } from '@/types/enums';
 import type { SlotFormValue } from '@/components/form/SlotsEditor';
-import { slotSchema } from '@/features/lineups/schema';
+
 import { instantToWallTime, wallTimeToInstant } from '@/lib/datetime';
 
 export const SET_TYPES = Constants.public.Enums.performance_set_type;
@@ -12,6 +12,22 @@ export const CONFIRMATION_STATUSES = Constants.public.Enums.confirmation_status;
 
 const optionalDateTime = z.string().regex(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/, 'Pick a date and time');
 const optionalDate = z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, 'Pick a date');
+
+/**
+ * One participant of a set: an artist, or a placeholder, or a name as printed,
+ * plus the role it has in this set. A line-up SLOT is a different shape — it
+ * holds several acts and a kind (src/features/lineups/schema.ts).
+ */
+export const participantSchema = z.object({
+  id: z.string().uuid().nullable(),
+  artist_id: z.string().uuid().nullable(),
+  placeholder_type: z.enum(['tbd', 'secret_guest', 'unknown', '']),
+  display_name_override: z.string().trim().max(512),
+  is_headliner: z.boolean(),
+  participant_role: z.string(),
+}).refine((s) => !!s.artist_id || !!s.placeholder_type || s.display_name_override.length > 0, {
+  message: 'Pick an artist, a placeholder, or type a label', path: ['display_name_override'],
+});
 
 export const setFormSchema = z.object({
   occurrence_id: z.string().uuid({ message: 'Pick the occurrence' }),
@@ -34,7 +50,7 @@ export const setFormSchema = z.object({
   lineup_complete: z.boolean(),
   notes: z.string().max(4000),
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
-  participants: z.array(slotSchema),
+  participants: z.array(participantSchema),
 })
   .refine((v) => v.scenario_type !== 'official' || !!v.lineup_id, { message: 'An official set belongs to a line-up', path: ['lineup_id'] })
   .refine((v) => v.scenario_type !== 'predicted' || v.confidence_score !== '', { message: 'A prediction needs a confidence score', path: ['confidence_score'] })

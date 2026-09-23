@@ -18,7 +18,7 @@ import { Constants } from '@/types/database';
 export interface SlotFormValue {
   id: string | null;
   artist_id: string | null;
-  placeholder_type: 'tbd' | 'secret_guest' | '';
+  placeholder_type: 'tbd' | 'secret_guest' | 'unknown' | '';
   display_name_override: string;
   is_headliner: boolean;
   participant_role: string;
@@ -73,7 +73,7 @@ export function SlotsEditor({ value, onChange, errors, showRole = false, disable
     const s = value[i]!;
     if (kind === 'artist') update(i, { placeholder_type: '', display_name_override: '' });
     else if (kind === 'revealed') update(i, { placeholder_type: 'secret_guest', display_name_override: '' });
-    else if (kind === 'tbd' || kind === 'secret_guest') update(i, { artist_id: null, placeholder_type: kind, display_name_override: s.display_name_override });
+    else if (kind === 'tbd' || kind === 'secret_guest' || kind === 'unknown') update(i, { artist_id: null, placeholder_type: kind, display_name_override: s.display_name_override });
     else update(i, { artist_id: null, placeholder_type: '' });
   }
 
@@ -96,6 +96,7 @@ export function SlotsEditor({ value, onChange, errors, showRole = false, disable
                 <SelectItem value="artist">Artist</SelectItem>
                 <SelectItem value="tbd">TBA</SelectItem>
                 <SelectItem value="secret_guest">Secret guest</SelectItem>
+                <SelectItem value="unknown">Unknown</SelectItem>
                 <SelectItem value="revealed">Revealed guest</SelectItem>
                 <SelectItem value="label">Label only</SelectItem>
               </SelectContent>

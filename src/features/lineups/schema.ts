@@ -1,21 +1,71 @@
 import { z } from 'zod';
-import type { Json, Tables } from '@/types/database';
+import { Constants, type Enums, type Json, type Tables } from '@/types/database';
 import { RECORD_STATUSES } from '@/types/enums';
-import type { SlotFormValue } from '@/components/form/SlotsEditor';
+import { slotLabel } from '@/lib/slot-label';
+
+export { slotLabel };
 
 const optionalDateTime = z.string().regex(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/, 'Pick a date and time');
 
+export type LineupSlotKind = Enums<'lineup_slot_kind'>;
+export const LINEUP_SLOT_KINDS = Constants.public.Enums.lineup_slot_kind;
+
+/**
+ * How a line of a line-up is classified. `acts` is the number of artists the
+ * kind requires (null = two or more, no fixed count); a slot that disagrees
+ * is saved anyway and opens a review task — master data arrives incomplete.
+ * `rule` is the classification rule, shown to the operator and given to the
+ * agent, so both decide the same way.
+ */
+export const SLOT_KIND_INFO: Record<LineupSlotKind, { label: string; acts: number | null; rule: string }> = {
+  solo: { label: 'Solo', acts: 1, rule: 'One act plays its own set. A duo, group or collective that is one artist record (Tale Of Us, Keinemusik) is solo — that is the act, not the format.' },
+  b2b: { label: 'B2B', acts: 2, rule: 'Exactly two acts share one set: printed “b2b”, “back to back”, “vs”, “x”, or joined the way this venue’s line-up pattern says means b2b.' },
+  b3b: { label: 'B3B', acts: 3, rule: 'Three acts share one set: “b3b”, “b2b2b”.' },
+  b4b: { label: 'B4B', acts: 4, rule: 'Four acts share one set: “b4b”, “b2b2b2b”.' },
+  collaboration: { label: 'Collaboration', acts: null, rule: 'Two or more acts announced as one joint performance that is not a back-to-back DJ set: “presents”, “meets”, a live A/V show, a one-off project.' },
+  featuring: { label: 'A feat. B', acts: null, rule: 'The first act is the main one, the others join part of its set: “feat.”, “featuring”, “with”, “invites”.' },
+  multiple_guests: { label: 'Multiple guests', acts: null, rule: 'One host act plus several guests: “A + friends”, “A & guests”, a +1 residency where the guest list is the point.' },
+  label_only: { label: 'Label only', acts: 0, rule: 'A line that names no identifiable act: “Resident DJs”, “Local support”. Nothing is created.' },
+  unknown: { label: 'Unclear — review', acts: null, rule: 'The wording allows more than one reading — “Solomun & Dixon” can be two sets, a b2b, or A feat. B — and the venue’s line-up pattern does not settle it. Saving opens a review task; record what the wording means at that venue in the place’s line-up pattern.' },
+};
+
+/** One act of a slot: a stored artist, or a name as printed that may become one on save. */
+export interface SlotArtistValue {
+  artist_id: string | null;
+  /** Name as printed. Display only when artist_id is set. */
+  name: string;
+  /** Create an artist record for this name when the line-up is saved. */
+  create: boolean;
+}
+
+export interface LineupSlotValue {
+  id: string | null;
+  kind: LineupSlotKind;
+  artists: SlotArtistValue[];
+  /** The line exactly as printed — kept when it says more than the acts do. */
+  display_name_override: string;
+  is_headliner: boolean;
+  placeholder_type: 'tbd' | 'secret_guest' | 'unknown' | '';
+}
+
+export const slotArtistSchema = z.object({
+  artist_id: z.string().uuid().nullable(),
+  name: z.string().trim().max(512),
+  create: z.boolean(),
+}).refine((a) => !!a.artist_id || a.name.trim().length > 0, { message: 'Pick an artist or type the name', path: ['name'] });
+
 export const slotSchema = z.object({
   id: z.string().uuid().nullable(),
-  artist_id: z.string().uuid().nullable(),
-  placeholder_type: z.enum(['tbd', 'secret_guest', '']),
+  kind: z.enum(LINEUP_SLOT_KINDS as unknown as [LineupSlotKind, ...LineupSlotKind[]]),
+  artists: z.array(slotArtistSchema),
   display_name_override: z.string().trim().max(512),
   is_headliner: z.boolean(),
-  participant_role: z.string(),
-  create_artist: z.boolean().optional(),
-}).refine((s) => !!s.artist_id || !!s.placeholder_type || s.display_name_override.length > 0, {
-  message: 'Pick an artist, a placeholder, or type a label', path: ['display_name_override'],
+  placeholder_type: z.enum(['tbd', 'secret_guest', 'unknown', '']),
+}).refine((s) => s.artists.length > 0 || s.display_name_override.trim().length > 0, {
+  message: 'Pick the acts, or type the line as printed', path: ['display_name_override'],
 });
+// A kind that disagrees with the number of acts is NOT an error here: the save
+// records it and opens a review task (CLAUDE.md). The editor warns instead.
 
 export const lineupFormSchema = z.object({
   occurrence_id: z.string().uuid({ message: 'Pick the occurrence' }),
@@ -24,23 +74,23 @@ export const lineupFormSchema = z.object({
   published_at: optionalDateTime,
   notes: z.string().max(4000),
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
-  artists: z.array(slotSchema).superRefine((rows, ctx) => {
-    const seen = new Map<string, number>();
-    rows.forEach((r, i) => {
-      if (!r.artist_id) return;
-      const first = seen.get(r.artist_id);
-      if (first !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'artist_id'], message: `Already listed as slot ${first + 1}` });
-      else seen.set(r.artist_id, i);
-    });
-  }),
+  artists: z.array(slotSchema),
 });
 export type LineupFormValues = z.infer<typeof lineupFormSchema>;
 export type LineupRow = Tables<'lineup'>;
 export type LineupArtistRow = Tables<'lineup_artist'>;
+/** A slot as the queries return it: the row plus its acts. */
+export type LineupSlotRow = LineupArtistRow & {
+  lineup_artist_participant: { participant_order: number; artist_id: string; artist: { name: string } | null }[];
+};
 
 export const emptyLineupForm: LineupFormValues = { occurrence_id: '', place_id: null, version: '', published_at: '', notes: '', status: 'active', artists: [] };
 
-export function fromRow(row: LineupRow, artists: LineupArtistRow[]): LineupFormValues {
+export function emptySlot(): LineupSlotValue {
+  return { id: null, kind: 'solo', artists: [], display_name_override: '', is_headliner: false, placeholder_type: '' };
+}
+
+export function fromRow(row: LineupRow, slots: LineupSlotRow[]): LineupFormValues {
   return {
     occurrence_id: row.occurrence_id,
     place_id: row.place_id,
@@ -48,13 +98,15 @@ export function fromRow(row: LineupRow, artists: LineupArtistRow[]): LineupFormV
     published_at: row.published_at ? row.published_at.slice(0, 16) : '',
     notes: row.notes ?? '',
     status: row.status,
-    artists: artists.map((a): SlotFormValue => ({
-      id: a.lineup_artist_id,
-      artist_id: a.artist_id,
-      placeholder_type: a.placeholder_type ?? '',
-      display_name_override: a.display_name_override ?? '',
-      is_headliner: a.is_headliner,
-      participant_role: 'unknown',
+    artists: slots.map((s): LineupSlotValue => ({
+      id: s.lineup_artist_id,
+      kind: s.kind,
+      artists: [...(s.lineup_artist_participant ?? [])]
+        .sort((a, b) => a.participant_order - b.participant_order)
+        .map((p) => ({ artist_id: p.artist_id, name: p.artist?.name ?? '', create: false })),
+      display_name_override: s.display_name_override ?? '',
+      is_headliner: s.is_headliner,
+      placeholder_type: s.placeholder_type ?? '',
     })),
   };
 }
@@ -70,6 +122,10 @@ const nullIfEmpty = (v: string) => (v.trim() === '' ? null : v.trim());
  * lineupId = the row being corrected in place; null = a new publication, which
  * takes the next version unless one is typed. asNewVersion clones an existing
  * line-up into a new row (the slots lose their ids) with the next version.
+ *
+ * An act with no artist record and no "create" flag cannot be a participant:
+ * it survives in the printed line, which is filled from the slot's label when
+ * the operator left it empty.
  */
 export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVersion = false): SaveLineupArgs {
   const fresh = lineupId === null || asNewVersion;
@@ -83,15 +139,18 @@ export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVer
       notes: nullIfEmpty(v.notes),
       status: asNewVersion ? 'active' : v.status,
     },
-    p_artists: v.artists.map((a) => {
-      const create = !a.artist_id && !a.placeholder_type && a.create_artist && nullIfEmpty(a.display_name_override);
+    p_artists: v.artists.map((s) => {
+      const kept = s.artists.filter((a) => a.artist_id || a.create);
+      const dropped = s.artists.length !== kept.length;
+      const printed = nullIfEmpty(s.display_name_override)
+        ?? (dropped ? nullIfEmpty(slotLabel(s.kind, s.artists.map((a) => a.name), '')) : null);
       return {
-        lineup_artist_id: fresh ? null : a.id,
-        artist_id: a.artist_id,
-        placeholder_type: a.placeholder_type || null,
-        display_name_override: create ? null : nullIfEmpty(a.display_name_override),
-        new_artist: create ? { name: a.display_name_override.trim() } : null,
-        is_headliner: a.is_headliner,
+        lineup_artist_id: fresh ? null : s.id,
+        kind: s.kind,
+        placeholder_type: s.placeholder_type || null,
+        display_name_override: printed,
+        is_headliner: s.is_headliner,
+        artists: kept.map((a) => (a.artist_id ? { artist_id: a.artist_id } : { new_artist: { name: a.name.trim() } })),
       };
     }),
   };
