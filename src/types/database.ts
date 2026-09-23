@@ -357,10 +357,12 @@ export type Database = {
           kind: Database["public"]["Enums"]["lineup_slot_kind"]
           lineup_artist_id: string
           lineup_id: string
+          performance_format: Database["public"]["Enums"]["performance_format"]
           placeholder_type:
             | Database["public"]["Enums"]["placeholder_type"]
             | null
           status: Database["public"]["Enums"]["record_status"]
+          tags: Database["public"]["Enums"]["lineup_slot_tag"][]
           updated_at: string | null
         }
         Insert: {
@@ -371,10 +373,12 @@ export type Database = {
           kind?: Database["public"]["Enums"]["lineup_slot_kind"]
           lineup_artist_id?: string
           lineup_id: string
+          performance_format?: Database["public"]["Enums"]["performance_format"]
           placeholder_type?:
             | Database["public"]["Enums"]["placeholder_type"]
             | null
           status?: Database["public"]["Enums"]["record_status"]
+          tags?: Database["public"]["Enums"]["lineup_slot_tag"][]
           updated_at?: string | null
         }
         Update: {
@@ -385,10 +389,12 @@ export type Database = {
           kind?: Database["public"]["Enums"]["lineup_slot_kind"]
           lineup_artist_id?: string
           lineup_id?: string
+          performance_format?: Database["public"]["Enums"]["performance_format"]
           placeholder_type?:
             | Database["public"]["Enums"]["placeholder_type"]
             | null
           status?: Database["public"]["Enums"]["record_status"]
+          tags?: Database["public"]["Enums"]["lineup_slot_tag"][]
           updated_at?: string | null
         }
         Relationships: [
@@ -1076,6 +1082,16 @@ export type Database = {
         | "multiple_guests"
         | "label_only"
         | "unknown"
+      lineup_slot_tag:
+        | "standard"
+        | "all_night_long"
+        | "open_to_close"
+        | "opening"
+        | "closing"
+        | "sunrise"
+        | "sunset"
+        | "afterhours"
+        | "peak_time"
       membership_role:
         | "dj"
         | "producer"
@@ -1094,6 +1110,16 @@ export type Database = {
         | "support"
         | "headliner"
         | "placeholder"
+        | "unknown"
+      performance_format:
+        | "dj_set"
+        | "live"
+        | "live_pa"
+        | "hybrid"
+        | "dj_live_pa"
+        | "av"
+        | "acoustic"
+        | "other"
         | "unknown"
       performance_set_type:
         | "group"
@@ -1292,6 +1318,17 @@ export const Constants = {
         "label_only",
         "unknown",
       ],
+      lineup_slot_tag: [
+        "standard",
+        "all_night_long",
+        "open_to_close",
+        "opening",
+        "closing",
+        "sunrise",
+        "sunset",
+        "afterhours",
+        "peak_time",
+      ],
       membership_role: [
         "dj",
         "producer",
@@ -1311,6 +1348,17 @@ export const Constants = {
         "support",
         "headliner",
         "placeholder",
+        "unknown",
+      ],
+      performance_format: [
+        "dj_set",
+        "live",
+        "live_pa",
+        "hybrid",
+        "dj_live_pa",
+        "av",
+        "acoustic",
+        "other",
         "unknown",
       ],
       performance_set_type: [

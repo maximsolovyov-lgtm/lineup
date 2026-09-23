@@ -1,10 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { instantToWallTime } from '@/lib/datetime';
 import type { Enums } from '@/types/database';
 import { slotLabel, type LineupSlotRow, type SaveLineupArgs } from './schema';
 
 /** The acts of a slot, in printed order, for every query that shows a line-up. */
 const SLOT_SELECT = '*,lineup_artist_participant(participant_order,artist_id,artist(name))' as const;
+
+/**
+ * The night a line-up is for, as the operator needs to see it: start day and
+ * time, end day and time, in the venue's zone — a line-up published for "26
+ * September" belongs to the night that starts then, whatever hour it ends.
+ */
+export function useOccurrenceWindow(occurrenceId: string | undefined) {
+  return useQuery({
+    queryKey: ['occurrence-window', occurrenceId],
+    enabled: !!occurrenceId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('event_occurrence')
+        .select('occurrence_id,event_id,event_date,starts_at,ends_at,timezone,occurrence_name,status,event(name),place:primary_place_id(name)')
+        .eq('occurrence_id', occurrenceId!).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const start = instantToWallTime(data.starts_at, data.timezone);
+      const end = instantToWallTime(data.ends_at, data.timezone);
+      return {
+        ...data,
+        start_date: start.slice(0, 10) || data.event_date,
+        start_time: start.slice(11, 16),
+        end_date: end.slice(0, 10) || data.event_date,
+        end_time: end.slice(11, 16),
+      };
+    },
+  });
+}
 
 /** TBA, Surprise guest, Secret guest, Unknown — pickable in a slot like any act. */
 export function usePlaceholderArtists() {

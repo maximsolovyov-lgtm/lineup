@@ -133,6 +133,9 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): 
     return {
       id: null,
       kind: s.kind,
+      // A bill that says nothing means a DJ set; the agent follows the same rule.
+      performance_format: s.format ?? 'dj_set',
+      tags: s.tags ?? [],
       artists,
       // Keep the printed line only when the acts do not already spell it out.
       display_name_override: s.printed_as && normalizeName(s.printed_as) !== normalizeName(label) ? s.printed_as : '',
@@ -143,7 +146,7 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): 
   if (!draft.complete && !slots.some((s) => s.artists.some((a) => a.name.toLowerCase() === 'tba'))) {
     const tba = byName.get(normalizeName('TBA'));
     slots.push({
-      id: null, kind: 'solo',
+      id: null, kind: 'solo', performance_format: 'dj_set', tags: [],
       artists: tba ? [{ artist_id: tba.artist_id, name: tba.name, create: false }] : [],
       display_name_override: tba ? '' : 'TBA', is_headliner: false, placeholder_type: '',
     });

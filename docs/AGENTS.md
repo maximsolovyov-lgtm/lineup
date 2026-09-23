@@ -76,7 +76,10 @@ and `agents/place/agent.ts`; the shared loop in `agents/research.ts`.
   `featuring`, `multiple_guests`, `label_only`, or `unknown` with
   `kind_alternatives` when the wording allows more than one reading. The
   classification rules are in the prompt and in `SLOT_KIND_INFO`; the same
-  text is shown to the operator. TBA and the other placeholders are acts, so
+  text is shown to the operator. Each line also carries `format` (`dj_set`
+  unless the bill states otherwise — "(live)", "live PA", "A/V") and `tags`
+  (`all_night_long`, `opening`, `closing`, `sunrise`, `afterhours`, … — only
+  what is printed). TBA and the other placeholders are acts, so
   "Solomun b2b TBA" is one b2b line. A line may carry `place` when the
   publication spreads its lines over several venues; the generator then asks
   which venue to fill. `place_lineup_pattern` reports how the venue writes

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Search, Sparkles } from 'lucide-react';
@@ -31,9 +31,11 @@ interface LineupFinderProps {
   submitLabel?: string;
   submitIcon?: 'search' | 'sparkles';
   busy?: boolean;
+  /** Arriving from an event's date: search that night at once (an umbrella lists its parts). */
+  occurrenceId?: string | null;
 }
 
-export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'search', busy = false }: LineupFinderProps = {}) {
+export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'search', busy = false, occurrenceId = null }: LineupFinderProps = {}) {
   const navigate = useNavigate();
   const events = useMemo(() => eventLookup(), []);
   const places = useMemo(() => placeLookup(), []);
@@ -43,9 +45,11 @@ export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'se
   const [eventId, setEventId] = useState<string | null>(null);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [artistId, setArtistId] = useState<string | null>(null);
+  const [night, setNight] = useState<string | null>(occurrenceId);
   const search = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('find_lineups', {
+        p_occurrence_id: night ?? undefined,
         p_date: date || undefined,
         p_days: Number.parseInt(days, 10) || 0,
         p_event_id: eventId ?? undefined,
@@ -65,7 +69,13 @@ export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'se
     },
   });
 
-  const canSearch = !!(date || eventId || placeId || artistId);
+  const canSearch = !!(night || date || eventId || placeId || artistId);
+  // Pointed at one night from the event: show it without making the operator search.
+  useEffect(() => {
+    setNight(occurrenceId);
+    if (occurrenceId) search.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [occurrenceId]);
   const results = onResults ? undefined : search.data;
 
   function newLineup(occurrenceId: string, placeId: string | null, fromLineupId?: string) {
@@ -81,6 +91,12 @@ export function LineupFinder({ onResults, submitLabel = 'Find', submitIcon = 'se
         <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">{onResults ? 'Find the night and generate the line-up' : 'Find a line-up'}</h2>
         <span className="text-xs text-muted-foreground">a date and any of event, place or artist — the occurrence is resolved for you</span>
       </div>
+      {night && (
+        <p className="flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-1.5 text-sm">
+          <span className="text-muted-foreground">One night, opened from its event{results && results.length > 0 ? `: ${results[0]!.event_name} · ${results[0]!.event_date}` : ''}.</span>
+          <button type="button" className="underline" onClick={() => { setNight(null); search.reset(); }}>Search everything instead</button>
+        </p>
+      )}
       <form
         className="grid grid-cols-1 gap-3 sm:grid-cols-[9.5rem_5rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
         onSubmit={(e) => { e.preventDefault(); if (canSearch) search.mutate(); }}

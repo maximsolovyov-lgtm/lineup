@@ -849,6 +849,41 @@ select test.run('lineup: find_lineups returns slot labels and matches an act ins
         if n <> 1 then raise exception 'find_lineups did not report the b2b slot (%)', n; end if;
       end $x$ $q$, true);
 
+-- Slot format and tags ---------------------------------------------------------------------
+select test.run('lineup: a slot with no format stated is a DJ set, and published_at is the moment of publication', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_k uuid; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-24' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          jsonb_build_array(jsonb_build_object('artists', jsonb_build_array(jsonb_build_object('artist_id', v_k)))));
+        if (select performance_format from public.lineup_artist where lineup_id = v and status = 'active') <> 'dj_set'
+           or (select tags from public.lineup_artist where lineup_id = v and status = 'active') <> '{}'::public.lineup_slot_tag[] then
+          raise exception 'the default format or tags are wrong';
+        end if;
+        if (select published_at from public.lineup where lineup_id = v) is null
+           or (select published_at from public.lineup where lineup_id = v) < now() - interval '1 minute' then
+          raise exception 'published_at was not set at publication';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: a slot keeps its format and tags, and "standard" gives way to a real claim', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_k uuid; v_tags public.lineup_slot_tag[]; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          jsonb_build_array(jsonb_build_object('performance_format', 'live_pa', 'tags', jsonb_build_array('standard', 'closing', 'sunrise', 'closing'),
+            'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k)))));
+        if (select performance_format from public.lineup_artist where lineup_id = v and status = 'active') <> 'live_pa' then
+          raise exception 'format not kept';
+        end if;
+        select tags into v_tags from public.lineup_artist where lineup_id = v and status = 'active';
+        if not (v_tags @> array['closing', 'sunrise']::public.lineup_slot_tag[]) or array_length(v_tags, 1) <> 2 then
+          raise exception 'tags wrong: %', v_tags;
+        end if;
+      end $x$ $q$, true);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

@@ -15,6 +15,8 @@ const nullableStr = z.string().nullable().describe('null when not established fr
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable().describe('HH:MM wall time in the venue zone, or null');
 
 export const LINEUP_SLOT_KINDS = ['solo', 'b2b', 'b3b', 'b4b', 'collaboration', 'featuring', 'multiple_guests', 'label_only', 'unknown'] as const;
+export const PERFORMANCE_FORMATS = ['dj_set', 'live', 'live_pa', 'hybrid', 'dj_live_pa', 'av', 'acoustic', 'other', 'unknown'] as const;
+export const LINEUP_SLOT_TAGS = ['standard', 'all_night_long', 'open_to_close', 'opening', 'closing', 'sunrise', 'sunset', 'afterhours', 'peak_time'] as const;
 
 export const LineupDraftSlotSchema = z.object({
   printed_as: z.string().describe('The line exactly as the announcement prints it: "Solomun b2b Dixon", "Jamie Jones feat. Seth Troxler", "Marco Carola", "Resident DJs"'),
@@ -28,10 +30,17 @@ export const LineupDraftSlotSchema = z.object({
     + 'label_only = a line naming no identifiable act ("Resident DJs", "Local support"). '
     + 'unknown = the wording allows more than one reading and nothing settles it — "A & B" with no other signal can be two separate sets, a b2b, or A feat. B'),
   kind_alternatives: z.array(z.string()).describe('Only when kind is "unknown": the readings the wording allows, most likely first, e.g. ["two separate sets", "b2b", "A feat. B"]. Empty otherwise'),
+  format: z.enum(PERFORMANCE_FORMATS).describe(
+    'How the act performs, AS ANNOUNCED. dj_set = an ordinary DJ set — use it whenever the bill says nothing, because that is what a club bill means; '
+    + 'live = "(live)", a band, a live show; live_pa = "live PA"; hybrid = a DJ set with live elements; dj_live_pa = announced as both a DJ set and a live PA; '
+    + 'av = "A/V", "audiovisual"; acoustic; other = stated but none of these; unknown = ONLY when the source deliberately leaves the format open'),
+  tags: z.array(z.enum(LINEUP_SLOT_TAGS)).describe(
+    'What the announcement says about where this line sits in the night, as printed: all_night_long ("all night long"), open_to_close ("open to close"), '
+    + 'opening, closing, sunrise, sunset, afterhours, peak_time. Several can be true ("closing" + "sunrise"). standard only when the bill explicitly calls it an ordinary slot. Empty when it says nothing'),
   is_headliner: z.boolean().describe('true for the line(s) the announcement emphasises'),
   place: nullableStr.describe('The VENUE this line is assigned to, only when the publication spreads its lines over several venues (Sónar by Day / by Night, "Ushuaïa & Hï"); null when the whole line-up is at one venue or none is named'),
   room: nullableStr.describe('The room or stage WITHIN the venue this line is assigned to, if the announcement says'),
-  note: nullableStr.describe('"live", "closing set", "all night long", "hosted by …" — only if printed'),
+  note: nullableStr.describe('Anything else printed about the line that format and tags do not carry: "hosted by …", "extended set", "vinyl only". null when there is none'),
 });
 
 export const LineupDraftSchema = z.object({

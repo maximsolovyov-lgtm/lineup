@@ -9,6 +9,39 @@ const optionalDateTime = z.string().regex(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/, 
 
 export type LineupSlotKind = Enums<'lineup_slot_kind'>;
 export const LINEUP_SLOT_KINDS = Constants.public.Enums.lineup_slot_kind;
+export type PerformanceFormat = Enums<'performance_format'>;
+export const PERFORMANCE_FORMATS = Constants.public.Enums.performance_format;
+export type LineupSlotTag = Enums<'lineup_slot_tag'>;
+export const LINEUP_SLOT_TAGS = Constants.public.Enums.lineup_slot_tag;
+
+/**
+ * How the act performs. A bill that says nothing means a DJ set — that is the
+ * default, and `unknown` is for a source that leaves the format open.
+ */
+export const SLOT_FORMAT_INFO: Record<PerformanceFormat, { label: string; hint: string }> = {
+  dj_set: { label: 'DJ_SET', hint: 'An ordinary DJ set — what a bill means when it says nothing' },
+  live: { label: 'LIVE', hint: 'A live performance' },
+  live_pa: { label: 'LIVE_PA', hint: 'An electronic live PA' },
+  hybrid: { label: 'HYBRID', hint: 'A DJ set with live elements' },
+  dj_live_pa: { label: 'DJ_LIVE_PA', hint: 'Announced as both a DJ set and a live PA' },
+  av: { label: 'AV', hint: 'An audio-visual set' },
+  acoustic: { label: 'ACOUSTIC', hint: 'An acoustic performance' },
+  other: { label: 'OTHER', hint: 'A format we have not classified' },
+  unknown: { label: 'UNKNOWN', hint: 'The format is not published' },
+};
+
+/** Where in the night the announcement puts the slot. They combine, except STANDARD. */
+export const SLOT_TAG_INFO: Record<LineupSlotTag, { label: string; hint: string }> = {
+  standard: { label: 'STANDARD', hint: 'Nothing special is claimed — excludes the others' },
+  all_night_long: { label: 'ALL_NIGHT_LONG', hint: 'One act plays the whole night' },
+  open_to_close: { label: 'OPEN_TO_CLOSE', hint: 'From doors to close — the room has no other act' },
+  opening: { label: 'OPENING', hint: 'The set that opens the room' },
+  closing: { label: 'CLOSING', hint: 'The set that closes it' },
+  sunrise: { label: 'SUNRISE', hint: 'Announced as the sunrise set' },
+  sunset: { label: 'SUNSET', hint: 'Announced as the sunset set' },
+  afterhours: { label: 'AFTERHOURS', hint: 'After the main night, often another room or venue' },
+  peak_time: { label: 'PEAK_TIME', hint: 'The peak slot of the night' },
+};
 
 /**
  * How a line of a line-up is classified. `acts` is the number of artists the
@@ -41,6 +74,8 @@ export interface SlotArtistValue {
 export interface LineupSlotValue {
   id: string | null;
   kind: LineupSlotKind;
+  performance_format: PerformanceFormat;
+  tags: LineupSlotTag[];
   artists: SlotArtistValue[];
   /** The line exactly as printed — kept when it says more than the acts do. */
   display_name_override: string;
@@ -57,6 +92,8 @@ export const slotArtistSchema = z.object({
 export const slotSchema = z.object({
   id: z.string().uuid().nullable(),
   kind: z.enum(LINEUP_SLOT_KINDS as unknown as [LineupSlotKind, ...LineupSlotKind[]]),
+  performance_format: z.enum(PERFORMANCE_FORMATS as unknown as [PerformanceFormat, ...PerformanceFormat[]]),
+  tags: z.array(z.enum(LINEUP_SLOT_TAGS as unknown as [LineupSlotTag, ...LineupSlotTag[]])),
   artists: z.array(slotArtistSchema),
   display_name_override: z.string().trim().max(512),
   is_headliner: z.boolean(),
@@ -87,7 +124,7 @@ export type LineupSlotRow = LineupArtistRow & {
 export const emptyLineupForm: LineupFormValues = { occurrence_id: '', place_id: null, version: '', published_at: '', notes: '', status: 'active', artists: [] };
 
 export function emptySlot(): LineupSlotValue {
-  return { id: null, kind: 'solo', artists: [], display_name_override: '', is_headliner: false, placeholder_type: '' };
+  return { id: null, kind: 'solo', performance_format: 'dj_set', tags: [], artists: [], display_name_override: '', is_headliner: false, placeholder_type: '' };
 }
 
 export function fromRow(row: LineupRow, slots: LineupSlotRow[]): LineupFormValues {
@@ -101,6 +138,8 @@ export function fromRow(row: LineupRow, slots: LineupSlotRow[]): LineupFormValue
     artists: slots.map((s): LineupSlotValue => ({
       id: s.lineup_artist_id,
       kind: s.kind,
+      performance_format: s.performance_format,
+      tags: s.tags ?? [],
       artists: [...(s.lineup_artist_participant ?? [])]
         .sort((a, b) => a.participant_order - b.participant_order)
         .map((p) => ({ artist_id: p.artist_id, name: p.artist?.name ?? '', create: false })),
@@ -135,6 +174,7 @@ export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVer
       occurrence_id: v.occurrence_id,
       place_id: v.place_id,
       version: asNewVersion ? null : (v.version.trim() === '' ? null : Number.parseInt(v.version, 10)),
+      // Empty = published now: save_lineup() stamps the moment the version is saved.
       published_at: v.published_at ? new Date(v.published_at).toISOString() : null,
       notes: nullIfEmpty(v.notes),
       status: asNewVersion ? 'active' : v.status,
@@ -147,6 +187,8 @@ export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVer
       return {
         lineup_artist_id: fresh ? null : s.id,
         kind: s.kind,
+        performance_format: s.performance_format,
+        tags: s.tags,
         placeholder_type: s.placeholder_type || null,
         display_name_override: printed,
         is_headliner: s.is_headliner,

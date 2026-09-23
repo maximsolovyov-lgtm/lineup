@@ -15,7 +15,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { occurrenceLookup, placeLookup } from '@/lib/lookups';
 import { RECORD_STATUSES } from '@/types/enums';
 import { emptyLineupForm, fromRow, lineupFormSchema, toPayload, type LineupFormValues } from './schema';
-import { useLineup, useLineupVersions, useSaveLineup, fetchLineupForClone } from './api';
+import { useLineup, useLineupVersions, useOccurrenceWindow, useSaveLineup, fetchLineupForClone } from './api';
 import { LineupGenerate, type GeneratedFill } from './LineupGenerate';
 
 export function LineupFormPage() {
@@ -34,6 +34,7 @@ export function LineupFormPage() {
   const occurrenceId = watch('occurrence_id');
   const placeId = watch('place_id');
   const versions = useLineupVersions(occurrenceId || undefined, placeId);
+  const window = useOccurrenceWindow(occurrenceId || undefined);
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.lineup, existing.data.artists));
@@ -131,6 +132,29 @@ export function LineupFormPage() {
             <LookupField id="occurrence_id" value={field.value || null} onChange={(id) => field.onChange(id ?? '')} search={occurrences.search} resolve={occurrences.resolve} placeholder="Search events…" invalid={!!errors.occurrence_id} disabled={!isNew} />
           )} />
         </Field>
+        {window.data && (
+          <div className="sm:col-span-2 -mt-1 space-y-2 rounded-lg border bg-muted/20 p-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Link to={`/events/${window.data.event_id}`} className="font-medium underline-offset-2 hover:underline">{window.data.event?.name ?? 'Event'}</Link>
+              {window.data.occurrence_name && <span className="text-muted-foreground">· {window.data.occurrence_name}</span>}
+              <span className={window.data.place?.name ? 'text-muted-foreground' : 'italic text-muted-foreground'}>· {window.data.place?.name ?? 'no default place'}</span>
+              {window.data.status !== 'active' && <StatusBadge status={window.data.status} />}
+              <span className="flex-1" />
+              <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">{window.data.timezone ?? 'no zone'}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {([['Start date', window.data.start_date], ['Start', window.data.start_time], ['End date', window.data.end_date], ['End', window.data.end_time]] as const).map(([label, v]) => (
+                <div key={label} className="space-y-1">
+                  <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+                  <Input value={v || '—'} readOnly tabIndex={-1} aria-label={`Occurrence ${label.toLowerCase()}`} className="bg-card font-mono text-[13px]" />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The night itself, read-only: the start date is the business day this line-up belongs to. Change any of it on the event.
+            </p>
+          </div>
+        )}
         <Field label="Place" htmlFor="place_id" error={errors.place_id?.message} className="sm:col-span-2"
           hint="Leave empty when the announcement did not say where. A multi-venue line-up published without attribution is ONE line-up with no place — never one copy per venue.">
           <Controller control={control} name="place_id" render={({ field }) => (
@@ -140,7 +164,8 @@ export function LineupFormPage() {
         <Field label="Version" htmlFor="version" error={errors.version?.message} hint={isNew ? 'Empty = next version for this occurrence and place.' : 'Change only to renumber; a new announcement is “Publish as new version”.'}>
           <Input id="version" inputMode="numeric" placeholder={versions.data ? String((versions.data.at(-1)?.version ?? 0) + 1) : ''} {...register('version')} aria-invalid={!!errors.version} />
         </Field>
-        <Field label="Published at" htmlFor="published_at" error={errors.published_at?.message} hint="When the announcement went out.">
+        <Field label="Published at" htmlFor="published_at" error={errors.published_at?.message}
+          hint={isNew ? 'Leave empty: stamped the moment this version is published. Fill it only when the announcement itself is dated earlier.' : 'When the announcement went out.'}>
           <Input id="published_at" type="datetime-local" {...register('published_at')} aria-invalid={!!errors.published_at} />
         </Field>
         <Field label="Status" htmlFor="status" required error={errors.status?.message}>

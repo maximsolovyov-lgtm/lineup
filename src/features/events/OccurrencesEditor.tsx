@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { MapPinPlus, Plus, Trash2, X } from 'lucide-react';
+import { CalendarSearch, MapPinPlus, Plus, Trash2, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,8 +27,8 @@ interface OccurrencesEditorProps {
 // will not happen.
 const ROW_STATUSES = RECORD_STATUSES.filter((s) => ['draft', 'active', 'cancelled'].includes(s));
 
-const HEADER = 'hidden gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid sm:grid-cols-[9.5rem_5.5rem_9.5rem_5.5rem_minmax(0,1fr)_7.5rem_2.25rem]';
-const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[9.5rem_5.5rem_9.5rem_5.5rem_minmax(0,1fr)_7.5rem_2.25rem]';
+const HEADER = 'hidden gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid sm:grid-cols-[9.5rem_5.5rem_9.5rem_5.5rem_minmax(0,1fr)_7.5rem_4.5rem]';
+const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[9.5rem_5.5rem_9.5rem_5.5rem_minmax(0,1fr)_7.5rem_4.5rem]';
 
 /**
  * Occurrences block of the event record (design/EventEdit.dc.html): one row
@@ -98,11 +99,18 @@ export function OccurrencesEditor({ value, onChange, errors, eventName, disabled
                   {!ROW_STATUSES.includes(o.status as never) && <SelectItem value={o.status}>{o.status}</SelectItem>}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="ghost" size="icon" disabled={disabled}
-                title={o.occurrence_id ? 'Remove date (deactivated on save; refused while a line-up or schedule refers to it)' : 'Remove date'}
-                onClick={() => onChange(value.filter((_, idx) => idx !== i))}>
-                <Trash2 />
-              </Button>
+              <div className="flex items-center">
+                {o.occurrence_id && (
+                  <Button asChild variant="ghost" size="icon" title="Open this night: its line-ups and what is announced for it">
+                    <Link to={`/lineups?occurrence=${o.occurrence_id}`}><CalendarSearch /></Link>
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" size="icon" disabled={disabled}
+                  title={o.occurrence_id ? 'Remove date (deactivated on save; refused while a line-up or schedule refers to it)' : 'Remove date'}
+                  onClick={() => onChange(value.filter((_, idx) => idx !== i))}>
+                  <Trash2 />
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)_4.5rem_minmax(0,18rem)]">
               <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Default place</span>

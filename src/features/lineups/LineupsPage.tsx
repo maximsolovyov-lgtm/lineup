@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { LineupFinder } from './LineupFinder';
 
 export function LineupsPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<LineupsListParams['status']>('active');
   const lineups = useLineups({ q, status });
@@ -34,7 +35,7 @@ export function LineupsPage() {
         <Button asChild><Link to="/lineups/new"><Plus /> New line-up</Link></Button>
       </div>
 
-      <LineupFinder />
+      <LineupFinder occurrenceId={params.get('occurrence')} />
 
       <div className="rounded-xl border bg-card">
         <Table>

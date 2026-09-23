@@ -7,7 +7,8 @@ import { LookupField } from '@/components/form/LookupField';
 import { artistLookup } from '@/lib/lookups';
 import { usePlaceholderArtists } from './api';
 import { slotJoinWord, slotLabel } from '@/lib/slot-label';
-import { LINEUP_SLOT_KINDS, SLOT_KIND_INFO, emptySlot, type LineupSlotKind, type LineupSlotValue } from './schema';
+import { LINEUP_SLOT_KINDS, LINEUP_SLOT_TAGS, PERFORMANCE_FORMATS, SLOT_FORMAT_INFO, SLOT_KIND_INFO, SLOT_TAG_INFO, emptySlot,
+  type LineupSlotKind, type LineupSlotTag, type LineupSlotValue, type PerformanceFormat } from './schema';
 
 export type SlotErrors = (Partial<Record<'artists' | 'display_name_override' | 'kind', { message?: string }>> | undefined)[] | undefined;
 
@@ -18,7 +19,7 @@ interface LineupSlotsEditorProps {
   disabled?: boolean;
 }
 
-const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[10.5rem_minmax(0,1fr)_5rem_6rem]';
+const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[10.5rem_minmax(0,1fr)_9rem_5rem_6rem]';
 
 /**
  * The slots of a line-up: one row per announced LINE, not per artist.
@@ -58,6 +59,15 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled }: LineupS
   function removeAct(i: number, j: number) {
     const s = value[i]!;
     update(i, { artists: s.artists.filter((_, idx) => idx !== j) });
+  }
+  // STANDARD says "nothing special"; it cannot stand next to a claim, and a
+  // claim pushes it out — the same rule save_lineup() applies.
+  function toggleTag(i: number, tag: LineupSlotTag) {
+    const s = value[i]!;
+    const has = s.tags.includes(tag);
+    let tags = has ? s.tags.filter((t) => t !== tag) : [...s.tags, tag];
+    if (!has) tags = tag === 'standard' ? ['standard'] : tags.filter((t) => t !== 'standard');
+    update(i, { tags });
   }
 
   return (
@@ -135,6 +145,17 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled }: LineupS
                 )}
               </div>
 
+              <Select value={s.performance_format} onValueChange={(v) => update(i, { performance_format: v as PerformanceFormat })} disabled={disabled}>
+                <SelectTrigger aria-label={`Slot ${i + 1} type`}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PERFORMANCE_FORMATS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      <span className="font-mono text-[12px]">{SLOT_FORMAT_INFO[f].label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <label className="flex h-10 items-center gap-2 px-1 text-xs text-muted-foreground">
                 <input type="checkbox" className="h-4 w-4 accent-primary" checked={s.is_headliner} disabled={disabled}
                   onChange={(e) => update(i, { is_headliner: e.target.checked })} aria-label={`Slot ${i + 1} headliner`} />
@@ -145,6 +166,20 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled }: LineupS
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move up" disabled={disabled || i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move down" disabled={disabled || i === value.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Remove" disabled={disabled} onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 /></Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+              <span className="px-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" title="Where in the night the announcement puts this slot">Tags</span>
+              <div className="flex flex-wrap gap-1.5">
+                {LINEUP_SLOT_TAGS.map((t) => (
+                  <button key={t} type="button" disabled={disabled} title={SLOT_TAG_INFO[t].hint}
+                    aria-pressed={s.tags.includes(t)}
+                    className={`rounded-full border px-2.5 py-1 font-mono text-[11px] ${s.tags.includes(t) ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary/60'}`}
+                    onClick={() => toggleTag(i, t)}>
+                    {SLOT_TAG_INFO[t].label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -162,7 +197,7 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled }: LineupS
                   {s.placeholder_type === 'secret_guest' ? 'was a secret guest' : s.placeholder_type === 'tbd' ? 'was TBA' : 'was unidentified'}
                 </span>
               )}
-              <span className="text-muted-foreground">{info.rule}</span>
+              <span className="text-muted-foreground">{SLOT_FORMAT_INFO[s.performance_format].hint}. {info.rule}</span>
             </div>
             {mismatch && (
               <p className="px-1 text-xs text-amber-700" role="alert">

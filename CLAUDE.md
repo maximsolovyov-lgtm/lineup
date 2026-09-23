@@ -71,6 +71,15 @@ secret guest" badge; a real act and no placeholder_type is an ordinary
 announcement. A `tbd` slot vanishing from an announcement is normal; a
 `secret_guest` vanishing is an anomaly worth a review task.
 
+**A slot's `performance_format` defaults to `dj_set`, not `unknown`.** A club
+bill that says nothing about the format means a DJ set; `unknown` is only for a
+source that leaves it open. `tags` (all night long, opening, closing, sunrise…)
+record what the bill prints, never what the billing order suggests.
+
+**`lineup.published_at` is stamped when the version is saved.** `save_lineup()`
+fills it with `now()` when the caller sends none and never clears it; an earlier
+date is entered only when the announcement itself carries one.
+
 **A slot's `kind` is the format of the set, never an artist type.** `b2b`,
 `b3b`, `b4b`, `collaboration`, `featuring`, `multiple_guests` describe how the
 acts of one line play together; `duo`, `group`, `collective` stay
