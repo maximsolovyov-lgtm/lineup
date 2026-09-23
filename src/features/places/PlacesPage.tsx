@@ -21,7 +21,7 @@ export function PlacesPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto">
+        <div className="w-full sm:mr-auto sm:w-auto">
           <h1 className="text-[27px] font-semibold tracking-[-0.5px]">Places</h1>
           <p className="text-[13px] text-muted-foreground">
             {places.data ? `${places.data.length} records · rooms total: ${places.data.reduce((n, p) => n + p.room_count, 0)}` : 'Venues and their rooms'}
@@ -30,20 +30,20 @@ export function PlacesPage() {
         <Input
           type="search"
           placeholder="Search name, city, Instagram…"
-          className="h-11 w-72"
+          className="h-11 w-full sm:w-72"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           aria-label="Search places"
         />
         <Select value={tag || '_all'} onValueChange={(v) => setTag(v === '_all' ? '' : v)}>
-          <SelectTrigger className="h-11 w-44" aria-label="Tag filter"><SelectValue placeholder="Tag: all" /></SelectTrigger>
+          <SelectTrigger className="h-11 min-w-[8.5rem] flex-1 sm:w-44 sm:flex-none" aria-label="Tag filter"><SelectValue placeholder="Tag: all" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="_all">Tag: all</SelectItem>
             {(tagCounts.data ?? []).map((t) => <SelectItem key={t.tag} value={t.tag}>{t.tag} · {t.place_count}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={(v) => setStatus(v as PlaceListParams['status'])}>
-          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 min-w-[8.5rem] flex-1 sm:w-40 sm:flex-none" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -60,12 +60,12 @@ export function PlacesPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>City</TableHead>
-              <TableHead>Country</TableHead>
-              <TableHead>Lifecycle</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead className="text-right">Rooms</TableHead>
+              <TableHead className="hidden md:table-cell">Country</TableHead>
+              <TableHead className="hidden md:table-cell">Lifecycle</TableHead>
+              <TableHead className="hidden md:table-cell">Tags</TableHead>
+              <TableHead className="hidden md:table-cell text-right">Rooms</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Last change</TableHead>
+              <TableHead className="hidden md:table-cell">Last change</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -85,9 +85,9 @@ export function PlacesPage() {
                 <TableRow key={p.place_id} className="cursor-pointer" onClick={() => navigate(`/places/${p.place_id}`)}>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell>{p.city}</TableCell>
-                  <TableCell>{p.country}</TableCell>
-                  <TableCell className="capitalize">{p.lifecycle_type}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">{p.country}</TableCell>
+                  <TableCell className="hidden md:table-cell capitalize">{p.lifecycle_type}</TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <span className="flex flex-wrap gap-1">
                       {p.tags.map((t) => (
                         <button key={t} type="button" onClick={(e) => { e.stopPropagation(); setTag(t); }}
@@ -97,9 +97,9 @@ export function PlacesPage() {
                       ))}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">{p.room_count || '—'}</TableCell>
+                  <TableCell className="hidden md:table-cell text-right font-mono text-muted-foreground">{p.room_count || '—'}</TableCell>
                   <TableCell><StatusBadge status={p.status} /></TableCell>
-                  <TableCell className="text-muted-foreground">{when}{who && ` · ${who}`}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">{when}{who && ` · ${who}`}</TableCell>
                 </TableRow>
               );
             })}

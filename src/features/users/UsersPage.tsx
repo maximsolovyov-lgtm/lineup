@@ -46,10 +46,10 @@ export function UsersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Email</TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead className="hidden md:table-cell">Name</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead className="hidden md:table-cell">Joined</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -65,7 +65,7 @@ export function UsersPage() {
               return (
                 <TableRow key={p.user_id}>
                   <TableCell className="font-medium">{p.email}{isMe && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}</TableCell>
-                  <TableCell>{p.full_name}</TableCell>
+                  <TableCell className="hidden md:table-cell">{p.full_name}</TableCell>
                   <TableCell>
                     <Select value={p.role} disabled={isMe || setRole.isPending} onValueChange={(v) => void onRole(p.user_id, v as Enums<'app_role'>)}>
                       <SelectTrigger className="w-32" aria-label={`Role for ${p.email}`}><SelectValue /></SelectTrigger>
@@ -73,7 +73,7 @@ export function UsersPage() {
                     </Select>
                   </TableCell>
                   <TableCell><StatusBadge status={p.status} /></TableCell>
-                  <TableCell className="text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant={p.status === 'active' ? 'outline' : 'secondary'}

@@ -18,13 +18,13 @@ export function EventsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto">
+        <div className="w-full sm:mr-auto sm:w-auto">
           <h1 className="text-[27px] font-semibold tracking-[-0.5px]">Events</h1>
           <p className="text-[13px] text-muted-foreground">Reusable brands and their dates. Line-ups and timetables come in the next stage.</p>
         </div>
-        <Input type="search" placeholder="Search name…" className="h-11 w-72" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search events" />
+        <Input type="search" placeholder="Search name…" className="h-11 w-full sm:w-72" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search events" />
         <Select value={status} onValueChange={(v) => setStatus(v as EventsListParams['status'])}>
-          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 min-w-[8.5rem] flex-1 sm:w-40 sm:flex-none" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -38,8 +38,8 @@ export function EventsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Dates</TableHead>
+              <TableHead className="hidden md:table-cell">Type</TableHead>
+              <TableHead className="hidden md:table-cell text-right">Dates</TableHead>
               <TableHead>Next</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -51,8 +51,8 @@ export function EventsPage() {
             {events.data?.map((e) => (
               <TableRow key={e.event_id} className="cursor-pointer" onClick={() => navigate(`/events/${e.event_id}`)}>
                 <TableCell className="font-medium">{e.name}</TableCell>
-                <TableCell className="text-muted-foreground">{e.event_type}</TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground">{e.occurrence_count || '—'}</TableCell>
+                <TableCell className="hidden md:table-cell text-muted-foreground">{e.event_type}</TableCell>
+                <TableCell className="hidden md:table-cell text-right font-mono text-muted-foreground">{e.occurrence_count || '—'}</TableCell>
                 <TableCell className="text-muted-foreground">{e.next_date ?? (e.last_date ? `last ${e.last_date}` : '—')}</TableCell>
                 <TableCell><StatusBadge status={e.status} /></TableCell>
               </TableRow>

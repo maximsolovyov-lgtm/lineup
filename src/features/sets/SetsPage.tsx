@@ -20,13 +20,13 @@ export function SetsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto">
+        <div className="w-full sm:mr-auto sm:w-auto">
           <h1 className="text-[27px] font-semibold tracking-[-0.5px]">Sets</h1>
           <p className="text-[13px] text-muted-foreground">When and where each set plays. Official sets belong to a line-up; predictions carry a confidence.</p>
         </div>
-        <Input type="search" placeholder="Search event…" className="h-11 w-64" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search sets" />
+        <Input type="search" placeholder="Search event…" className="h-11 w-full sm:w-64" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search sets" />
         <Select value={scenario} onValueChange={(v) => setScenario(v as SetsListParams['scenario'])}>
-          <SelectTrigger className="h-11 w-40" aria-label="Scenario filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 min-w-[8.5rem] flex-1 sm:w-40 sm:flex-none" aria-label="Scenario filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Official + predicted</SelectItem>
             <SelectItem value="official">Official</SelectItem>
@@ -34,7 +34,7 @@ export function SetsPage() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={(v) => setStatus(v as SetsListParams['status'])}>
-          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 min-w-[8.5rem] flex-1 sm:w-40 sm:flex-none" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -48,11 +48,11 @@ export function SetsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Event · day</TableHead>
-              <TableHead>Place · room</TableHead>
+              <TableHead className="hidden md:table-cell">Place · room</TableHead>
               <TableHead>Who</TableHead>
               <TableHead>Time</TableHead>
-              <TableHead>Scenario</TableHead>
-              <TableHead className="text-right">v</TableHead>
+              <TableHead className="hidden md:table-cell">Scenario</TableHead>
+              <TableHead className="hidden md:table-cell text-right">v</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -69,7 +69,7 @@ export function SetsPage() {
                     <span className="font-medium">{s.event_occurrence?.event?.name}</span>
                     <span className="block text-xs text-muted-foreground">{s.event_day ?? s.event_occurrence?.event_date}</span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <span className={s.place ? '' : 'italic text-muted-foreground'}>{s.place?.name ?? 'not announced'}</span>
                     {s.place_space && <span className="block text-xs text-muted-foreground">{s.place_space.name}</span>}
                   </TableCell>
@@ -81,11 +81,11 @@ export function SetsPage() {
                     {s.scheduled_start_at ? formatInZone(s.scheduled_start_at, tz) : '—'}
                     {s.scheduled_end_at && <span className="block text-xs">→ {formatInZone(s.scheduled_end_at, tz)}</span>}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="hidden md:table-cell text-sm">
                     {s.scenario_type}
                     {s.scenario_type === 'predicted' && s.confidence_score !== null && <span className="block font-mono text-xs text-muted-foreground">{Math.round(s.confidence_score * 100)}%</span>}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">{s.scenario_version}</TableCell>
+                  <TableCell className="hidden md:table-cell text-right font-mono text-muted-foreground">{s.scenario_version}</TableCell>
                   <TableCell><StatusBadge status={s.status} /></TableCell>
                 </TableRow>
               );

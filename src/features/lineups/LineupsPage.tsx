@@ -20,13 +20,13 @@ export function LineupsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto">
+        <div className="w-full sm:mr-auto sm:w-auto">
           <h1 className="text-[27px] font-semibold tracking-[-0.5px]">Line-ups</h1>
           <p className="text-[13px] text-muted-foreground">Who is announced for a date. Official only; every publication is a new version.</p>
         </div>
-        <Input type="search" placeholder="Search event…" className="h-11 w-72" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search line-ups" />
+        <Input type="search" placeholder="Search event…" className="h-11 w-full sm:w-72" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search line-ups" />
         <Select value={status} onValueChange={(v) => setStatus(v as LineupsListParams['status'])}>
-          <SelectTrigger className="h-11 w-40" aria-label="Status filter"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 min-w-[8.5rem] flex-1 sm:w-40 sm:flex-none" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -44,9 +44,9 @@ export function LineupsPage() {
               <TableHead>Event · date</TableHead>
               <TableHead>Place</TableHead>
               <TableHead className="text-right">Version</TableHead>
-              <TableHead>Artists</TableHead>
-              <TableHead className="text-right">Sets</TableHead>
-              <TableHead>Published</TableHead>
+              <TableHead className="hidden md:table-cell">Artists</TableHead>
+              <TableHead className="hidden md:table-cell text-right">Sets</TableHead>
+              <TableHead className="hidden md:table-cell">Published</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -62,12 +62,12 @@ export function LineupsPage() {
                 </TableCell>
                 <TableCell className={l.place ? '' : 'italic text-muted-foreground'}>{l.place?.name ?? 'not announced'}</TableCell>
                 <TableCell className="text-right font-mono">v{l.version}</TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   <span className="text-sm">{l.preview || <span className="text-muted-foreground">—</span>}</span>
                   {l.headliners.length > 0 && <span className="block text-xs text-muted-foreground">headliner: {l.headliners.join(', ')}</span>}
                 </TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground">{l.set_count || '—'}</TableCell>
-                <TableCell className="text-muted-foreground">{l.published_at ? new Date(l.published_at).toLocaleDateString() : '—'}</TableCell>
+                <TableCell className="hidden md:table-cell text-right font-mono text-muted-foreground">{l.set_count || '—'}</TableCell>
+                <TableCell className="hidden md:table-cell text-muted-foreground">{l.published_at ? new Date(l.published_at).toLocaleDateString() : '—'}</TableCell>
                 <TableCell><StatusBadge status={l.status} /></TableCell>
               </TableRow>
             ))}
