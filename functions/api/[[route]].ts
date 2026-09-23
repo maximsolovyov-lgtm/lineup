@@ -244,20 +244,63 @@ app.post('/agents/:kind', async (c) => {
   if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'ANTHROPIC_API_KEY is not configured for the Function' }, 503);
   const parsed = AgentRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid payload', details: parsed.error.flatten() }, 400);
+  const apiKey = c.env.ANTHROPIC_API_KEY;
 
-  try {
-    const result = await runResearch(AGENTS[kind], parsed.data.keywords, parsed.data.candidate, c.env.ANTHROPIC_API_KEY);
-    return c.json({ data: result });
-  } catch (err) {
-    // Most specific first; the raw API error body is logged, not returned.
-    console.error(`${kind} agent:`, err);
-    if (err instanceof Anthropic.AuthenticationError) return c.json({ error: 'The Anthropic API key configured for the Function was rejected' }, 503);
-    if (err instanceof Anthropic.RateLimitError) return c.json({ error: 'The agent is rate-limited right now — try again in a minute' }, 429);
-    if (err instanceof Anthropic.APIConnectionError) return c.json({ error: 'Could not reach the Anthropic API' }, 502);
-    if (err instanceof Anthropic.APIError) return c.json({ error: `Anthropic API error ${err.status ?? ''}: ${err.message}` }, 502);
-    return c.json({ error: err instanceof Error ? err.message : 'Agent failed' }, 502);
-  }
+  // Research on a festival bill runs for minutes, and Cloudflare abandons a
+  // response that has said nothing for 125 seconds. Whitespace is legal JSON
+  // before the body, so the answer is streamed: a space every ten seconds
+  // keeps the connection warm, then the real payload. The outcome therefore
+  // travels in the body ({ data } or { error }), not in the status.
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+  let settled = false;
+
+  const beat = (async () => {
+    while (!settled) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      if (settled) break;
+      try {
+        await writer.write(encoder.encode(' '));
+      } catch {
+        break; // the client went away
+      }
+    }
+  })();
+
+  const work = (async () => {
+    let payload: string;
+    try {
+      const result = await runResearch(AGENTS[kind], parsed.data.keywords, parsed.data.candidate, apiKey);
+      payload = JSON.stringify({ data: result });
+    } catch (err) {
+      // The raw API error body is logged, not returned.
+      console.error(`${kind} agent:`, err);
+      payload = JSON.stringify({ error: agentErrorMessage(err) });
+    }
+    settled = true;
+    await beat;
+    try {
+      await writer.write(encoder.encode(payload));
+    } finally {
+      await writer.close();
+    }
+  })();
+  // No waitUntil on purpose: an unfinished response body is what keeps the
+  // invocation alive, and waitUntil only promises 30 s past a sent response.
+  void work;
+
+  return c.body(readable, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
 });
+
+/** What the operator is told when an agent call fails. Most specific first. */
+function agentErrorMessage(err: unknown): string {
+  if (err instanceof Anthropic.AuthenticationError) return 'The Anthropic API key configured for the Function was rejected';
+  if (err instanceof Anthropic.RateLimitError) return 'The agent is rate-limited right now — try again in a minute';
+  if (err instanceof Anthropic.APIConnectionError) return 'Could not reach the Anthropic API';
+  if (err instanceof Anthropic.APIError) return `Anthropic API error ${err.status ?? ''}: ${err.message}`;
+  return err instanceof Error ? err.message : 'Agent failed';
+}
 
 const geocodeSchema = z.object({
   name: z.string().trim().max(512).optional(),

@@ -77,7 +77,10 @@ export async function runResearch<TDraft>(
   // pause_turn, in which case the assistant turn is appended and the request
   // re-sent — the API resumes where it left off.
   for (let attempt = 0; attempt < (def.maxTurns ?? 4); attempt += 1) {
-    const response = await client.messages.parse({
+    // Streamed, always: the SDK refuses a non-streaming request whose max_tokens
+    // could take over ten minutes (over ~21k), which is exactly the budget a
+    // festival bill needs. finalMessage() still carries parsed_output.
+    const response = await client.messages.stream({
       model: AGENT_MODEL,
       max_tokens: def.maxTokens ?? 16000,
       system: [{ type: 'text', text: `${def.systemPrompt}\n\n${disambiguationRules(def.noun)}`, cache_control: { type: 'ephemeral' } }],
@@ -88,7 +91,7 @@ export async function runResearch<TDraft>(
         { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: def.maxFetches ?? 6, max_content_tokens: 30000 },
       ],
       messages,
-    });
+    }).finalMessage();
 
     usage = {
       input_tokens: usage.input_tokens + response.usage.input_tokens,
