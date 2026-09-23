@@ -40,7 +40,7 @@ export const LineupDraftSlotSchema = z.object({
   is_headliner: z.boolean().describe('true for the line(s) the announcement emphasises'),
   place: nullableStr.describe('The VENUE this line is assigned to, only when the publication spreads its lines over several venues (Sónar by Day / by Night, "Ushuaïa & Hï"); null when the whole line-up is at one venue or none is named'),
   room: nullableStr.describe('The room or stage WITHIN the venue this line is assigned to, exactly as the bill names it ("Theatre", "Club Room", "Main Stage"); null when the bill does not split by room'),
-  date: nullableStr.describe('YYYY-MM-DD — only when the night runs over SEVERAL days (a festival) and the bill says which day this line plays. null for a one-night bill, and for a multi-day bill that announces the whole run without days'),
+  date: nullableStr.describe('The day this line plays, when the night runs over SEVERAL days and the bill separates them — as YYYY-MM-DD, or exactly as the bill labels it ("Friday", "Day 2", "Nov 7"), whichever you can establish. A festival bill is nearly always split by day (day tabs, "Day 1", dated columns): find that grouping and give every line its day. null only for a one-night bill, or when the bill really announces the whole run together'),
   note: nullableStr.describe('Anything else printed about the line that format and tags do not carry: "hosted by …", "extended set", "vinyl only". null when there is none'),
 });
 
@@ -62,6 +62,7 @@ export const LineupDraftSchema = z.object({
     published_at: nullableStr.describe('YYYY-MM-DD (or full ISO datetime) of the announcement, if the source shows it'),
     place_name: nullableStr.describe('The venue the line-up is announced for, if the announcement says. null when it does not — never assume the default venue'),
     artists: z.array(LineupDraftSlotSchema).describe('Every printed line, in billing order. Empty only when the publication lists no names yet'),
+    split_by_day: z.boolean().describe('true when this publication separates its lines by day — day tabs, "Day 1/2/3", dated columns, a page per day — even if you could not establish the day of every single line. false when it announces the whole run together, and for a one-night bill'),
     complete: z.boolean().describe('false when the announcement says more names are to come ("+ more TBA", "more to be announced")'),
     source_url: nullableStr.describe('The URL of the announcement itself'),
   }).nullable().describe('null when no line-up has been published for this night (say so in notes)'),

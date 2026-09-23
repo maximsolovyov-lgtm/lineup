@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeName } from '@/lib/normalize';
 import { matchRooms } from '@/lib/matching';
+import { dayInRun } from '@/lib/run-day';
 import { instantToWallTime, wallTimeToInstant } from '@/lib/datetime';
 import type { LineupDraft, LineupDraftSlot } from '@/agents/lineup/schema';
 import { slotLabel, type LineupSlotValue } from './schema';
@@ -99,6 +100,8 @@ export interface ResolvedRoster {
   unmatchedRooms: string[];
   /** The bill assigns its lines to days. */
   splitByDay: boolean;
+  /** Days the bill named that do not fall in the run — the operator decides what is wrong. */
+  unresolvedDays: string[];
 }
 
 /**
@@ -119,7 +122,11 @@ const PLACEHOLDER_ALIASES: Record<string, string> = {
  * the rest become acts flagged to be created when the line-up is saved. The
  * printed line is kept whenever it says more than the acts do.
  */
-export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>, placeId: string | null = null): Promise<ResolvedRoster> {
+export async function resolveRoster(
+  draft: NonNullable<LineupDraft['lineup']>,
+  placeId: string | null = null,
+  run: { from: string; to: string } | null = null,
+): Promise<ResolvedRoster> {
   // The bill's room names against the place's rooms — "Theatre" is "The Theatre".
   const printedRooms = [...new Set(draft.artists.map((s) => s.room?.trim()).filter((r): r is string => !!r))];
   const roomIds = new Map<string, string>();
@@ -151,6 +158,7 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>, p
   const toCreate: string[] = [];
   const unclear: { printed: string; alternatives: string[] }[] = [];
   const unmatchedRooms = new Set<string>();
+  const unresolvedDays = new Set<string>();
   const slots: LineupSlotValue[] = draft.artists.map((s) => {
     const artists = s.artists.map((n) => {
       const hit = find(n);
@@ -164,6 +172,8 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>, p
     if (s.kind === 'unknown') unclear.push({ printed: s.printed_as || artists.map((a) => a.name).join(' & '), alternatives: s.kind_alternatives });
     const label = slotLabel(s.kind, artists.map((a) => a.name), '');
     if (s.room && placeId && !roomIds.has(s.room.trim())) unmatchedRooms.add(s.room.trim());
+    const day = dayInRun(s.date, run);
+    if (s.date && !day) unresolvedDays.add(s.date.trim());
     return {
       id: null,
       kind: s.kind,
@@ -171,7 +181,8 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>, p
       performance_format: s.format ?? 'dj_set',
       tags: s.tags ?? [],
       place_space_id: s.room ? roomIds.get(s.room.trim()) ?? null : null,
-      slot_date: s.date ?? '',
+      // "Friday", "Day 2" and "Nov 7" are days too — the run says which.
+      slot_date: day,
       artists,
       // Keep the printed line only when the acts do not already spell it out.
       display_name_override: s.printed_as && normalizeName(s.printed_as) !== normalizeName(label) ? s.printed_as : '',
@@ -190,7 +201,10 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>, p
   return {
     slots, matched: [...new Set(matched)], toCreate: [...new Set(toCreate)], unclear,
     unmatchedRooms: [...unmatchedRooms],
-    splitByDay: slots.some((s) => s.slot_date !== ''),
+    unresolvedDays: [...unresolvedDays],
+    // The publication's own answer first: a bill can be split by day with a line
+    // or two whose day could not be pinned down.
+    splitByDay: draft.split_by_day || slots.some((s) => s.slot_date !== ''),
   };
 }
 

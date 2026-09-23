@@ -93,7 +93,9 @@ export function LineupGenerate({ onFill, occurrenceId = null, placeId = null }: 
   }
 
   async function fillFrom(occ: FoundOccurrence, placeId: string | null, draft: NonNullable<LineupDraft['lineup']>, r: AgentResult<LineupDraft>, fromLineupId: string | null) {
-    const roster = await resolveRoster(draft, placeId);
+    const run = await fetchRun(occ.occurrence_id).catch(() => null);
+    const roster = await resolveRoster(draft, placeId, run);
+    const multiDay = !!run && run.to > run.from;
     void offerPattern(placeId, r.draft?.place_lineup_pattern ?? null);
     onFill({
       occurrence_id: occ.occurrence_id,
@@ -118,7 +120,18 @@ export function LineupGenerate({ onFill, occurrenceId = null, placeId = null }: 
               those lines were left without a room. Add the room on the place, or pick another.
             </span>
           )}
-          {roster.splitByDay && <> The bill names the day of each line.</>}
+          {roster.splitByDay && <> The bill is split by day — each line carries its own.</>}
+          {multiDay && !roster.splitByDay && (
+            <span className="mt-1 block text-amber-700">
+              This night runs {run!.from} → {run!.to}, and the publication came back <b>without days</b>. If the bill really is split by day,
+              tick “the bill splits this run by day” and set the day on each line — as saved now, every line belongs to the whole run.
+            </span>
+          )}
+          {roster.unresolvedDays.length > 0 && (
+            <span className="mt-1 block text-amber-700">
+              Days that do not fall in the run: {roster.unresolvedDays.map((d) => `“${d}”`).join(', ')} — those lines were left undated.
+            </span>
+          )}
           {roster.unclear.length > 0 && (
             <span className="mt-1 block text-amber-700">
               <b>Unclear how {roster.unclear.length === 1 ? 'one line is' : `${roster.unclear.length} lines are`} meant</b>{' '}
