@@ -140,7 +140,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
     const current = lineups.find((l) => l.is_current && (params.placeId ? l.place_id === params.placeId : true)) ?? lineups.find((l) => l.is_current) ?? null;
     setStage({ kind: 'researching', what: `${occ.event_name} · ${occ.event_date}` });
     try {
-      const [hints, run] = await Promise.all([placeHints(params.placeId ?? occ.primary_place_id, occ.event_id), fetchRun(occ.occurrence_id)]);
+      const [hints, run] = await Promise.all([placeHints(params.placeId ?? occ.primary_place_id, occ.event_id, occ.occurrence_id), fetchRun(occ.occurrence_id)]);
       const keywords = keywordsFor(params, occ, current ? current.artists : null, hints, run);
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ, params }); return; }

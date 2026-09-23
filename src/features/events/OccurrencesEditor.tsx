@@ -132,6 +132,15 @@ export function OccurrencesEditor({ value, onChange, errors, eventName, disabled
               <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" title="The umbrella this date belongs to — Miami Music Week, ADE, a closing weekend">Part of</span>
               <LookupField value={o.part_of_occurrence_id} onChange={(id) => update(i, { part_of_occurrence_id: id })} search={umbrellaSearch} resolve={umbrellas.resolve} placeholder="Umbrella, e.g. Miami Music Week 2027" disabled={disabled} />
             </div>
+            <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+              <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                title="The edition's own site, when it has one apart from the event's — the line-up agent reads it first">Site</span>
+              <div>
+                <Input type="url" aria-label={`Date ${i + 1} site`} placeholder={`This edition's own site, e.g. https://edcorlando.com`}
+                  value={o.website_url} onChange={(e) => update(i, { website_url: e.target.value })} aria-invalid={!!err?.website_url} disabled={disabled} />
+                {err?.website_url?.message && <p className="mt-1 text-xs text-destructive" role="alert">{err.website_url.message}</p>}
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-x-3 px-1 text-xs text-muted-foreground">
               <span>{o.timezone || 'browser zone'}</span>
               {w && <span>{formatInZone(w.starts_at, o.timezone)} → {formatInZone(w.ends_at, o.timezone)}{w.days === 1 ? ' (next morning)' : w.days > 1 ? ` (${w.days} days)` : ''}</span>}

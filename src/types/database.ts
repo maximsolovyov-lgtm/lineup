@@ -198,6 +198,7 @@ export type Database = {
           status: Database["public"]["Enums"]["record_status"]
           timezone: string | null
           updated_at: string | null
+          website_url: string | null
         }
         Insert: {
           created_at?: string
@@ -212,6 +213,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["record_status"]
           timezone?: string | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Update: {
           created_at?: string
@@ -226,6 +228,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["record_status"]
           timezone?: string | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Relationships: [
           {

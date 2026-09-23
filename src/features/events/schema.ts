@@ -38,6 +38,8 @@ export const occurrenceSchema = z.object({
   start_time: time,
   end_time: time,
   occurrence_name: z.string().trim().max(512),
+  /** The edition's own site, when it has one apart from the event's. */
+  website_url: optionalUrl,
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
 }).refine((o) => `${o.end_date}T${o.end_time}` > `${o.start_date}T${o.start_time}`, { message: 'Ends before it starts', path: ['end_date'] });
 export type OccurrenceFormValue = z.infer<typeof occurrenceSchema>;
@@ -63,7 +65,7 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 export function emptyOccurrence(timezone: string): OccurrenceFormValue {
-  return { occurrence_id: null, start_date: '', end_date: '', primary_place_id: null, new_place: null, part_of_occurrence_id: null, timezone, start_time: '23:00', end_time: '06:00', occurrence_name: '', status: 'active' };
+  return { occurrence_id: null, start_date: '', end_date: '', primary_place_id: null, new_place: null, part_of_occurrence_id: null, timezone, start_time: '23:00', end_time: '06:00', occurrence_name: '', website_url: '', status: 'active' };
 }
 
 export function fromRow(row: EventRow, occurrences: OccurrenceRow[]): EventFormValues {
@@ -87,6 +89,7 @@ export function fromRow(row: EventRow, occurrences: OccurrenceRow[]): EventFormV
         start_time: start.slice(11, 16),
         end_time: end.slice(11, 16),
         occurrence_name: o.occurrence_name ?? '',
+        website_url: o.website_url ?? '',
         status: o.status,
       };
     }),
@@ -136,6 +139,7 @@ export function toPayload(v: EventFormValues, eventId: string | null): SaveEvent
         ends_at: w?.ends_at ?? null,
         timezone: nullIfEmpty(o.timezone),
         occurrence_name: nullIfEmpty(o.occurrence_name),
+        website_url: nullIfEmpty(o.website_url),
         part_of_occurrence_id: o.part_of_occurrence_id,
         status: o.status,
       };

@@ -66,6 +66,7 @@ Field semantics:
 - The venue: always give place_name, and its city, region, country and IANA timezone when you can establish them — the record creates the venue if it is not stored yet. place_lifecycle_type is "temporary" for a festival site that exists for the event (Black Rock City, a beach stage), "permanent" for a club.
 - start_time / end_time are HH:MM wall time in the venue's zone; null when not announced. Never invent times.
 - place_name is the venue as the announcement names it; the operator matches it to a stored place.
+- website_url on a date: the edition's own site when it has one apart from the brand's (edcorlando.com under electricdaisycarnival.com). This is where that edition's bill is published, so it matters more than it looks. null when there is no separate site.
 - part_of: the umbrella a date is announced under — Miami Music Week, ADE, Amsterdam Dance Event, a season's closing weekend — as the announcement names it. null when the date stands on its own. A brand that IS an umbrella (MMW itself) has part_of null on its own dates.
 - occurrence_name: the edition or night name whenever the announcement gives one — "Tomorrowland Winter", "Opening Party", "Closing", "Weekend 2", the headline act's residency name. Most festival editions and season openings/closings have one; fill it. null only for an unnamed regular date.
 - description: what the brand is, who runs it, where it usually happens — two or three sentences.

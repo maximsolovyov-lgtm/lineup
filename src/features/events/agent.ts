@@ -93,6 +93,7 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
       start_time,
       end_time,
       occurrence_name: str(o.occurrence_name),
+      website_url: str(o.website_url),
       status: 'active',
     };
   });

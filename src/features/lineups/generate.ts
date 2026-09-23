@@ -29,12 +29,14 @@ export interface FinderParams {
  * been given or found, and the venue's sitemap names the page for the night —
  * and the venue's line-up pattern, which is what settles an ambiguous "A & B".
  */
-export async function placeHints(placeId: string | null, eventId: string | null): Promise<string[]> {
-  const [pl, ev] = await Promise.all([
+export async function placeHints(placeId: string | null, eventId: string | null, occurrenceId: string | null = null): Promise<string[]> {
+  const [pl, ev, oc] = await Promise.all([
     placeId ? supabase.from('place').select('website_url,lineup_pattern,city,country').eq('place_id', placeId).maybeSingle() : null,
     eventId ? supabase.from('event').select('website_url').eq('event_id', eventId).maybeSingle() : null,
+    occurrenceId ? supabase.from('event_occurrence').select('website_url').eq('occurrence_id', occurrenceId).maybeSingle() : null,
   ]);
-  const sites = [pl?.data?.website_url, ev?.data?.website_url].filter((u): u is string => !!u && /^https?:\/\//i.test(u));
+  // The edition's own site first: a festival brand's site knows nothing about one night.
+  const sites = [oc?.data?.website_url, pl?.data?.website_url, ev?.data?.website_url].filter((u): u is string => !!u && /^https?:\/\//i.test(u));
   const hints = [...new Set(sites)].map((u) => `site: ${u}`);
   // Where the venue is: "Tinker Field" alone finds nothing, "Tinker Field, Orlando" does.
   const where = [pl?.data?.city, pl?.data?.country].filter(Boolean).join(', ');

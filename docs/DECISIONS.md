@@ -278,3 +278,11 @@ Recorded so they are not rediscovered from scratch:
 | A festival occurrence runs several days. | `lineup_artist.slot_date`, a day inside the occurrence's run (business day → the day it ends). NULL on a one-night occurrence: the night is the occurrence's own day. |
 | A multi-day bill that names no days. | `lineup.split_by_day`. false = the publication announces the whole run, which is a **fact about the bill**, not missing data; true = it assigns lines to days. Any dated line sets it to true in `save_lineup()`, so the two cannot contradict each other. The form shows the day picker only for a run of several days with the box ticked, bounded by the run. |
 | A day outside the run. | Stored, with a review task (`lineup_slot_date_outside_run`): the operator must see what the source said before deciding whether the date is wrong or the occurrence is. |
+
+## Decision 2026-09-23 — an edition has its own site
+
+| Question | Decision |
+|---|---|
+| The line-up for EDC Orlando 2026 came back empty. | Three causes, none of them the model's: the answer budget (16k, shared with adaptive thinking) could not hold a bill of a few hundred lines, so the turn ended as `max_tokens`; the keywords named the brand ("EDC (Electric Daisy Carnival)") and the venue ("Tinker Field") but never the edition ("EDC Orlando 2026") or the city, which is what the bill is published under; and nothing said the night runs three days. The line-up agent now has 48k tokens and six turns, the keywords carry `edition`, `city` and `run`, and the prompt says to return every printed line and date them on a multi-day run. |
+| A festival brand has one site, its editions have their own. | `event_occurrence.website_url` (`20260923140000`). electricdaisycarnival.com knows nothing about one night; edcorlando.com is where that bill lives. The line-up agent reads the occurrence's site **first**, then the place's, then the event's — the sitemap step that finds a venue's date page works for an edition the same way. The event agent returns it per date, and the occurrences block has a Site field. |
+| Why not put it on the event? | Because the event is the brand and there is one row per brand; the site that publishes a bill belongs to the date, next to the venue and the umbrella it is part of. |
