@@ -884,6 +884,52 @@ select test.run('lineup: a slot keeps its format and tags, and "standard" gives 
         end if;
       end $x$ $q$, true);
 
+-- Slot room and day -----------------------------------------------------------------------
+select test.run('lineup: a slot keeps its room, and a room of another place is refused', :operator_id,
+  $q$ do $x$ declare v_occ uuid; v uuid; v_k uuid; v_unvrs uuid; v_room uuid; v_other uuid; ok boolean := false; begin
+        select occurrence_id into v_occ from public.event_occurrence eo join public.event e on e.event_id = eo.event_id
+         where e.name = 'Circoloco' and eo.event_date = '2026-07-17' and eo.status = 'active' order by eo.created_at desc limit 1;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        select place_id into v_unvrs from public.place where name = 'UNVRS';
+        select space_id into v_room from public.place_space where place_id = v_unvrs and status = 'active' order by display_order limit 1;
+        select space_id into v_other from public.place_space where place_id <> v_unvrs and status = 'active' limit 1;
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs),
+          jsonb_build_array(jsonb_build_object('place_space_id', v_room, 'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k)))));
+        if (select place_space_id from public.lineup_artist where lineup_id = v and status = 'active') <> v_room then
+          raise exception 'the room was not kept';
+        end if;
+        if v_other is not null then
+          begin
+            perform public.save_lineup(jsonb_build_object('occurrence_id', v_occ, 'place_id', v_unvrs),
+              jsonb_build_array(jsonb_build_object('place_space_id', v_other, 'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k)))));
+          exception when check_violation then ok := true; end;
+          if not ok then raise exception 'a room of another place was accepted'; end if;
+        end if;
+      end $x$ $q$, true);
+
+select test.run('lineup: a dated line makes the version split by day; a day outside the run is flagged', :operator_id,
+  $q$ do $x$ declare v_ev uuid; v_occ uuid; v uuid; v_k uuid; begin
+        -- a three-day occurrence
+        v_ev := public.save_event_with_occurrences(
+          '{"name":"Three Day Thing","event_type":"festival"}'::jsonb,
+          '[{"event_date":"2026-10-02","starts_at":"2026-10-02T12:00:00+02:00","ends_at":"2026-10-04T23:00:00+02:00","timezone":"Europe/Madrid"}]'::jsonb);
+        select occurrence_id into v_occ from public.event_occurrence where event_id = v_ev;
+        select artist_id into v_k from public.artist where name = 'Keinemusik';
+        v := public.save_lineup(jsonb_build_object('occurrence_id', v_occ),
+          jsonb_build_array(
+            jsonb_build_object('slot_date', '2026-10-03', 'artists', jsonb_build_array(jsonb_build_object('artist_id', v_k))),
+            jsonb_build_object('slot_date', '2026-10-09', 'display_name_override', 'Someone on a wrong day', 'artists', '[]'::jsonb)));
+        if not (select split_by_day from public.lineup where lineup_id = v) then
+          raise exception 'a dated line did not make the version split by day';
+        end if;
+        if (select count(*) from public.lineup_artist where lineup_id = v and status = 'active' and slot_date = '2026-10-03') <> 1 then
+          raise exception 'the day was not kept';
+        end if;
+        if not exists (select 1 from public.review_task where entity_type = 'lineup' and entity_id = v and kind = 'lineup_slot_date_outside_run' and status = 'active') then
+          raise exception 'a day outside the run was not flagged';
+        end if;
+      end $x$ $q$, true);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

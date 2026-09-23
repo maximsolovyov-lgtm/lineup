@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LookupField } from '@/components/form/LookupField';
-import { artistLookup } from '@/lib/lookups';
+import { artistLookup, placeSpaceLookup } from '@/lib/lookups';
 import { usePlaceholderArtists } from './api';
 import { slotJoinWord, slotLabel } from '@/lib/slot-label';
 import { LINEUP_SLOT_KINDS, LINEUP_SLOT_TAGS, PERFORMANCE_FORMATS, SLOT_FORMAT_INFO, SLOT_KIND_INFO, SLOT_TAG_INFO, emptySlot,
@@ -17,6 +17,12 @@ interface LineupSlotsEditorProps {
   onChange: (rows: LineupSlotValue[]) => void;
   errors?: SlotErrors;
   disabled?: boolean;
+  /** The line-up's place — the rooms a slot can name belong to it. */
+  placeId?: string | null;
+  /** The occurrence's run; a day can only be picked inside it, and only when it lasts more than one. */
+  run?: { from: string; to: string } | null;
+  /** The publication assigns its lines to days. */
+  splitByDay?: boolean;
 }
 
 const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[10.5rem_minmax(0,1fr)_9rem_5rem_6rem]';
@@ -29,8 +35,10 @@ const ROW = 'grid grid-cols-1 items-start gap-2 sm:grid-cols-[10.5rem_minmax(0,1
  * ("Solomun b2b TBA") and a reveal is just swapping the act, with
  * placeholder_type kept so the badge survives.
  */
-export function LineupSlotsEditor({ value, onChange, errors, disabled }: LineupSlotsEditorProps) {
+export function LineupSlotsEditor({ value, onChange, errors, disabled, placeId = null, run = null, splitByDay = false }: LineupSlotsEditorProps) {
   const lookup = useMemo(() => artistLookup(), []);
+  const rooms = useMemo(() => placeSpaceLookup(placeId), [placeId]);
+  const multiDay = !!run && run.to > run.from;
   const placeholders = usePlaceholderArtists();
   // LookupField keeps the act it picked; remounting it after each add clears it.
   const [addKey, setAddKey] = useState(0);
@@ -167,6 +175,20 @@ export function LineupSlotsEditor({ value, onChange, errors, disabled }: LineupS
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Move down" disabled={disabled || i === value.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Remove" disabled={disabled} onClick={() => onChange(value.filter((_, idx) => idx !== i))}><Trash2 /></Button>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)_4rem_10rem]">
+              <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                title={placeId ? 'The room the bill puts this line in' : 'Pick the line-up’s place first — a room without a venue says nothing'}>Room</span>
+              <LookupField value={s.place_space_id} onChange={(id) => update(i, { place_space_id: id })} search={rooms.search} resolve={rooms.resolve}
+                placeholder={placeId ? 'Not announced' : 'No place on this line-up'} disabled={disabled || !placeId} />
+              {multiDay && splitByDay ? (
+                <>
+                  <span className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" title="The day of the run this line plays">Day</span>
+                  <Input type="date" aria-label={`Slot ${i + 1} day`} value={s.slot_date} min={run!.from} max={run!.to} disabled={disabled}
+                    onChange={(e) => update(i, { slot_date: e.target.value })} />
+                </>
+              ) : <><span /><span /></>}
             </div>
 
             <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)]">

@@ -76,6 +76,13 @@ bill that says nothing about the format means a DJ set; `unknown` is only for a
 source that leaves it open. `tags` (all night long, opening, closing, sunrise…)
 record what the bill prints, never what the billing order suggests.
 
+**A line-up's room and day are what the poster said, nothing more.**
+`lineup_artist.place_space_id` is NULL when the bill did not split by room —
+never a default to the main room — and it must belong to the line-up's place.
+`lineup_artist.slot_date` only applies to an occurrence that runs over several
+days; `lineup.split_by_day = false` there means the bill announces the whole
+run, which is a fact, not missing data.
+
 **`lineup.published_at` is stamped when the version is saved.** `save_lineup()`
 fills it with `now()` when the caller sends none and never clears it; an earlier
 date is entered only when the announcement itself carries one.

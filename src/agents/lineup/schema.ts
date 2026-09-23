@@ -39,7 +39,8 @@ export const LineupDraftSlotSchema = z.object({
     + 'opening, closing, sunrise, sunset, afterhours, peak_time. Several can be true ("closing" + "sunrise"). standard only when the bill explicitly calls it an ordinary slot. Empty when it says nothing'),
   is_headliner: z.boolean().describe('true for the line(s) the announcement emphasises'),
   place: nullableStr.describe('The VENUE this line is assigned to, only when the publication spreads its lines over several venues (Sónar by Day / by Night, "Ushuaïa & Hï"); null when the whole line-up is at one venue or none is named'),
-  room: nullableStr.describe('The room or stage WITHIN the venue this line is assigned to, if the announcement says'),
+  room: nullableStr.describe('The room or stage WITHIN the venue this line is assigned to, exactly as the bill names it ("Theatre", "Club Room", "Main Stage"); null when the bill does not split by room'),
+  date: nullableStr.describe('YYYY-MM-DD — only when the night runs over SEVERAL days (a festival) and the bill says which day this line plays. null for a one-night bill, and for a multi-day bill that announces the whole run without days'),
   note: nullableStr.describe('Anything else printed about the line that format and tags do not carry: "hosted by …", "extended set", "vinyl only". null when there is none'),
 });
 

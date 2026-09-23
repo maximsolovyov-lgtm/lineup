@@ -76,6 +76,10 @@ export interface LineupSlotValue {
   kind: LineupSlotKind;
   performance_format: PerformanceFormat;
   tags: LineupSlotTag[];
+  /** The room the bill puts this line in; null = the announcement did not say. */
+  place_space_id: string | null;
+  /** The day it plays, on an occurrence that runs over several days. '' = not said. */
+  slot_date: string;
   artists: SlotArtistValue[];
   /** The line exactly as printed — kept when it says more than the acts do. */
   display_name_override: string;
@@ -94,6 +98,8 @@ export const slotSchema = z.object({
   kind: z.enum(LINEUP_SLOT_KINDS as unknown as [LineupSlotKind, ...LineupSlotKind[]]),
   performance_format: z.enum(PERFORMANCE_FORMATS as unknown as [PerformanceFormat, ...PerformanceFormat[]]),
   tags: z.array(z.enum(LINEUP_SLOT_TAGS as unknown as [LineupSlotTag, ...LineupSlotTag[]])),
+  place_space_id: z.string().uuid().nullable(),
+  slot_date: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, 'Pick a day of the run'),
   artists: z.array(slotArtistSchema),
   display_name_override: z.string().trim().max(512),
   is_headliner: z.boolean(),
@@ -111,6 +117,8 @@ export const lineupFormSchema = z.object({
   published_at: optionalDateTime,
   notes: z.string().max(4000),
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
+  /** The publication assigns its lines to days — only meaningful on a run of several days. */
+  split_by_day: z.boolean(),
   artists: z.array(slotSchema),
 });
 export type LineupFormValues = z.infer<typeof lineupFormSchema>;
@@ -121,10 +129,10 @@ export type LineupSlotRow = LineupArtistRow & {
   lineup_artist_participant: { participant_order: number; artist_id: string; artist: { name: string } | null }[];
 };
 
-export const emptyLineupForm: LineupFormValues = { occurrence_id: '', place_id: null, version: '', published_at: '', notes: '', status: 'active', artists: [] };
+export const emptyLineupForm: LineupFormValues = { occurrence_id: '', place_id: null, version: '', published_at: '', notes: '', status: 'active', split_by_day: false, artists: [] };
 
 export function emptySlot(): LineupSlotValue {
-  return { id: null, kind: 'solo', performance_format: 'dj_set', tags: [], artists: [], display_name_override: '', is_headliner: false, placeholder_type: '' };
+  return { id: null, kind: 'solo', performance_format: 'dj_set', tags: [], place_space_id: null, slot_date: '', artists: [], display_name_override: '', is_headliner: false, placeholder_type: '' };
 }
 
 export function fromRow(row: LineupRow, slots: LineupSlotRow[]): LineupFormValues {
@@ -135,11 +143,14 @@ export function fromRow(row: LineupRow, slots: LineupSlotRow[]): LineupFormValue
     published_at: row.published_at ? row.published_at.slice(0, 16) : '',
     notes: row.notes ?? '',
     status: row.status,
+    split_by_day: row.split_by_day,
     artists: slots.map((s): LineupSlotValue => ({
       id: s.lineup_artist_id,
       kind: s.kind,
       performance_format: s.performance_format,
       tags: s.tags ?? [],
+      place_space_id: s.place_space_id,
+      slot_date: s.slot_date ?? '',
       artists: [...(s.lineup_artist_participant ?? [])]
         .sort((a, b) => a.participant_order - b.participant_order)
         .map((p) => ({ artist_id: p.artist_id, name: p.artist?.name ?? '', create: false })),
@@ -178,6 +189,7 @@ export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVer
       published_at: v.published_at ? new Date(v.published_at).toISOString() : null,
       notes: nullIfEmpty(v.notes),
       status: asNewVersion ? 'active' : v.status,
+      split_by_day: v.split_by_day,
     },
     p_artists: v.artists.map((s) => {
       const kept = s.artists.filter((a) => a.artist_id || a.create);
@@ -189,6 +201,8 @@ export function toPayload(v: LineupFormValues, lineupId: string | null, asNewVer
         kind: s.kind,
         performance_format: s.performance_format,
         tags: s.tags,
+        place_space_id: s.place_space_id,
+        slot_date: v.split_by_day ? nullIfEmpty(s.slot_date) : null,
         placeholder_type: s.placeholder_type || null,
         display_name_override: printed,
         is_headliner: s.is_headliner,

@@ -17,6 +17,8 @@ export interface GeneratedFill {
   published_at: string;
   notes: string;
   artists: LineupSlotValue[];
+  /** The publication assigns its lines to days. */
+  split_by_day: boolean;
   /** When the fill is the next version of this line-up. */
   fromLineupId: string | null;
 }
@@ -87,7 +89,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
   }
 
   async function fillFrom(occ: FoundOccurrence, placeId: string | null, draft: NonNullable<LineupDraft['lineup']>, r: AgentResult<LineupDraft>, fromLineupId: string | null) {
-    const roster = await resolveRoster(draft);
+    const roster = await resolveRoster(draft, placeId);
     void offerPattern(placeId, r.draft?.place_lineup_pattern ?? null);
     onFill({
       occurrence_id: occ.occurrence_id,
@@ -95,6 +97,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
       published_at: toLocalDateTime(draft.published_at),
       notes: [`Generated from ${draft.source_url ?? r.sources[0] ?? 'the web'}.`, r.notes, draft.complete ? null : 'Announcement says more names are to come.'].filter(Boolean).join(' '),
       artists: roster.slots,
+      split_by_day: roster.splitByDay,
       fromLineupId,
     });
     setStage({
@@ -104,6 +107,14 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
           <b>Form filled from the publication</b> — {roster.slots.length} line{roster.slots.length === 1 ? '' : 's'}.
           {roster.matched.length > 0 && <> Matched acts: {roster.matched.join(', ')}.</>}
           {roster.toCreate.length > 0 && <> <b>Created on save</b> (type unknown, review task): {roster.toCreate.join(', ')}.</>}
+          {roster.slots.some((s) => s.place_space_id) && <> Rooms filled from the bill.</>}
+          {roster.unmatchedRooms.length > 0 && (
+            <span className="mt-1 block text-amber-700">
+              The bill names {roster.unmatchedRooms.map((r) => `“${r}”`).join(', ')}, which {roster.unmatchedRooms.length === 1 ? 'is not a room' : 'are not rooms'} of this place —
+              those lines were left without a room. Add the room on the place, or pick another.
+            </span>
+          )}
+          {roster.splitByDay && <> The bill names the day of each line.</>}
           {roster.unclear.length > 0 && (
             <span className="mt-1 block text-amber-700">
               <b>Unclear how {roster.unclear.length === 1 ? 'one line is' : `${roster.unclear.length} lines are`} meant</b>{' '}
@@ -149,7 +160,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
     if (r.outcome !== 'draft' || !draft || !draft.lineup) {
       setStage({ kind: 'done', tone: 'info', message: <><b>No line-up published yet</b> for {occ.event_name} on {occ.event_date}. {r.notes}{sourcesLine(r)}</> });
       // Still hand the occurrence to the form so the operator can enter it by hand.
-      onFill({ occurrence_id: occ.occurrence_id, place_id: params.placeId ?? occ.primary_place_id, published_at: '', notes: '', artists: [], fromLineupId: null });
+      onFill({ occurrence_id: occ.occurrence_id, place_id: params.placeId ?? occ.primary_place_id, published_at: '', notes: '', artists: [], split_by_day: false, fromLineupId: null });
       return;
     }
     const groups = venueGroups(draft.lineup);
@@ -213,7 +224,7 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
       } as unknown as FoundOccurrence;
       if (st.draft.lineup) await fillFrom(occ, created.place_id, st.draft.lineup, st.result, null);
       else {
-        onFill({ occurrence_id: occ.occurrence_id, place_id: created.place_id, published_at: '', notes: '', artists: [], fromLineupId: null });
+        onFill({ occurrence_id: occ.occurrence_id, place_id: created.place_id, published_at: '', notes: '', artists: [], split_by_day: false, fromLineupId: null });
         setStage({ kind: 'done', tone: 'info', message: <>The night is created, but <b>no line-up is published yet</b>. {st.result.notes}</> });
       }
     } catch (e) {

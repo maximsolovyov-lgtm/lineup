@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeName } from '@/lib/normalize';
+import { matchRooms } from '@/lib/matching';
 import { wallTimeToInstant } from '@/lib/datetime';
 import type { LineupDraft, LineupDraftSlot } from '@/agents/lineup/schema';
 import { slotLabel, type LineupSlotValue } from './schema';
@@ -77,6 +78,10 @@ export interface ResolvedRoster {
   toCreate: string[];
   /** Lines the publication printed in a way that allows more than one reading. */
   unclear: { printed: string; alternatives: string[] }[];
+  /** Rooms the bill names that the place does not have — the operator adds them or picks another. */
+  unmatchedRooms: string[];
+  /** The bill assigns its lines to days. */
+  splitByDay: boolean;
 }
 
 /**
@@ -97,7 +102,17 @@ const PLACEHOLDER_ALIASES: Record<string, string> = {
  * the rest become acts flagged to be created when the line-up is saved. The
  * printed line is kept whenever it says more than the acts do.
  */
-export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): Promise<ResolvedRoster> {
+export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>, placeId: string | null = null): Promise<ResolvedRoster> {
+  // The bill's room names against the place's rooms — "Theatre" is "The Theatre".
+  const printedRooms = [...new Set(draft.artists.map((s) => s.room?.trim()).filter((r): r is string => !!r))];
+  const roomIds = new Map<string, string>();
+  if (placeId && printedRooms.length > 0) {
+    const { data } = await supabase.from('place_space').select('space_id,name').eq('place_id', placeId).eq('status', 'active');
+    const spaces = data ?? [];
+    matchRooms(printedRooms, spaces.map((s) => s.name)).forEach((j, i) => {
+      if (j >= 0) roomIds.set(printedRooms[i]!, spaces[j]!.space_id);
+    });
+  }
   const names = [...new Set(draft.artists.flatMap((s) => s.artists).map((n) => normalizeName(n)).filter(Boolean))];
   const aliases = [...new Set(Object.values(PLACEHOLDER_ALIASES).map((n) => normalizeName(n)))];
   const byName = new Map<string, { artist_id: string; name: string }>();
@@ -118,6 +133,7 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): 
   const matched: string[] = [];
   const toCreate: string[] = [];
   const unclear: { printed: string; alternatives: string[] }[] = [];
+  const unmatchedRooms = new Set<string>();
   const slots: LineupSlotValue[] = draft.artists.map((s) => {
     const artists = s.artists.map((n) => {
       const hit = find(n);
@@ -130,12 +146,15 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): 
     });
     if (s.kind === 'unknown') unclear.push({ printed: s.printed_as || artists.map((a) => a.name).join(' & '), alternatives: s.kind_alternatives });
     const label = slotLabel(s.kind, artists.map((a) => a.name), '');
+    if (s.room && placeId && !roomIds.has(s.room.trim())) unmatchedRooms.add(s.room.trim());
     return {
       id: null,
       kind: s.kind,
       // A bill that says nothing means a DJ set; the agent follows the same rule.
       performance_format: s.format ?? 'dj_set',
       tags: s.tags ?? [],
+      place_space_id: s.room ? roomIds.get(s.room.trim()) ?? null : null,
+      slot_date: s.date ?? '',
       artists,
       // Keep the printed line only when the acts do not already spell it out.
       display_name_override: s.printed_as && normalizeName(s.printed_as) !== normalizeName(label) ? s.printed_as : '',
@@ -146,12 +165,16 @@ export async function resolveRoster(draft: NonNullable<LineupDraft['lineup']>): 
   if (!draft.complete && !slots.some((s) => s.artists.some((a) => a.name.toLowerCase() === 'tba'))) {
     const tba = byName.get(normalizeName('TBA'));
     slots.push({
-      id: null, kind: 'solo', performance_format: 'dj_set', tags: [],
+      id: null, kind: 'solo', performance_format: 'dj_set', tags: [], place_space_id: null, slot_date: '',
       artists: tba ? [{ artist_id: tba.artist_id, name: tba.name, create: false }] : [],
       display_name_override: tba ? '' : 'TBA', is_headliner: false, placeholder_type: '',
     });
   }
-  return { slots, matched: [...new Set(matched)], toCreate: [...new Set(toCreate)], unclear };
+  return {
+    slots, matched: [...new Set(matched)], toCreate: [...new Set(toCreate)], unclear,
+    unmatchedRooms: [...unmatchedRooms],
+    splitByDay: slots.some((s) => s.slot_date !== ''),
+  };
 }
 
 export interface RosterDiff {

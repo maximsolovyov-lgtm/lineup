@@ -296,6 +296,7 @@ export type Database = {
           place_id: string | null
           published_at: string | null
           source_id: string | null
+          split_by_day: boolean
           status: Database["public"]["Enums"]["record_status"]
           updated_at: string | null
           version: number
@@ -308,6 +309,7 @@ export type Database = {
           place_id?: string | null
           published_at?: string | null
           source_id?: string | null
+          split_by_day?: boolean
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
           version?: number
@@ -320,6 +322,7 @@ export type Database = {
           place_id?: string | null
           published_at?: string | null
           source_id?: string | null
+          split_by_day?: boolean
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
           version?: number
@@ -358,9 +361,11 @@ export type Database = {
           lineup_artist_id: string
           lineup_id: string
           performance_format: Database["public"]["Enums"]["performance_format"]
+          place_space_id: string | null
           placeholder_type:
             | Database["public"]["Enums"]["placeholder_type"]
             | null
+          slot_date: string | null
           status: Database["public"]["Enums"]["record_status"]
           tags: Database["public"]["Enums"]["lineup_slot_tag"][]
           updated_at: string | null
@@ -374,9 +379,11 @@ export type Database = {
           lineup_artist_id?: string
           lineup_id: string
           performance_format?: Database["public"]["Enums"]["performance_format"]
+          place_space_id?: string | null
           placeholder_type?:
             | Database["public"]["Enums"]["placeholder_type"]
             | null
+          slot_date?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           tags?: Database["public"]["Enums"]["lineup_slot_tag"][]
           updated_at?: string | null
@@ -390,9 +397,11 @@ export type Database = {
           lineup_artist_id?: string
           lineup_id?: string
           performance_format?: Database["public"]["Enums"]["performance_format"]
+          place_space_id?: string | null
           placeholder_type?:
             | Database["public"]["Enums"]["placeholder_type"]
             | null
+          slot_date?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           tags?: Database["public"]["Enums"]["lineup_slot_tag"][]
           updated_at?: string | null
@@ -404,6 +413,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "lineup"
             referencedColumns: ["lineup_id"]
+          },
+          {
+            foreignKeyName: "lineup_artist_place_space_id_fkey"
+            columns: ["place_space_id"]
+            isOneToOne: false
+            referencedRelation: "place_space"
+            referencedColumns: ["space_id"]
           },
         ]
       }

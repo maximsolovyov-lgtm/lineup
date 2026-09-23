@@ -35,6 +35,9 @@ export function LineupFormPage() {
   const placeId = watch('place_id');
   const versions = useLineupVersions(occurrenceId || undefined, placeId);
   const window = useOccurrenceWindow(occurrenceId || undefined);
+  const splitByDay = watch('split_by_day');
+  // The days a slot may be dated with: the business day through the day it ends.
+  const run = window.data ? { from: window.data.start_date, to: window.data.end_date } : null;
 
   useEffect(() => {
     if (existing.data) reset(fromRow(existing.data.lineup, existing.data.artists));
@@ -68,7 +71,7 @@ export function LineupFormPage() {
   // created), the roster matched to artist records, and — for a next version —
   // the line-up it supersedes, so the banner can say so.
   function applyGenerated(fill: GeneratedFill) {
-    reset({ ...emptyLineupForm, occurrence_id: fill.occurrence_id, place_id: fill.place_id, published_at: fill.published_at, notes: fill.notes, artists: fill.artists }, { keepDefaultValues: true });
+    reset({ ...emptyLineupForm, occurrence_id: fill.occurrence_id, place_id: fill.place_id, published_at: fill.published_at, notes: fill.notes, split_by_day: fill.split_by_day, artists: fill.artists }, { keepDefaultValues: true });
     setClonedFrom(null);
     if (fill.fromLineupId) {
       void fetchLineupForClone(fill.fromLineupId).then((src) => { if (src) setClonedFrom({ id: fill.fromLineupId!, version: src.lineup.version }); });
@@ -210,14 +213,30 @@ export function LineupFormPage() {
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Artists</h2>
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">lineup_artist</span>
+          <span className="flex-1" />
+          {run && run.to > run.from && (
+            <Controller control={control} name="split_by_day" render={({ field }) => (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground"
+                title="A run of several days: either the bill says which day each line plays, or it announces the whole run">
+                <input type="checkbox" className="h-4 w-4 accent-primary" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
+                the bill splits this run by day ({run.from} → {run.to})
+              </label>
+            )} />
+          )}
         </div>
+        {run && run.to > run.from && !splitByDay && (
+          <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+            This night runs {run.from} → {run.to} and the line-up is <b>not split by day</b>: every line belongs to the whole run. Tick the box above when the bill names days.
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           One row per announced <b>line</b>, in billing order — not per artist. “Solomun b2b Dixon” is one slot of kind <b>B2B</b> with two acts;
           the kind is the format of the set, never an artist type. <b>TBA</b>, <b>Surprise guest</b>, <b>Secret guest</b> and <b>Unknown</b> are acts
           too, so half a line can be known (“Solomun b2b TBA”); revealing one is swapping the act, and the badge stays because the placeholder is kept.
         </p>
         <Controller control={control} name="artists" render={({ field }) => (
-          <LineupSlotsEditor value={field.value} onChange={field.onChange} errors={errors.artists as SlotErrors} />
+          <LineupSlotsEditor value={field.value} onChange={field.onChange} errors={errors.artists as SlotErrors}
+            placeId={placeId} run={run} splitByDay={splitByDay} />
         )} />
       </section>
 
