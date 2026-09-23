@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeName } from '@/lib/normalize';
 import { matchRooms } from '@/lib/matching';
-import { wallTimeToInstant } from '@/lib/datetime';
+import { instantToWallTime, wallTimeToInstant } from '@/lib/datetime';
 import type { LineupDraft, LineupDraftSlot } from '@/agents/lineup/schema';
 import { slotLabel, type LineupSlotValue } from './schema';
 import type { Database } from '@/types/database';
@@ -31,14 +31,25 @@ export interface FinderParams {
  */
 export async function placeHints(placeId: string | null, eventId: string | null): Promise<string[]> {
   const [pl, ev] = await Promise.all([
-    placeId ? supabase.from('place').select('website_url,lineup_pattern').eq('place_id', placeId).maybeSingle() : null,
+    placeId ? supabase.from('place').select('website_url,lineup_pattern,city,country').eq('place_id', placeId).maybeSingle() : null,
     eventId ? supabase.from('event').select('website_url').eq('event_id', eventId).maybeSingle() : null,
   ]);
   const sites = [pl?.data?.website_url, ev?.data?.website_url].filter((u): u is string => !!u && /^https?:\/\//i.test(u));
   const hints = [...new Set(sites)].map((u) => `site: ${u}`);
+  // Where the venue is: "Tinker Field" alone finds nothing, "Tinker Field, Orlando" does.
+  const where = [pl?.data?.city, pl?.data?.country].filter(Boolean).join(', ');
+  if (where) hints.push(`city: ${where}`);
   const pattern = pl?.data?.lineup_pattern?.trim();
   if (pattern) hints.push(`lineup pattern: ${pattern.replace(/\s+/g, ' ').slice(0, 600)}`);
   return hints;
+}
+
+/** The days an occurrence covers: its business day through the day it ends. */
+export async function fetchRun(occurrenceId: string): Promise<{ from: string; to: string } | null> {
+  const { data } = await supabase.from('event_occurrence').select('event_date,ends_at,timezone').eq('occurrence_id', occurrenceId).maybeSingle();
+  if (!data) return null;
+  const end = instantToWallTime(data.ends_at, data.timezone).slice(0, 10);
+  return { from: data.event_date, to: end > data.event_date ? end : data.event_date };
 }
 
 /** The venue's line-up pattern as stored — what the operator is asked to confirm or replace. */
@@ -54,11 +65,14 @@ export async function saveLineupPattern(placeId: string, pattern: string): Promi
 }
 
 /** The labelled keywords the line-up agent reads. */
-export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, current: string[] | null, sites: string[] = []): string {
+export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, current: string[] | null, sites: string[] = [], run: { from: string; to: string } | null = null): string {
   const parts: string[] = [];
   if (occ) {
     parts.push(`occurrence: ${occ.event_name} on ${occ.event_date}${occ.occurrence_name ? ` (${occ.occurrence_name})` : ''}${occ.primary_place_name ? ` at ${occ.primary_place_name}` : ''}`);
     parts.push(`event: ${occ.event_name}`, `date: ${occ.event_date}`);
+    // The edition is how a festival is actually named and searched: the brand is
+    // "EDC (Electric Daisy Carnival)", the thing with a bill is "EDC Orlando 2026".
+    if (occ.occurrence_name) parts.push(`edition: ${occ.occurrence_name}`);
     if (occ.primary_place_name) parts.push(`place: ${occ.primary_place_name}`);
   } else {
     parts.push('occurrence: none in the system');
@@ -68,6 +82,7 @@ export function keywordsFor(p: FinderParams, occ: FoundOccurrence | null, curren
   }
   if (p.artistName) parts.push(`artist: ${p.artistName}`);
   if (current && current.length > 0) parts.push(`current line-up: ${current.join(', ')}`);
+  if (run && run.to > run.from) parts.push(`run: ${run.from} to ${run.to} (several days — date every line the bill dates)`);
   parts.push(...sites);
   return parts.join('; ');
 }

@@ -8,7 +8,7 @@ import { hostnameOf } from '@/agents/client';
 import type { AgentResult, Candidate } from '@/agents/common';
 import type { LineupDraft } from '@/agents/lineup/schema';
 import { LineupFinder } from './LineupFinder';
-import { compareRosters, createOccurrenceFromDraft, draftSlotLabel, fetchLineupPattern, keywordsFor, placeHints, resolveRoster, saveLineupPattern, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
+import { compareRosters, createOccurrenceFromDraft, draftSlotLabel, fetchLineupPattern, fetchRun, keywordsFor, placeHints, resolveRoster, saveLineupPattern, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
 import type { LineupSlotValue } from './schema';
 
 export interface GeneratedFill {
@@ -140,7 +140,8 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
     const current = lineups.find((l) => l.is_current && (params.placeId ? l.place_id === params.placeId : true)) ?? lineups.find((l) => l.is_current) ?? null;
     setStage({ kind: 'researching', what: `${occ.event_name} · ${occ.event_date}` });
     try {
-      const keywords = keywordsFor(params, occ, current ? current.artists : null, await placeHints(params.placeId ?? occ.primary_place_id, occ.event_id));
+      const [hints, run] = await Promise.all([placeHints(params.placeId ?? occ.primary_place_id, occ.event_id), fetchRun(occ.occurrence_id)]);
+      const keywords = keywordsFor(params, occ, current ? current.artists : null, hints, run);
       const r = await research(keywords);
       if (r.outcome === 'ambiguous') { setStage({ kind: 'candidates', candidates: r.candidates, keywords, occ, params }); return; }
       await afterResearch(r, occ, params);

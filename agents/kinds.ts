@@ -82,8 +82,12 @@ export const lineupAgent: AgentKindDefinition<LineupDraft> = {
   kind: 'lineup',
   noun: 'published line-up',
   draftSchema: LineupDraftSchema,
-  maxSearches: 8,
-  maxFetches: 10,
+  maxSearches: 10,
+  maxFetches: 12,
+  // A festival bill runs to hundreds of lines, and adaptive thinking shares the
+  // budget: 16k truncated EDC-sized answers into nothing.
+  maxTokens: 48000,
+  maxTurns: 6,
   // "site: https://…" keywords name the venue's and the event's own sites:
   // their sitemaps give the page for the night, which the model could not
   // otherwise reach (see agents/sitemap.ts).
@@ -110,7 +114,8 @@ Rules:
 - format: what the bill states. "(live)" → live, "live PA" → live_pa, "A/V" → av, "DJ set + live PA" → dj_live_pa. A bill that states nothing is a DJ set — that is the default, NOT unknown; use unknown only when the source deliberately leaves the format open.
 - tags: only what is printed — "all night long", "open to close", "opening set", "closing set", "sunrise set", "sunset", "afterhours", "peak time". Several can be true at once. Do not infer a tag from the billing order.
 - room: the room or stage the bill puts the line in, spelled as the bill spells it ("Theatre", "Club Room", "Main Stage"). A bill grouped by room gives every line the room of its group.
-- date: only for a night that runs over several days, and only when the bill says which day a line plays. A multi-day bill that announces the whole run leaves every date null — that is a fact about the bill, not missing data.
+- date: only for a night that runs over several days, and only when the bill says which day a line plays. A multi-day bill that announces the whole run leaves every date null — that is a fact about the bill, not missing data. When the request gives "run: … to …", the night is a festival of several days: fill date on every line the bill dates, and keep all of them in one answer.
+- A festival bill is long. Return every line it prints — do not stop at the headliners and do not summarise. If you truly cannot fit them all, return the ones you have, and say in notes which day or stage is missing so the operator can run it again for that part.
 
 Classifying a line — one rule each, applied in this order:
   * label_only — the line names no identifiable act: "Resident DJs", "Local support", "Guest TBA" written as a category rather than a slot. artists empty.

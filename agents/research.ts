@@ -23,6 +23,10 @@ export interface AgentKindDefinition<TDraft> {
   systemPrompt: string;
   maxSearches?: number;
   maxFetches?: number;
+  /** Output budget, thinking included. A festival bill is hundreds of lines. */
+  maxTokens?: number;
+  /** How many times a paused turn may be resumed before giving up. */
+  maxTurns?: number;
   /**
    * Runs before the model is called; whatever it returns is appended to the
    * user message. The line-up agent uses it to list the venue site's pages
@@ -72,10 +76,10 @@ export async function runResearch<TDraft>(
   // Server tools run inside the API; a long research turn can come back as
   // pause_turn, in which case the assistant turn is appended and the request
   // re-sent — the API resumes where it left off.
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < (def.maxTurns ?? 4); attempt += 1) {
     const response = await client.messages.parse({
       model: AGENT_MODEL,
-      max_tokens: 16000,
+      max_tokens: def.maxTokens ?? 16000,
       system: [{ type: 'text', text: `${def.systemPrompt}\n\n${disambiguationRules(def.noun)}`, cache_control: { type: 'ephemeral' } }],
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium', format },
@@ -100,7 +104,7 @@ export async function runResearch<TDraft>(
       throw new Error(`The model declined this request${response.stop_details?.explanation ? `: ${response.stop_details.explanation}` : ''}`);
     }
     if (response.stop_reason === 'max_tokens') {
-      throw new Error('The answer was cut off (max_tokens); try fewer keywords');
+      throw new Error('The answer was longer than the agent may write. For a festival bill, generate one day or one stage at a time; otherwise narrow the keywords.');
     }
     if (!response.parsed_output) {
       throw new Error('The model returned no structured answer');
