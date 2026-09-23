@@ -114,7 +114,7 @@ export function LineupFormPage() {
 
   return (
     <div className="space-y-4">
-    {isNew && <LineupGenerate onFill={applyGenerated} />}
+    {isNew && <LineupGenerate onFill={applyGenerated} occurrenceId={params.get('occurrence')} placeId={params.get('place')} />}
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/lineups" title="Back to line-ups"><ArrowLeft /></Link></Button>

@@ -7,6 +7,7 @@ import { useAgent } from '@/agents/client';
 import { hostnameOf } from '@/agents/client';
 import type { AgentResult, Candidate } from '@/agents/common';
 import type { LineupDraft } from '@/agents/lineup/schema';
+import { supabase } from '@/lib/supabase';
 import { LineupFinder } from './LineupFinder';
 import { compareRosters, createOccurrenceFromDraft, draftSlotLabel, fetchLineupPattern, fetchRun, keywordsFor, placeHints, resolveRoster, saveLineupPattern, type FinderParams, type FoundLineup, type FoundOccurrence, type RosterDiff } from './generate';
 import type { LineupSlotValue } from './schema';
@@ -25,6 +26,9 @@ export interface GeneratedFill {
 
 interface LineupGenerateProps {
   onFill: (fill: GeneratedFill) => void;
+  /** Arrived from a night that is already chosen (?occurrence=): generate for it in one press. */
+  occurrenceId?: string | null;
+  placeId?: string | null;
 }
 
 type Stage =
@@ -62,7 +66,7 @@ function venueGroups(lineup: PublishedLineup): VenueGroup[] {
  * Nothing is written until the operator saves (creating a missing night is
  * the one exception, and it asks first).
  */
-export function LineupGenerate({ onFill }: LineupGenerateProps) {
+export function LineupGenerate({ onFill, occurrenceId = null, placeId = null }: LineupGenerateProps) {
   const agent = useAgent<LineupDraft>('lineup');
   const [stage, setStage] = useState<Stage>({ kind: 'idle' });
   // What the publication showed about how this venue writes its line-ups. Stored
@@ -241,8 +245,35 @@ export function LineupGenerate({ onFill }: LineupGenerateProps) {
 
   const busy = stage.kind === 'researching' || agent.isPending;
 
+  // The night came with the link — the operator should not have to retype the
+  // search that brought them here just to start the agent.
+  async function generateForNight(id: string) {
+    setStage({ kind: 'researching', what: 'the night' });
+    try {
+      const { data, error } = await supabase.rpc('find_lineups', { p_occurrence_id: id });
+      if (error) throw error;
+      const occ = (data as FoundOccurrence[])[0];
+      if (!occ) { setStage({ kind: 'done', tone: 'warn', message: <>That night is no longer in the system.</> }); return; }
+      await handleOccurrence(occ, {
+        date: occ.event_date, days: 0, eventId: occ.event_id, eventName: occ.event_name,
+        placeId: placeId ?? occ.primary_place_id, placeName: occ.primary_place_name, artistId: null, artistName: null,
+      });
+    } catch (e) {
+      setStage({ kind: 'done', tone: 'warn', message: <>{(e as Error).message}</> });
+    }
+  }
+
   return (
     <div className="space-y-3">
+      {occurrenceId && stage.kind === 'idle' && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4 text-sm">
+          <span><b>This night is already chosen.</b> The agent can read its publication and fill the form.</span>
+          <span className="flex-1" />
+          <Button type="button" disabled={busy} onClick={() => void generateForNight(occurrenceId)}>
+            <Sparkles /> AI generate for this night
+          </Button>
+        </div>
+      )}
       <LineupFinder onResults={(r, p) => void onResults(r, p)} submitLabel="Find & AI generate" submitIcon="sparkles" busy={busy} />
 
       {stage.kind === 'researching' && (
