@@ -28,3 +28,12 @@ test('with no acts the printed line is the label', () => {
   assert.equal(slotLabel('label_only', [], 'Resident DJs'), 'Resident DJs');
   assert.equal(slotLabel('solo', ['', ' '], 'Local support'), 'Local support');
 });
+
+test('an unclear line reads as it was printed, never as "A & B"', () => {
+  assert.equal(
+    slotLabel('unknown', ['Circle', 'Supa D', 'Kismet', 'Feva & Tippa'], 'Circle feat Supa D B2B Kismet B2B Feva & Tippa'),
+    'Circle feat Supa D B2B Kismet B2B Feva & Tippa',
+  );
+  // With nothing printed it falls back to the neutral join.
+  assert.equal(slotLabel('unknown', ['A', 'B'], ''), 'A & B');
+});

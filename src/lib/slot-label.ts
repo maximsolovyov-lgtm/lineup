@@ -8,6 +8,9 @@
 export function slotLabel(kind: string, names: string[], printed: string): string {
   const n = names.filter((x) => x.trim() !== '');
   if (n.length === 0) return printed.trim();
+  // An unclear line must not read as "A & B": "&" is one of the readings the
+  // operator has not chosen yet. What was printed is the honest label.
+  if (kind === 'unknown' && printed.trim() !== '') return printed.trim();
   if (n.length === 1) return n[0]!;
   if (kind === 'b2b' || kind === 'b3b' || kind === 'b4b') return n.join(` ${kind} `);
   if (kind === 'featuring') return `${n[0]} feat. ${n.slice(1).join(', ')}`;
