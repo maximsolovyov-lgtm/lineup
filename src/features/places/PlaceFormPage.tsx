@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { FavoriteStar } from '@/components/FavoriteStar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -107,6 +108,7 @@ export function PlaceFormPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/places" title="Back to places"><ArrowLeft /></Link></Button>
         <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New place' : row?.name}</h1>
+        {!isNew && placeId && <FavoriteStar entity="place" id={placeId} className="-ml-1" />}
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? (dupBlocked ? 'Same name exists' : 'Create place') : 'Save changes'}
         </Button>

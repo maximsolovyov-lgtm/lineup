@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { FavoriteStar } from '@/components/FavoriteStar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,6 +72,7 @@ export function EventFormPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/events" title="Back to events"><ArrowLeft /></Link></Button>
         <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New event' : existing.data?.event.name}</h1>
+        {!isNew && eventId && <FavoriteStar entity="event" id={eventId} className="-ml-1" />}
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? 'Create event' : 'Save changes'}
         </Button>

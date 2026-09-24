@@ -297,3 +297,12 @@ Recorded so they are not rediscovered from scratch:
 | What happens to that instruction afterwards. | It is knowledge, not a one-off. The record's stored `news_pattern` / `lineup_pattern` travel with the request, and the agent returns them **merged** — one text that keeps what is still true, corrects what is not, adds what is new, and never becomes a log of runs. When it folds nothing in, the client keeps the instruction itself (`src/lib/knowledge.ts`, unit-tested: never added twice). Either way it lands in the form as a diffed field, visible before saving. |
 | Where does it land for a line-up, which has no patterns of its own? | On the **place** that publishes the bill, or on the **event** when the line-up names no place — offered as a separate confirmation, because it changes another record. |
 | So Event and Artist need the fields. | `event.news_pattern`, `event.lineup_pattern`, `artist.news_pattern`, `artist.lineup_pattern` (`20260924100000`), saved through the same RPCs in one transaction. A place has had both since the first migration; this is the same memory for a brand and an act, and it is what makes the second reading of a record better than the first. |
+
+## Decision 2026-09-24 — favourites
+
+| Question | Decision |
+|---|---|
+| A star on a record — whose is it? | **The operator's own.** `user_favorite (user_id, entity_type, entity_id)` (`20260924140000`), every policy scoped to `auth.uid()`, so a star is never shared and never cleared by a colleague — not even by an admin, who cannot read or write someone else's. A shared flag would have surprised the first person whose star vanished. |
+| One table or a column per record type? | One table. Seven kinds of record (place, event, artist, person, line-up, set, occurrence) cost one `check` constraint here instead of seven migrations, seven columns and seven save functions, and an eighth kind costs nothing. `entity_type` is checked against the list rather than being a foreign key — one table cannot reference seven, and a favourite that outlives its record is harmless. |
+| Toggling. | Insert and delete; there is nothing to update. The client updates the star optimistically and rolls back on error — the star answers the click, not the round trip. |
+| Filtering. | Each list takes `favoriteIds`: null = no filtering, a list = `.in(pk, ids)` in the query, so it filters the whole table rather than the fetched page. "Favourites" in a list header turns it on; with no favourites yet the filter matches nothing rather than everything. |

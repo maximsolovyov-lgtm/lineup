@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { favoriteFilter } from '@/features/favorites/api';
 import { supabase } from '@/lib/supabase';
 import { nameFilter } from '@/lib/lookups';
 import type { Enums, Tables } from '@/types/database';
@@ -9,6 +10,8 @@ export type EventRow = Tables<'event'>;
 export interface EventsListParams {
   q: string;
   status: Enums<'record_status'> | 'all';
+  /** Given, only these ids — the operator's favourites. */
+  favoriteIds?: string[] | null;
 }
 
 const LIST_SELECT = 'event_id,name,event_type,status,updated_at,created_at,event_occurrence(event_date,status)' as const;
@@ -19,6 +22,8 @@ export function useEvents(params: EventsListParams) {
     queryFn: async () => {
       let query = supabase.from('event').select(LIST_SELECT).order('name').limit(200);
       if (params.status !== 'all') query = query.eq('status', params.status);
+      const favorites = favoriteFilter(params.favoriteIds);
+      if (favorites) query = query.in('event_id', favorites);
       const f = nameFilter(params.q);
       if (f) query = query.or(f);
       const { data, error } = await query;

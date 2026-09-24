@@ -4,6 +4,8 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/StatusBadge';
+import { FavoriteFilter, FavoriteStar } from '@/components/FavoriteStar';
+import { useFavorites } from '@/features/favorites/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RECORD_STATUSES } from '@/types/enums';
@@ -14,7 +16,9 @@ export function PlacesPage() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<PlaceListParams['status']>('active');
   const [tag, setTag] = useState('');
-  const places = usePlaces({ q, status, tag });
+  const [favOnly, setFavOnly] = useState(false);
+  const favorites = useFavorites('place');
+  const places = usePlaces({ q, status, tag, favoriteIds: favOnly ? [...(favorites.data ?? [])] : null });
   const tagCounts = useTagCounts();
   const names = useProfileNames();
 
@@ -49,6 +53,7 @@ export function PlacesPage() {
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <FavoriteFilter on={favOnly} onChange={setFavOnly} />
         <Button asChild>
           <Link to="/places/new"><Plus /> New place</Link>
         </Button>
@@ -58,6 +63,7 @@ export function PlacesPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9" />
               <TableHead>Name</TableHead>
               <TableHead>City</TableHead>
               <TableHead className="hidden md:table-cell">Country</TableHead>
@@ -70,19 +76,20 @@ export function PlacesPage() {
           </TableHeader>
           <TableBody>
             {places.isLoading && (
-              <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
             )}
             {places.isError && (
-              <TableRow><TableCell colSpan={7} className="py-8 text-center text-destructive">{(places.error as Error).message}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="py-8 text-center text-destructive">{(places.error as Error).message}</TableCell></TableRow>
             )}
             {places.data?.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No places match.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">No places match.</TableCell></TableRow>
             )}
             {places.data?.map((p) => {
               const who = names.data?.get(p.updated_by_user_id ?? p.created_by_user_id ?? '') ?? '';
               const when = new Date(p.updated_at ?? p.created_at).toLocaleDateString();
               return (
                 <TableRow key={p.place_id} className="cursor-pointer" onClick={() => navigate(`/places/${p.place_id}`)}>
+                <TableCell className="w-9 py-1"><FavoriteStar entity="place" id={p.place_id} /></TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell>{p.city}</TableCell>
                   <TableCell className="hidden md:table-cell">{p.country}</TableCell>

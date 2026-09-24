@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { FavoriteStar } from '@/components/FavoriteStar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -131,6 +132,7 @@ export function LineupFormPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/lineups" title="Back to line-ups"><ArrowLeft /></Link></Button>
         <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{title}</h1>
+        {!isNew && lineupId && <FavoriteStar entity="lineup" id={lineupId} className="-ml-1" />}
         {!isNew && (
           <Button type="button" variant="secondary" onClick={() => void publishAsNewVersion()} disabled={isSubmitting} title="Save the current content as the next version; this version stays unchanged">
             <Copy /> Publish as new version

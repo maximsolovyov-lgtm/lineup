@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/StatusBadge';
+import { FavoriteFilter, FavoriteStar } from '@/components/FavoriteStar';
+import { useFavorites } from '@/features/favorites/api';
 import { RECORD_STATUSES } from '@/types/enums';
 import { useArtists, type ArtistsListParams } from './api';
 
@@ -13,7 +15,9 @@ export function ArtistsPage() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<ArtistsListParams['status']>('active');
-  const artists = useArtists({ q, status });
+  const [favOnly, setFavOnly] = useState(false);
+  const favorites = useFavorites('artist');
+  const artists = useArtists({ q, status, favoriteIds: favOnly ? [...(favorites.data ?? [])] : null });
 
   return (
     <div className="space-y-4">
@@ -30,6 +34,7 @@ export function ArtistsPage() {
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <FavoriteFilter on={favOnly} onChange={setFavOnly} />
         <Button asChild><Link to="/artists/new"><Plus /> New artist</Link></Button>
       </div>
 
@@ -37,6 +42,7 @@ export function ArtistsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9" />
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead className="hidden md:table-cell">Country</TableHead>
@@ -46,11 +52,12 @@ export function ArtistsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {artists.isLoading && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-            {artists.isError && <TableRow><TableCell colSpan={6} className="py-8 text-center text-destructive">{(artists.error as Error).message}</TableCell></TableRow>}
-            {artists.data?.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No artists match.</TableCell></TableRow>}
+            {artists.isLoading && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+            {artists.isError && <TableRow><TableCell colSpan={7} className="py-8 text-center text-destructive">{(artists.error as Error).message}</TableCell></TableRow>}
+            {artists.data?.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No artists match.</TableCell></TableRow>}
             {artists.data?.map((a) => (
               <TableRow key={a.artist_id} className="cursor-pointer" onClick={() => navigate(`/artists/${a.artist_id}`)}>
+                <TableCell className="w-9 py-1"><FavoriteStar entity="artist" id={a.artist_id} /></TableCell>
                 <TableCell className="font-medium">{a.name}</TableCell>
                 <TableCell className="text-muted-foreground">{a.artist_type}</TableCell>
                 <TableCell className="hidden md:table-cell">{a.country}</TableCell>

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/StatusBadge';
+import { FavoriteFilter, FavoriteStar } from '@/components/FavoriteStar';
+import { useFavorites } from '@/features/favorites/api';
 import { RECORD_STATUSES } from '@/types/enums';
 import { useLineups, type LineupsListParams } from './api';
 import { LineupFinder } from './LineupFinder';
@@ -15,7 +17,9 @@ export function LineupsPage() {
   const [params] = useSearchParams();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<LineupsListParams['status']>('active');
-  const lineups = useLineups({ q, status });
+  const [favOnly, setFavOnly] = useState(false);
+  const favorites = useFavorites('lineup');
+  const lineups = useLineups({ q, status, favoriteIds: favOnly ? [...(favorites.data ?? [])] : null });
 
   return (
     <div className="space-y-4">
@@ -32,6 +36,7 @@ export function LineupsPage() {
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <FavoriteFilter on={favOnly} onChange={setFavOnly} />
         <Button asChild><Link to="/lineups/new"><Plus /> New line-up</Link></Button>
       </div>
 
@@ -41,6 +46,7 @@ export function LineupsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9" />
               <TableHead>Event · date</TableHead>
               <TableHead>Place</TableHead>
               <TableHead className="text-right">Version</TableHead>
@@ -51,11 +57,12 @@ export function LineupsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {lineups.isLoading && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-            {lineups.isError && <TableRow><TableCell colSpan={7} className="py-8 text-center text-destructive">{(lineups.error as Error).message}</TableCell></TableRow>}
-            {lineups.data?.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No line-ups match.</TableCell></TableRow>}
+            {lineups.isLoading && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+            {lineups.isError && <TableRow><TableCell colSpan={8} className="py-8 text-center text-destructive">{(lineups.error as Error).message}</TableCell></TableRow>}
+            {lineups.data?.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">No line-ups match.</TableCell></TableRow>}
             {lineups.data?.map((l) => (
               <TableRow key={l.lineup_id} className="cursor-pointer" onClick={() => navigate(`/lineups/${l.lineup_id}`)}>
+                <TableCell className="w-9 py-1"><FavoriteStar entity="lineup" id={l.lineup_id} /></TableCell>
                 <TableCell>
                   <span className="font-medium">{l.event_occurrence?.event?.name}</span>
                   <span className="block text-xs text-muted-foreground">{l.event_occurrence?.event_date}{l.event_occurrence?.occurrence_name ? ` · ${l.event_occurrence.occurrence_name}` : ''}</span>

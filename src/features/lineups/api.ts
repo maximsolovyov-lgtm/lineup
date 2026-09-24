@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { favoriteFilter } from '@/features/favorites/api';
 import { supabase } from '@/lib/supabase';
 import { instantToWallTime } from '@/lib/datetime';
 import type { Enums } from '@/types/database';
@@ -74,6 +75,8 @@ function actNames(slot: { lineup_artist_participant?: { participant_order: numbe
 export interface LineupsListParams {
   q: string;
   status: Enums<'record_status'> | 'all';
+  /** Given, only these ids — the operator's favourites. */
+  favoriteIds?: string[] | null;
 }
 
 const LIST_SELECT =
@@ -85,6 +88,8 @@ export function useLineups(params: LineupsListParams) {
     queryFn: async () => {
       let query = supabase.from('lineup').select(LIST_SELECT).order('created_at', { ascending: false }).limit(200);
       if (params.status !== 'all') query = query.eq('status', params.status);
+      const favorites = favoriteFilter(params.favoriteIds);
+      if (favorites) query = query.in('lineup_id', favorites);
       const term = params.q.trim();
       if (term) query = query.not('event_occurrence', 'is', null).ilike('event_occurrence.event.normalized_name', `%${term.toLowerCase()}%`);
       const { data, error } = await query;

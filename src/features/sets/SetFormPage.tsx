@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { FavoriteStar } from '@/components/FavoriteStar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -107,6 +108,7 @@ export function SetFormPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/sets" title="Back to sets"><ArrowLeft /></Link></Button>
         <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{title}</h1>
+        {!isNew && setId && <FavoriteStar entity="performance_set" id={setId} className="-ml-1" />}
         {row && <StatusBadge status={row.status} />}
         {!isNew && !superseded && row?.status !== 'cancelled' && (
           <Button type="button" variant="outline" onClick={() => void cancelSet()} disabled={setStatus.isPending} title="A cancellation is a status change and a notification event; the row itself stays">

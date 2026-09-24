@@ -958,6 +958,43 @@ select test.run('patterns: an event and an artist keep what actualization learne
         end if;
       end $x$ $q$, true);
 
+-- Favourites ------------------------------------------------------------------------------
+select test.run('favourites: an operator stars a record and sees it', :operator_id,
+  $q$ do $x$ declare v_p uuid; begin
+        select place_id into v_p from public.place where status = 'active' limit 1;
+        insert into public.user_favorite (user_id, entity_type, entity_id)
+        values (auth.uid(), 'place', v_p) on conflict do nothing;
+        if not exists (select 1 from public.user_favorite where entity_type = 'place' and entity_id = v_p) then
+          raise exception 'the star was not stored';
+        end if;
+        delete from public.user_favorite where entity_type = 'place' and entity_id = v_p;
+        if exists (select 1 from public.user_favorite where entity_type = 'place' and entity_id = v_p) then
+          raise exception 'the star was not cleared';
+        end if;
+      end $x$ $q$, true);
+
+select test.run('favourites: a star is personal — nobody else can read it or set one for you', :admin_id,
+  $q$ do $x$ declare v_p uuid; begin
+        select place_id into v_p from public.place where status = 'active' limit 1;
+        -- the operator's star, written as the operator
+        insert into public.user_favorite (user_id, entity_type, entity_id)
+        values ('00000000-0000-4000-8000-000000000002'::uuid, 'place', v_p);
+        raise exception 'an admin managed to star for someone else';
+      end $x$ $q$, false);
+
+select test.run('favourites: an admin does not see the operator''s stars', :admin_id,
+  $q$ do $x$ declare n int; begin
+        select count(*) into n from public.user_favorite;
+        if n <> 0 then raise exception 'saw % rows that belong to someone else', n; end if;
+      end $x$ $q$, true);
+
+select test.run('favourites: anon cannot touch the table', null,
+  $q$ select count(*) from public.user_favorite $q$, false);
+
+select test.run('favourites: an unknown kind of record is refused', :operator_id,
+  $q$ insert into public.user_favorite (user_id, entity_type, entity_id)
+      values (auth.uid(), 'not_a_table', '00000000-0000-4000-8000-000000000001') $q$, false);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

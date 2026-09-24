@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { favoriteFilter } from '@/features/favorites/api';
 import { supabase } from '@/lib/supabase';
 import { normalizeName, safeFilterTerm } from '@/lib/normalize';
 import type { Enums } from '@/types/database';
@@ -14,6 +15,8 @@ export interface PlaceListParams {
   status: Enums<'record_status'> | 'all';
   /** Only places carrying this tag; '' = any. */
   tag: string;
+  /** Given, only these ids — the operator's favourites. */
+  favoriteIds?: string[] | null;
 }
 
 function applySearch<T extends { or: (f: string) => T }>(query: T, q: string): T {
@@ -29,6 +32,8 @@ export function usePlaces(params: PlaceListParams) {
     queryFn: async () => {
       let query = supabase.from('place').select(PLACE_LIST_COLUMNS).eq('place_space.status', 'active').order('name').limit(200);
       if (params.status !== 'all') query = query.eq('status', params.status);
+      const favorites = favoriteFilter(params.favoriteIds);
+      if (favorites) query = query.in('place_id', favorites);
       if (params.tag) query = query.contains('tags', [params.tag]);
       query = applySearch(query, params.q);
       const { data, error } = await query;

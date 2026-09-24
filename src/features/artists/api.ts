@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { favoriteFilter } from '@/features/favorites/api';
 import { supabase } from '@/lib/supabase';
 import { nameFilter } from '@/lib/lookups';
 import type { Enums, Tables } from '@/types/database';
@@ -9,6 +10,8 @@ export type ArtistRow = Tables<'artist'>;
 export interface ArtistsListParams {
   q: string;
   status: Enums<'record_status'> | 'all';
+  /** Given, only these ids — the operator's favourites. */
+  favoriteIds?: string[] | null;
 }
 
 const LIST_SELECT = 'artist_id,name,artist_type,country,status,updated_at,created_at,artist_membership(status,ended_at)' as const;
@@ -19,6 +22,8 @@ export function useArtists(params: ArtistsListParams) {
     queryFn: async () => {
       let query = supabase.from('artist').select(LIST_SELECT).order('name').limit(200);
       if (params.status !== 'all') query = query.eq('status', params.status);
+      const favorites = favoriteFilter(params.favoriteIds);
+      if (favorites) query = query.in('artist_id', favorites);
       const f = nameFilter(params.q, ['country']);
       if (f) query = query.or(f);
       // review_task has no foreign key to artist (entity_id is polymorphic),

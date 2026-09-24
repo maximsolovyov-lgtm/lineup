@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { favoriteFilter } from '@/features/favorites/api';
 import { supabase } from '@/lib/supabase';
 import type { Enums } from '@/types/database';
 import type { SaveSetArgs } from './schema';
@@ -7,6 +8,8 @@ export interface SetsListParams {
   q: string;
   status: Enums<'record_status'> | 'all';
   scenario: 'official' | 'predicted' | 'all';
+  /** Given, only these ids — the operator's favourites. */
+  favoriteIds?: string[] | null;
 }
 
 const LIST_SELECT =
@@ -19,6 +22,8 @@ export function useSets(params: SetsListParams) {
       let query = supabase.from('performance_set').select(LIST_SELECT)
         .order('event_day', { ascending: false, nullsFirst: false }).order('scheduled_start_at', { ascending: true, nullsFirst: false }).limit(300);
       if (params.status !== 'all') query = query.eq('status', params.status);
+      const favorites = favoriteFilter(params.favoriteIds);
+      if (favorites) query = query.in('performance_set_id', favorites);
       if (params.scenario !== 'all') query = query.eq('scenario_type', params.scenario);
       const term = params.q.trim();
       if (term) query = query.not('event_occurrence', 'is', null).ilike('event_occurrence.event.normalized_name', `%${term.toLowerCase()}%`);

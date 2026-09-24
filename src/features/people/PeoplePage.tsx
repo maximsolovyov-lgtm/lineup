@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/StatusBadge';
+import { FavoriteFilter, FavoriteStar } from '@/components/FavoriteStar';
+import { useFavorites } from '@/features/favorites/api';
 import { RECORD_STATUSES } from '@/types/enums';
 import { usePeople, type PeopleListParams } from './api';
 
@@ -13,7 +15,9 @@ export function PeoplePage() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<PeopleListParams['status']>('active');
-  const people = usePeople({ q, status });
+  const [favOnly, setFavOnly] = useState(false);
+  const favorites = useFavorites('person');
+  const people = usePeople({ q, status, favoriteIds: favOnly ? [...(favorites.data ?? [])] : null });
 
   return (
     <div className="space-y-4">
@@ -30,6 +34,7 @@ export function PeoplePage() {
             {RECORD_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <FavoriteFilter on={favOnly} onChange={setFavOnly} />
         <Button asChild><Link to="/people/new"><Plus /> New person</Link></Button>
       </div>
 
@@ -37,6 +42,7 @@ export function PeoplePage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-9" />
               <TableHead>Name</TableHead>
               <TableHead>Country</TableHead>
               <TableHead className="hidden md:table-cell">Performs as</TableHead>
@@ -44,11 +50,12 @@ export function PeoplePage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {people.isLoading && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-            {people.isError && <TableRow><TableCell colSpan={4} className="py-8 text-center text-destructive">{(people.error as Error).message}</TableCell></TableRow>}
-            {people.data?.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No people match.</TableCell></TableRow>}
+            {people.isLoading && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+            {people.isError && <TableRow><TableCell colSpan={5} className="py-8 text-center text-destructive">{(people.error as Error).message}</TableCell></TableRow>}
+            {people.data?.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No people match.</TableCell></TableRow>}
             {people.data?.map((p) => (
               <TableRow key={p.person_id} className="cursor-pointer" onClick={() => navigate(`/people/${p.person_id}`)}>
+                <TableCell className="w-9 py-1"><FavoriteStar entity="person" id={p.person_id} /></TableCell>
                 <TableCell className="font-medium">{p.display_name}</TableCell>
                 <TableCell>{p.country}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">
