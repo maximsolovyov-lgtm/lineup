@@ -105,6 +105,8 @@ export async function fromDraft(d: EventDraft): Promise<EventDraftMapping> {
       event_type: d.event.event_type,
       website_url: str(d.event.website_url),
       description: str(d.event.description),
+      news_pattern: str(d.event.news_pattern),
+      lineup_pattern: str(d.event.lineup_pattern),
       status: 'active',
       occurrences,
     },

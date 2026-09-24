@@ -9,8 +9,8 @@ import type { AgentKind, AgentResult, Candidate } from './common';
  */
 export function useAgent<TDraft>(kind: AgentKind) {
   return useMutation({
-    mutationFn: ({ keywords, candidate }: { keywords: string; candidate?: Candidate }) =>
-      apiFetch<AgentResult<TDraft>>(`/api/agents/${kind}`, { method: 'POST', body: JSON.stringify({ keywords, candidate }) }),
+    mutationFn: ({ keywords, candidate, instruction }: { keywords: string; candidate?: Candidate; instruction?: string }) =>
+      apiFetch<AgentResult<TDraft>>(`/api/agents/${kind}`, { method: 'POST', body: JSON.stringify({ keywords, candidate, instruction }) }),
   });
 }
 

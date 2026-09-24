@@ -45,14 +45,28 @@ export function disambiguationRules(noun: string): string {
 - If two or more different ${noun}s fit the keywords about equally well (same or similar names in different places, a name that is also a common word, a brand that exists in several cities), do NOT pick one: return outcome "ambiguous" with 2 to 6 candidates, most likely first, each with a description that tells them apart (city and country, genre, years active, what kind of thing it is) and the URLs that identify it. draft is null.
 - If nothing fits, return outcome "not_found" with candidates empty and draft null, and say in notes what you looked for.
 - When the request names a chosen candidate, that ${noun} is the one: research it and return outcome "draft" — never "ambiguous" again.
-Every fact you could not establish from a source is null. Never invent names, dates, addresses or handles. Write text fields in English, concise, for an operator.`;
+Every fact you could not establish from a source is null. Never invent names, dates, addresses or handles. Write text fields in English, concise, for an operator.
+
+${INSTRUCTION_RULE}`;
 }
+
+/**
+ * The operator's instruction is not a one-off: "the bill is at <url>", "the
+ * label page is stale, use the agency" is knowledge about the record, and the
+ * next run should not have to be told again. The kinds that carry patterns
+ * return them merged, which is why this rule is in every prompt.
+ */
+export const INSTRUCTION_RULE = `The operator's instruction:
+- When the request carries an instruction, follow it for this run: it is what the operator knows and the record does not say.
+- When the request also gives "news pattern: …" or "lineup pattern: …", that is what is already known about this record. Use it, and if this run — the instruction or what you read — makes it wrong or incomplete, return the field MERGED: one short text that keeps what is still true, corrects what is not, and adds what is new. Never repeat a sentence that is already there, never drop a fact that still holds, and do not turn it into a log of runs.
+- Return those fields null when nothing durable was learned: an instruction about this one run alone ("ignore the last line today") is not knowledge about the record.`
 
 export async function runResearch<TDraft>(
   def: AgentKindDefinition<TDraft>,
   rawKeywords: string,
   candidate: Candidate | undefined,
   apiKey: string,
+  instruction?: string,
 ): Promise<AgentResult<TDraft>> {
   const keywords = splitKeywords(rawKeywords);
   if (keywords.length === 0) throw new Error('No keywords given');
@@ -65,9 +79,14 @@ export async function runResearch<TDraft>(
   const chosen = candidate
     ? `\n\nThe operator chose this candidate from an earlier "ambiguous" answer — research exactly this one:\n${JSON.stringify(candidate)}`
     : '';
+  // The operator knows things the record does not say. Their words go in as
+  // they wrote them; the prompt says what to do with them.
+  const told = instruction?.trim()
+    ? `\n\nInstruction from the operator for this run, in their own words — follow it:\n${instruction.trim()}`
+    : '';
   const prepared = def.prepare ? await def.prepare(keywords).catch(() => null) : null;
   const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: `Today is ${today}.\nKeywords: ${keywords.map((k) => JSON.stringify(k)).join('; ')}${chosen}${prepared ? `\n\n${prepared}` : ''}\n\nResearch this ${def.noun} and answer with the structured outcome.` },
+    { role: 'user', content: `Today is ${today}.\nKeywords: ${keywords.map((k) => JSON.stringify(k)).join('; ')}${chosen}${told}${prepared ? `\n\n${prepared}` : ''}\n\nResearch this ${def.noun} and answer with the structured outcome.` },
   ];
 
   let usage = { input_tokens: 0, output_tokens: 0, web_searches: 0 };

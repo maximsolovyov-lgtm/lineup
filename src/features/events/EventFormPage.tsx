@@ -14,6 +14,8 @@ import { EVENT_TYPES, emptyEventForm, eventFormSchema, fromRow, toPayload, type 
 import { useEvent, useSaveEvent } from './api';
 import { OccurrencesEditor, type OccurrenceErrors } from './OccurrencesEditor';
 import { AgentPanel } from '@/agents/AgentPanel';
+import { ActualizePanel } from '@/agents/ActualizePanel';
+import { actualizeEvent, keywordsForEvent, type EventActualization, type EventActualizedField } from './actualize';
 import { useDuplicates } from '@/lib/duplicates';
 import { DuplicateWarning } from '@/components/form/DuplicateWarning';
 
@@ -28,7 +30,9 @@ export function EventFormPage() {
   const save = useSaveEvent();
 
   const form = useForm<EventFormValues>({ resolver: zodResolver(eventFormSchema), defaultValues: emptyEventForm, mode: 'onBlur' });
-  const { register, control, handleSubmit, reset, watch, formState: { errors, isSubmitting, isDirty } } = form;
+  const { register, control, handleSubmit, reset, watch, getValues, formState: { errors, isSubmitting, isDirty } } = form;
+  const [actual, setActual] = useState<EventActualization | null>(null);
+  const prev = (key: EventActualizedField) => actual?.previous[key];
   const occurrences = watch('occurrences');
   const eventName = watch('name');
   // Duplicate guard for a new record: warn on similar names, block Create on the same name until "anyway".
@@ -47,6 +51,7 @@ export function EventFormPage() {
     if (dupBlocked) { toast.error('A record with this name already exists — open it, or press "Create anyway"'); return; }
     try {
       const saved = await save.mutateAsync(toPayload(values, eventId ?? null));
+      setActual(null);
       if (isNew) {
         toast.success('Event created');
         navigate(`/events/${saved.event_id}`, { replace: true });
@@ -70,6 +75,33 @@ export function EventFormPage() {
           {isSubmitting ? 'Saving…' : isNew ? 'Create event' : 'Save changes'}
         </Button>
       </div>
+
+      {!isNew && (
+        <ActualizePanel<EventDraft>
+          kind="event"
+          noun="event brand"
+          disabled={isSubmitting}
+          hint="Optional: “dates are announced on Instagram, the site lags”, “only the winter edition”, “ignore the cancelled date”"
+          keywords={() => keywordsForEvent(getValues())}
+          onDiscard={() => { if (existing.data) { reset(fromRow(existing.data.event, existing.data.occurrences)); setActual(null); } }}
+          onDraft={async (draft, _r, instruction) => {
+            const a = await actualizeEvent(getValues(), draft, instruction);
+            const changed = Object.keys(a.previous).length;
+            setActual(a);
+            reset(a.values, { keepDefaultValues: true });
+            if (changed === 0 && a.added.length === 0) return null;
+            return (
+              <>
+                <b>Actualization applied to the form.</b>{' '}
+                {changed > 0 && <>{changed} field{changed === 1 ? '' : 's'} differ — each has a blue frame with the stored value in red under it. </>}
+                {a.added.length > 0 && <>{a.added.length} date{a.added.length === 1 ? '' : 's'} added: {a.added.join(', ')}. </>}
+                The {a.kept} date{a.kept === 1 ? '' : 's'} already on the record were left as they are — the agent only sees what is announced today.
+                Nothing is written until you press Save.
+              </>
+            );
+          }}
+        />
+      )}
 
       {isNew && (
         <AgentPanel<EventDraft>
@@ -95,7 +127,7 @@ export function EventFormPage() {
       )}
 
       <FormSection title="Event brand" description="A reusable brand or concept — Circoloco, Music On, a festival. Created once; each date is an occurrence below.">
-        <Field label="Name" htmlFor="name" required error={errors.name?.message} className="sm:col-span-2">
+        <Field label="Name" htmlFor="name" previous={prev('name')} required error={errors.name?.message} className="sm:col-span-2">
           <Input id="name" {...register('name')} aria-invalid={!!errors.name} autoFocus={isNew} />
         </Field>
         {isNew && (dup.data?.length ?? 0) > 0 && (
@@ -119,11 +151,23 @@ export function EventFormPage() {
             </Select>
           )} />
         </Field>
-        <Field label="Website" htmlFor="website_url" error={errors.website_url?.message} className="sm:col-span-2">
+        <Field label="Website" htmlFor="website_url" previous={prev('website_url')} error={errors.website_url?.message} className="sm:col-span-2">
           <Input id="website_url" type="url" placeholder="https://" {...register('website_url')} aria-invalid={!!errors.website_url} />
         </Field>
-        <Field label="Description" htmlFor="description" error={errors.description?.message} className="sm:col-span-2">
+        <Field label="Description" htmlFor="description" previous={prev('description')} error={errors.description?.message} className="sm:col-span-2">
           <Textarea id="description" rows={3} {...register('description')} />
+        </Field>
+      </FormSection>
+
+      <FormSection title="What we know about it"
+        description="Accumulated knowledge, not a description: where its dates and news appear, how its bills read. An AI actualization merges what it learns into these — and the instruction you give it is kept here too, so the next run already knows.">
+        <Field label="News pattern" htmlFor="news_pattern" previous={prev('news_pattern')} error={errors.news_pattern?.message} className="sm:col-span-2"
+          hint="Which site or account announces first, how far ahead, what is reliable and what is stale.">
+          <Textarea id="news_pattern" rows={3} {...register('news_pattern')} />
+        </Field>
+        <Field label="Line-up pattern" htmlFor="lineup_pattern" previous={prev('lineup_pattern')} error={errors.lineup_pattern?.message} className="sm:col-span-2"
+          hint="How its bills are published and how to read them — which separator means a shared set, whether a run is split by day.">
+          <Textarea id="lineup_pattern" rows={3} {...register('lineup_pattern')} />
         </Field>
       </FormSection>
 

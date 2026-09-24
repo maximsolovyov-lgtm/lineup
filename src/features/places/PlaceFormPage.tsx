@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,8 @@ import { PLACE_LIFECYCLE_TYPES, RECORD_STATUSES } from '@/types/enums';
 import { emptyPlaceForm, fromRow, placeFormSchema, toPayload, type PlaceFormValues } from './schema';
 import { placeLookup, usePlace, useProfileNames, useSavePlace, useTagCounts } from './api';
 import { fromDraft } from './agent';
-import { useAgent, useGeocode } from '@/agents/client';
+import { useGeocode } from '@/agents/client';
+import { ActualizePanel } from '@/agents/ActualizePanel';
 import { useDuplicates } from '@/lib/duplicates';
 import { DuplicateWarning } from '@/components/form/DuplicateWarning';
 
@@ -35,7 +36,6 @@ export function PlaceFormPage() {
   const lookup = useMemo(() => placeLookup(placeId), [placeId]);
   const geocoder = useGeocode();
   const tagCounts = useTagCounts();
-  const refresher = useAgent<PlaceDraft>('place');
   const [actual, setActual] = useState<Actualization | null>(null);
 
   // Marks for a scalar field: blue ring + the stored value in red, once the actualization changed it.
@@ -75,27 +75,6 @@ export function PlaceFormPage() {
     if (existing.data) { reset(fromRow(existing.data.place, existing.data.spaces)); setActual(null); }
   }, [existing.data, reset]);
 
-  // "AI actualization": research the stored venue again and lay the result
-  // over the form as a diff. Nothing is written until Save.
-  async function actualizeFromWeb() {
-    const current = getValues();
-    try {
-      const r = await refresher.mutateAsync({ keywords: keywordsFor(current) });
-      if (r.outcome !== 'draft' || !r.draft) {
-        toast.warning(r.outcome === 'ambiguous' ? 'The agent found several venues for this record — refine name, city or links first' : 'The agent could not identify this venue on the web');
-        return;
-      }
-      const a = actualize(current, r.draft);
-      const n = Object.keys(a.previous).length + a.spaces.added + a.spaces.changed + a.spaces.removed;
-      setActual(a);
-      reset(a.values, { keepDefaultValues: true });
-      if (n === 0) toast.success('Up to date — nothing differs from the web');
-      else toast.success(`${Object.keys(a.previous).length} field${Object.keys(a.previous).length === 1 ? '' : 's'} changed, rooms: +${a.spaces.added} ~${a.spaces.changed} −${a.spaces.removed}. Review and save.`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
-
   // One RPC call saves the place and its rooms in one transaction; on any
   // error nothing is written, so the form simply stays dirty.
   async function onSubmit(values: PlaceFormValues) {
@@ -128,23 +107,34 @@ export function PlaceFormPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/places" title="Back to places"><ArrowLeft /></Link></Button>
         <h1 className="mr-auto text-[23px] font-semibold tracking-[-0.4px]">{isNew ? 'New place' : row?.name}</h1>
-        {!isNew && (
-          <Button type="button" variant="secondary" onClick={() => void actualizeFromWeb()} disabled={refresher.isPending || isSubmitting}
-            title="Research this venue on the web again and show what differs; nothing is saved until you press Save">
-            <RefreshCw className={refresher.isPending ? 'animate-spin' : ''} /> {refresher.isPending ? 'Actualizing…' : 'AI actualization'}
-          </Button>
-        )}
         <Button type="submit" disabled={isSubmitting || (!isNew && !isDirty)}>
           {isSubmitting ? 'Saving…' : isNew ? (dupBlocked ? 'Same name exists' : 'Create place') : 'Save changes'}
         </Button>
       </div>
       {audit && <p className="text-xs text-muted-foreground">{audit}</p>}
-      {actual && (
-        <div className="rounded-md border border-blue-300 bg-blue-50/60 p-3 text-sm" role="status">
-          <b>Actualization applied to the form.</b> Fields with a blue frame changed — the stored value is shown in red under each. Rooms: {actual.spaces.added} added,
-          {' '}{actual.spaces.changed} changed, {actual.spaces.removed} no longer found (deactivated on save unless you keep them). Nothing is written until you press Save.
-          <button type="button" className="ml-2 underline" onClick={() => { if (existing.data) { reset(fromRow(existing.data.place, existing.data.spaces)); setActual(null); } }}>Discard</button>
-        </div>
+      {!isNew && (
+        <ActualizePanel<PlaceDraft>
+          kind="place"
+          noun="venue"
+          disabled={isSubmitting}
+          hint="Optional: the rooms changed this season; the site is stale, use Instagram; ignore the restaurant"
+          keywords={() => keywordsFor(getValues())}
+          onDiscard={() => { if (existing.data) { reset(fromRow(existing.data.place, existing.data.spaces)); setActual(null); } }}
+          onDraft={(draft, _r, instruction) => {
+            const a = actualize(getValues(), draft, instruction);
+            const changed = Object.keys(a.previous).length;
+            setActual(a);
+            reset(a.values, { keepDefaultValues: true });
+            if (changed === 0 && a.spaces.added + a.spaces.changed + a.spaces.removed === 0) return null;
+            return (
+              <>
+                <b>Actualization applied to the form.</b> {changed} field{changed === 1 ? '' : 's'} with a blue frame changed — the stored value is in red under each.
+                Rooms: {a.spaces.added} added, {a.spaces.changed} changed, {a.spaces.removed} no longer found (deactivated on save unless you keep them).
+                Nothing is written until you press Save.
+              </>
+            );
+          }}
+        />
       )}
 
       {isNew && (

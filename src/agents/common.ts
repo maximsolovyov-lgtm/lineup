@@ -37,6 +37,8 @@ export function outcomeSchema<T extends z.ZodType>(draft: T) {
 export const AgentRequestSchema = z.object({
   keywords: z.string().trim().min(2).max(2000).describe('Keywords separated by ";"'),
   candidate: CandidateSchema.optional().describe('The candidate the operator picked after an "ambiguous" answer'),
+  instruction: z.string().trim().max(2000).optional()
+    .describe('What the operator knows that the record does not say: "the bill is at <url>", "ignore the last line", "the label site is stale". Followed for this run, and what is durable about it is folded into the record\'s patterns'),
 });
 export type AgentRequest = z.infer<typeof AgentRequestSchema>;
 

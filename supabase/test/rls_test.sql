@@ -930,6 +930,34 @@ select test.run('lineup: a dated line makes the version split by day; a day outs
         end if;
       end $x$ $q$, true);
 
+-- Patterns on an event and an artist ------------------------------------------------------
+select test.run('patterns: an event and an artist keep what actualization learned', :operator_id,
+  $q$ do $x$ declare v_ev uuid; v_ar uuid; begin
+        v_ev := public.save_event_with_occurrences(
+          '{"name":"Pattern Brand","event_type":"party","news_pattern":"Announces on Instagram three weeks ahead.","lineup_pattern":"One line per act; a shared set is printed b2b."}'::jsonb,
+          '[]'::jsonb);
+        if (select news_pattern from public.event where event_id = v_ev) is null
+           or (select lineup_pattern from public.event where event_id = v_ev) not like '%b2b%' then
+          raise exception 'event patterns not stored';
+        end if;
+        v_ar := public.save_artist_with_members(
+          '{"name":"Pattern Act","artist_type":"solo","news_pattern":"The agency page is the reliable one.","lineup_pattern":"Printed as PATTERN ACT in caps."}'::jsonb,
+          '[]'::jsonb);
+        if (select news_pattern from public.artist where artist_id = v_ar) not like '%agency%'
+           or (select lineup_pattern from public.artist where artist_id = v_ar) not like '%caps%' then
+          raise exception 'artist patterns not stored';
+        end if;
+        -- and a later save keeps editing them
+        perform public.save_artist_with_members(
+          jsonb_build_object('artist_id', v_ar, 'name', 'Pattern Act', 'artist_type', 'solo',
+                             'news_pattern', 'The agency page is the reliable one. Instagram is a mirror.'),
+          '[]'::jsonb);
+        if (select news_pattern from public.artist where artist_id = v_ar) not like '%mirror%'
+           or (select lineup_pattern from public.artist where artist_id = v_ar) is not null then
+          raise exception 'artist patterns not updated';
+        end if;
+      end $x$ $q$, true);
+
 -- Report -------------------------------------------------------------------------
 \echo
 \echo '=== RLS / constraint test results ==='

@@ -47,7 +47,9 @@ export type Database = {
           created_at: string
           instagram_url: string | null
           is_placeholder: boolean
+          lineup_pattern: string | null
           name: string
+          news_pattern: string | null
           normalized_name: string | null
           placeholder_type:
             | Database["public"]["Enums"]["placeholder_type"]
@@ -62,7 +64,9 @@ export type Database = {
           created_at?: string
           instagram_url?: string | null
           is_placeholder?: boolean
+          lineup_pattern?: string | null
           name: string
+          news_pattern?: string | null
           normalized_name?: string | null
           placeholder_type?:
             | Database["public"]["Enums"]["placeholder_type"]
@@ -77,7 +81,9 @@ export type Database = {
           created_at?: string
           instagram_url?: string | null
           is_placeholder?: boolean
+          lineup_pattern?: string | null
           name?: string
+          news_pattern?: string | null
           normalized_name?: string | null
           placeholder_type?:
             | Database["public"]["Enums"]["placeholder_type"]
@@ -154,7 +160,9 @@ export type Database = {
           description: string | null
           event_id: string
           event_type: Database["public"]["Enums"]["event_type"]
+          lineup_pattern: string | null
           name: string
+          news_pattern: string | null
           normalized_name: string | null
           status: Database["public"]["Enums"]["record_status"]
           updated_at: string | null
@@ -165,7 +173,9 @@ export type Database = {
           description?: string | null
           event_id?: string
           event_type?: Database["public"]["Enums"]["event_type"]
+          lineup_pattern?: string | null
           name: string
+          news_pattern?: string | null
           normalized_name?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null
@@ -176,7 +186,9 @@ export type Database = {
           description?: string | null
           event_id?: string
           event_type?: Database["public"]["Enums"]["event_type"]
+          lineup_pattern?: string | null
           name?: string
+          news_pattern?: string | null
           normalized_name?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string | null

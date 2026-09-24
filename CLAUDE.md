@@ -106,6 +106,13 @@ admin. `status` carries `cancelled` as distinct from `inactive` and
 forbids must also fail when called directly with an `authenticated` key. The
 service-role key is server-side only, in Pages Functions, never in the browser.
 
+**A record's `news_pattern` and `lineup_pattern` are accumulated knowledge,
+not a description.** Place, event and artist each carry both. An AI
+actualization is given them and returns them merged — keeping what is still
+true, correcting what is not — and the instruction the operator typed for that
+run lands there too when it says something durable. Never replace one with a
+log of runs.
+
 **`artist_list_json` is a cache.** The normalised truth about who performs is
 `performance_set_participant`.
 

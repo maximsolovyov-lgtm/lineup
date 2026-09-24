@@ -63,6 +63,8 @@ export async function fromDraft(d: ArtistDraft): Promise<ArtistDraftMapping> {
       artist_type: d.artist.artist_type,
       country: str(d.artist.country),
       instagram_url: str(d.artist.instagram_url),
+      news_pattern: str(d.artist.news_pattern),
+      lineup_pattern: str(d.artist.lineup_pattern),
       status: 'active',
       members,
     },

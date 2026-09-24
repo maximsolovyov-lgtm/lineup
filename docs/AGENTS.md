@@ -15,7 +15,13 @@ caller (the admin UI, or another agent) decides what to save.
 { "keywords": "Tale Of Us; Berlin; https://www.instagram.com/taleofus" }
 ```
 
-Keywords are separated by `;`. The answer has one of three outcomes:
+Keywords are separated by `;`. A request may also carry `instruction` — what
+the operator knows and the record does not ("the bill is at …", "ignore the
+last line"). The agent follows it for that run, and what is durable about it
+comes back folded into the record's `news_pattern` / `lineup_pattern`, merged
+with the ones the request carried.
+
+The answer has one of three outcomes:
 
 | `outcome` | Meaning | What is filled |
 |---|---|---|
@@ -155,6 +161,14 @@ from keywords* block: enter the keywords, press **Fill the form**. If several
 things fit, a chooser lists them with a line that tells them apart; pick one
 and the agent researches exactly that one. The form is filled, sources and
 confidence are shown, and only **Create** writes anything.
+
+Every stored record of those four kinds also has **AI actualization**
+(`src/agents/ActualizePanel.tsx`): the agent researches it again with an
+optional instruction, and the answer is laid over the form as a diff — blue
+frame, stored value in red — with nothing written until Save. A place refreshes
+its rooms, an event gains dates it did not have, an artist gains members, and a
+line-up is compared with its publication so the operator can correct the
+version or publish the next one.
 
 **New line-up** has *Find & AI generate* instead (`src/features/lineups/
 LineupGenerate.tsx`): the finder resolves the night from the database, then

@@ -271,7 +271,7 @@ app.post('/agents/:kind', async (c) => {
   const work = (async () => {
     let payload: string;
     try {
-      const result = await runResearch(AGENTS[kind], parsed.data.keywords, parsed.data.candidate, apiKey);
+      const result = await runResearch(AGENTS[kind], parsed.data.keywords, parsed.data.candidate, apiKey, parsed.data.instruction);
       payload = JSON.stringify({ data: result });
     } catch (err) {
       // The raw API error body is logged, not returned.

@@ -49,6 +49,9 @@ export const eventFormSchema = z.object({
   event_type: z.string(),
   website_url: optionalUrl,
   description: z.string().max(8000),
+  /** Accumulated knowledge about the brand — see docs/DECISIONS.md, 2026-09-24. */
+  news_pattern: z.string().max(8000),
+  lineup_pattern: z.string().max(8000),
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
   occurrences: z.array(occurrenceSchema),
 });
@@ -56,7 +59,7 @@ export type EventFormValues = z.infer<typeof eventFormSchema>;
 export type EventRow = Tables<'event'>;
 export type OccurrenceRow = Tables<'event_occurrence'>;
 
-export const emptyEventForm: EventFormValues = { name: '', event_type: 'party', website_url: '', description: '', status: 'active', occurrences: [] };
+export const emptyEventForm: EventFormValues = { name: '', event_type: 'party', website_url: '', description: '', news_pattern: '', lineup_pattern: '', status: 'active', occurrences: [] };
 
 /** Adds `days` to an ISO date string without touching time zones. */
 export function addDays(isoDate: string, days: number): string {
@@ -74,6 +77,8 @@ export function fromRow(row: EventRow, occurrences: OccurrenceRow[]): EventFormV
     event_type: row.event_type,
     website_url: row.website_url ?? '',
     description: row.description ?? '',
+    news_pattern: row.news_pattern ?? '',
+    lineup_pattern: row.lineup_pattern ?? '',
     status: row.status,
     occurrences: occurrences.map((o) => {
       const start = instantToWallTime(o.starts_at, o.timezone);
@@ -119,6 +124,8 @@ export function toPayload(v: EventFormValues, eventId: string | null): SaveEvent
       event_type: v.event_type,
       website_url: nullIfEmpty(v.website_url),
       description: nullIfEmpty(v.description),
+      news_pattern: nullIfEmpty(v.news_pattern),
+      lineup_pattern: nullIfEmpty(v.lineup_pattern),
       status: v.status,
     },
     p_occurrences: v.occurrences.map((o) => {

@@ -24,6 +24,8 @@ export const ArtistDraftSchema = z.object({
     artist_type: z.enum(['solo', 'duo', 'group', 'collective', 'alias', 'unknown']).describe('solo = one person; duo = two people under one name; group/collective = three or more; alias = another name of a person who already performs under a different one. B2B is never a type'),
     country: nullableStr.describe('Country name in English'),
     instagram_url: nullableStr.describe('https://www.instagram.com/<handle>'),
+    news_pattern: nullableStr.describe('Where news about this act really comes from — the booking agency page, the label, which account is the official one, what is out of date. Merged with the "news pattern:" already in the request; null when nothing durable was learned'),
+    lineup_pattern: nullableStr.describe('How this act appears on a bill: the spelling to expect, the aliases it plays under, whether it is usually announced as a b2b or live. Merged with the "lineup pattern:" already in the request; null when nothing durable was learned'),
   }),
   members: z.array(ArtistDraftMemberSchema).describe('The people behind the name. One for a solo act, two for a duo, all known members for a group or collective. Empty if nobody is publicly named'),
   genres: z.array(z.string()).describe('Up to 3 genres, for the operator to recognise the act'),

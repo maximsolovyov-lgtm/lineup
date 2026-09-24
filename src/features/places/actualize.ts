@@ -1,5 +1,6 @@
 import type { PlaceDraft } from '@/agents/place/schema';
 import { normalizeName } from '@/lib/normalize';
+import { appendKnowledge } from '@/lib/knowledge';
 import { matchRooms } from '@/lib/matching';
 import { fromDraft } from './agent';
 import type { PlaceFormValues, SpaceFormValue } from './schema';
@@ -40,7 +41,7 @@ export interface Actualization {
 const isEmpty = (v: string) => v.trim() === '';
 const same = (a: string, b: string) => a.trim() === b.trim();
 
-export function actualize(current: PlaceFormValues, draft: PlaceDraft): Actualization {
+export function actualize(current: PlaceFormValues, draft: PlaceDraft, instruction = ''): Actualization {
   const fresh = fromDraft(draft);
   const values: PlaceFormValues = { ...current };
   const previous: Partial<Record<ActualizedField, string>> = {};
@@ -53,6 +54,16 @@ export function actualize(current: PlaceFormValues, draft: PlaceDraft): Actualiz
     if (key === 'typical_party_start_day_offset' && draft.place.typical_party_start_day_offset === null) continue;
     values[key] = next;
     previous[key] = now;
+  }
+
+  // The operator's instruction is knowledge about the venue even when the
+  // agent folded nothing in: keep it next to what is already known.
+  if (instruction.trim() && isEmpty(fresh.news_pattern)) {
+    const merged = appendKnowledge(current.news_pattern, instruction);
+    if (!same(merged, current.news_pattern)) {
+      values.news_pattern = merged;
+      previous.news_pattern = current.news_pattern;
+    }
   }
 
   // Rooms ------------------------------------------------------------------
@@ -104,5 +115,9 @@ export function actualize(current: PlaceFormValues, draft: PlaceDraft): Actualiz
 
 /** Keywords that identify the stored venue, for the agent. */
 export function keywordsFor(v: PlaceFormValues): string {
-  return [v.name, v.city, v.country, v.website_url, v.instagram_url].map((s) => s.trim()).filter(Boolean).join('; ');
+  const parts = [v.name, v.city, v.country, v.website_url, v.instagram_url].map((s) => s.trim()).filter(Boolean);
+  // What is already known travels with the request, so the agent merges instead of replacing.
+  if (v.news_pattern.trim()) parts.push(`news pattern: ${v.news_pattern.trim().slice(0, 600)}`);
+  if (v.lineup_pattern.trim()) parts.push(`lineup pattern: ${v.lineup_pattern.trim().slice(0, 600)}`);
+  return parts.join('; ');
 }

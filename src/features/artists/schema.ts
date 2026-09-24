@@ -32,6 +32,9 @@ export const artistFormSchema = z.object({
   artist_type: z.string(),
   country: z.string().trim().max(64),
   instagram_url: optionalUrl,
+  /** Accumulated knowledge about the act — see docs/DECISIONS.md, 2026-09-24. */
+  news_pattern: z.string().max(8000),
+  lineup_pattern: z.string().max(8000),
   status: z.enum(RECORD_STATUSES as [string, ...string[]]),
   members: z.array(memberSchema).superRefine((members, ctx) => {
     // The same person twice with the same start date collides in the database too.
@@ -48,7 +51,7 @@ export const artistFormSchema = z.object({
 export type ArtistFormValues = z.infer<typeof artistFormSchema>;
 export type ArtistRow = Tables<'artist'>;
 
-export const emptyArtistForm: ArtistFormValues = { name: '', artist_type: 'unknown', country: '', instagram_url: '', status: 'active', members: [] };
+export const emptyArtistForm: ArtistFormValues = { name: '', artist_type: 'unknown', country: '', instagram_url: '', news_pattern: '', lineup_pattern: '', status: 'active', members: [] };
 
 type MemberRow = {
   membership_id: string; person_id: string; membership_role: string | null; is_primary: boolean;
@@ -61,6 +64,8 @@ export function fromRow(row: ArtistRow, members: MemberRow[]): ArtistFormValues 
     artist_type: row.artist_type ?? 'unknown',
     country: row.country ?? '',
     instagram_url: row.instagram_url ?? '',
+    news_pattern: row.news_pattern ?? '',
+    lineup_pattern: row.lineup_pattern ?? '',
     status: row.status,
     members: members.map((m) => ({
       membership_id: m.membership_id,
@@ -102,6 +107,8 @@ export function toPayload(v: ArtistFormValues, artistId: string | null): SaveArt
       artist_type: v.artist_type || null,
       country: nullIfEmpty(v.country),
       instagram_url: nullIfEmpty(v.instagram_url),
+      news_pattern: nullIfEmpty(v.news_pattern),
+      lineup_pattern: nullIfEmpty(v.lineup_pattern),
       status: v.status,
     },
     p_members: v.members.map((m) => ({

@@ -17,6 +17,8 @@ import { RECORD_STATUSES } from '@/types/enums';
 import { emptyLineupForm, fromRow, lineupFormSchema, toPayload, type LineupFormValues } from './schema';
 import { useLineup, useLineupVersions, useOccurrenceWindow, useSaveLineup, fetchLineupForClone } from './api';
 import { LineupGenerate, type GeneratedFill } from './LineupGenerate';
+import { LineupActualize } from './LineupActualize';
+import { slotLabel } from '@/lib/slot-label';
 
 export function LineupFormPage() {
   const { lineupId } = useParams<{ lineupId: string }>();
@@ -30,7 +32,7 @@ export function LineupFormPage() {
   const places = useMemo(() => placeLookup(), []);
 
   const form = useForm<LineupFormValues>({ resolver: zodResolver(lineupFormSchema), defaultValues: emptyLineupForm, mode: 'onBlur' });
-  const { register, control, handleSubmit, reset, watch, getValues, formState: { errors, isSubmitting, isDirty } } = form;
+  const { register, control, handleSubmit, reset, watch, getValues, setValue, formState: { errors, isSubmitting, isDirty } } = form;
   const occurrenceId = watch('occurrence_id');
   const placeId = watch('place_id');
   const versions = useLineupVersions(occurrenceId || undefined, placeId);
@@ -115,6 +117,16 @@ export function LineupFormPage() {
   return (
     <div className="space-y-4">
     {isNew && <LineupGenerate onFill={applyGenerated} occurrenceId={params.get('occurrence')} placeId={params.get('place')} />}
+    {!isNew && occurrenceId && (
+      <LineupActualize
+        occurrenceId={occurrenceId}
+        placeId={placeId}
+        disabled={isSubmitting}
+        currentLabels={getValues('artists').map((s) => slotLabel(s.kind, s.artists.map((a) => a.name), s.display_name_override)).filter(Boolean)}
+        onFill={(slots, split) => { setValue('artists', slots, { shouldDirty: true }); setValue('split_by_day', split, { shouldDirty: true }); }}
+        onDiscard={() => { if (existing.data) reset(fromRow(existing.data.lineup, existing.data.artists)); }}
+      />
+    )}
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="icon"><Link to="/lineups" title="Back to line-ups"><ArrowLeft /></Link></Button>

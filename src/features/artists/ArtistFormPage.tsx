@@ -6,6 +6,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormSection } from '@/components/form/Field';
 import { RECORD_STATUSES } from '@/types/enums';
@@ -14,6 +15,8 @@ import { useArtist, useSaveArtist } from './api';
 import { MembersEditor, type MemberErrors } from './MembersEditor';
 import { PersonPickerDialog } from './PersonPickerDialog';
 import { AgentPanel } from '@/agents/AgentPanel';
+import { ActualizePanel } from '@/agents/ActualizePanel';
+import { actualizeArtist, keywordsForArtist, type ArtistActualization, type ArtistActualizedField } from './actualize';
 import { useDuplicates } from '@/lib/duplicates';
 import { DuplicateWarning } from '@/components/form/DuplicateWarning';
 
@@ -30,6 +33,8 @@ export function ArtistFormPage() {
 
   const form = useForm<ArtistFormValues>({ resolver: zodResolver(artistFormSchema), defaultValues: emptyArtistForm, mode: 'onBlur' });
   const { register, control, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting, isDirty } } = form;
+  const [actual, setActual] = useState<ArtistActualization | null>(null);
+  const prev = (key: ArtistActualizedField) => actual?.previous[key];
   const members = watch('members');
   const artistType = watch('artist_type');
   const name = watch('name');
@@ -49,6 +54,7 @@ export function ArtistFormPage() {
     if (dupBlocked) { toast.error('A record with this name already exists — open it, or press "Create anyway"'); return; }
     try {
       const saved = await save.mutateAsync(toPayload(values, artistId ?? null));
+      setActual(null);
       if (isNew) {
         toast.success('Artist created');
         navigate(`/artists/${saved.artist_id}`, { replace: true });
@@ -80,6 +86,33 @@ export function ArtistFormPage() {
         </Button>
       </div>
 
+      {!isNew && (
+        <ActualizePanel<ArtistDraft>
+          kind="artist"
+          noun="act"
+          disabled={isSubmitting}
+          hint="Optional: “the agency page is the reliable one”, “they now play as a duo”, “ignore the fan account”"
+          keywords={() => keywordsForArtist(getValues())}
+          onDiscard={() => { if (existing.data) { reset(fromRow(existing.data.artist, existing.data.members)); setActual(null); } }}
+          onDraft={async (draft, _r, instruction) => {
+            const a = await actualizeArtist(getValues(), draft, instruction);
+            const changed = Object.keys(a.previous).length;
+            setActual(a);
+            reset(a.values, { keepDefaultValues: true });
+            if (changed === 0 && a.added.length === 0) return null;
+            return (
+              <>
+                <b>Actualization applied to the form.</b>{' '}
+                {changed > 0 && <>{changed} field{changed === 1 ? '' : 's'} differ — each has a blue frame with the stored value in red under it. </>}
+                {a.added.length > 0 && <>Members added: <b>{a.added.join(', ')}</b>{a.created.length > 0 && <> (new people: {a.created.join(', ')})</>}. </>}
+                Members already on the record were left as they are — a membership ends by being dated, not by vanishing from a page.
+                Nothing is written until you press Save.
+              </>
+            );
+          }}
+        />
+      )}
+
       {isNew && (
         <AgentPanel<ArtistDraft>
           kind="artist"
@@ -100,7 +133,7 @@ export function ArtistFormPage() {
       )}
 
       <FormSection title="Name on the poster" description="What users follow and what appears in a line-up. The humans behind it are members below.">
-        <Field label="Name" htmlFor="name" required error={errors.name?.message} className="sm:col-span-2">
+        <Field label="Name" htmlFor="name" previous={prev('name')} required error={errors.name?.message} className="sm:col-span-2">
           <Input id="name" {...register('name')} aria-invalid={!!errors.name} autoFocus={isNew} />
         </Field>
         {isNew && (dup.data?.length ?? 0) > 0 && (
@@ -125,11 +158,23 @@ export function ArtistFormPage() {
             </Select>
           )} />
         </Field>
-        <Field label="Country" htmlFor="country" error={errors.country?.message}>
+        <Field label="Country" htmlFor="country" previous={prev('country')} error={errors.country?.message}>
           <Input id="country" placeholder="IT" {...register('country')} />
         </Field>
-        <Field label="Instagram" htmlFor="instagram_url" error={errors.instagram_url?.message}>
+        <Field label="Instagram" htmlFor="instagram_url" previous={prev('instagram_url')} error={errors.instagram_url?.message}>
           <Input id="instagram_url" type="url" placeholder="https://www.instagram.com/…" {...register('instagram_url')} aria-invalid={!!errors.instagram_url} />
+        </Field>
+      </FormSection>
+
+      <FormSection title="What we know about it"
+        description="Accumulated knowledge, not a description: where news about it really comes from, how it is printed on a bill. An AI actualization merges what it learns into these — and the instruction you give it is kept here too, so the next run already knows.">
+        <Field label="News pattern" htmlFor="news_pattern" previous={prev('news_pattern')} error={errors.news_pattern?.message} className="sm:col-span-2"
+          hint="Which site or account announces first, how far ahead, what is reliable and what is stale.">
+          <Textarea id="news_pattern" rows={3} {...register('news_pattern')} />
+        </Field>
+        <Field label="Line-up pattern" htmlFor="lineup_pattern" previous={prev('lineup_pattern')} error={errors.lineup_pattern?.message} className="sm:col-span-2"
+          hint="How its bills are published and how to read them — which separator means a shared set, whether a run is split by day.">
+          <Textarea id="lineup_pattern" rows={3} {...register('lineup_pattern')} />
         </Field>
       </FormSection>
 

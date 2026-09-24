@@ -32,6 +32,8 @@ export const EventDraftSchema = z.object({
     event_type: z.enum(['party', 'festival', 'concert', 'afterparty', 'label_night', 'other', 'unknown']),
     website_url: nullableStr.describe('Official site, https://…'),
     description: nullableStr.describe('Two or three sentences for an operator: what this brand is, who runs it, where it usually happens'),
+    news_pattern: nullableStr.describe('Where and how news about this brand appears — which site or account announces first, how far ahead, what is reliable and what is stale. Merged with the "news pattern:" already in the request; null when nothing durable was learned'),
+    lineup_pattern: nullableStr.describe('How this brand publishes its bills — where, how far ahead, per day or as a whole run, what its wording means (which separator is a shared set). Merged with the "lineup pattern:" already in the request; null when nothing durable was learned'),
   }),
   occurrences: z.array(EventDraftOccurrenceSchema).describe('Announced dates from today onwards, soonest first, at most 20. Empty if none are announced'),
   instagram_url: nullableStr.describe('Official Instagram profile, for the operator'),
