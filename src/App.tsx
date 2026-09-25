@@ -14,6 +14,8 @@ import { ArtistsPage } from '@/features/artists/ArtistsPage';
 import { ArtistFormPage } from '@/features/artists/ArtistFormPage';
 import { PeoplePage } from '@/features/people/PeoplePage';
 import { PersonFormPage } from '@/features/people/PersonFormPage';
+import { OccurrencesPage } from '@/features/occurrences/OccurrencesPage';
+import { OccurrenceFormPage } from '@/features/occurrences/OccurrenceFormPage';
 import { LineupsPage } from '@/features/lineups/LineupsPage';
 import { LineupFormPage } from '@/features/lineups/LineupFormPage';
 import { SetsPage } from '@/features/sets/SetsPage';
@@ -47,6 +49,8 @@ export function App() {
                 <Route path="/people" element={<PeoplePage />} />
                 <Route path="/people/new" element={<PersonFormPage />} />
                 <Route path="/people/:personId" element={<PersonFormPage />} />
+                <Route path="/occurrences" element={<OccurrencesPage />} />
+                <Route path="/occurrences/:occurrenceId" element={<OccurrenceFormPage />} />
                 <Route path="/lineups" element={<LineupsPage />} />
                 <Route path="/lineups/new" element={<LineupFormPage />} />
                 <Route path="/lineups/:lineupId" element={<LineupFormPage />} />

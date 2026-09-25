@@ -20,6 +20,10 @@ saved with its children through one RPC (`save_*_with_*` functions). Research
 agents (`docs/AGENTS.md`) draft any of the four master-data records from
 keywords.
 
+Every night has its own screen: the **Occurrences** tab lists them with what
+each one still lacks, and its form generates a predicted timetable from a
+published line-up (`save_predicted_sets`).
+
 Stage 2 has started (owner decision 2026-09-20): **Line-ups** and **Sets**
 have their screens. `lineup` + `lineup_artist` say WHO is announced for an
 occurrence and place, official only, one row per publication (version). A

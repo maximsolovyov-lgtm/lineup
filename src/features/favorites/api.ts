@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
  * star is never shared and never cleared by someone else. Toggling is an
  * insert or a delete — there is nothing to update.
  */
-export const FAVORITE_ENTITIES = ['place', 'event', 'artist', 'person', 'lineup', 'performance_set'] as const;
+export const FAVORITE_ENTITIES = ['place', 'event', 'artist', 'person', 'lineup', 'performance_set', 'event_occurrence'] as const;
 export type FavoriteEntity = (typeof FAVORITE_ENTITIES)[number];
 
 /** A filter that matches nothing, for "favourites only" with no favourites yet. */

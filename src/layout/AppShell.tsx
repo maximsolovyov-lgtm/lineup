@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { CalendarDays, Disc3, ListMusic, Clock, LogOut, MapPin, Menu, User, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { CalendarDays, CalendarClock, Disc3, ListMusic, Clock, LogOut, MapPin, Menu, User, UserPlus, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/auth/AuthProvider';
 
@@ -27,6 +27,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: LucideI
   {
     label: 'Schedule',
     items: [
+      { to: '/occurrences', label: 'Occurrences', icon: CalendarClock },
       { to: '/lineups', label: 'Line-ups', icon: ListMusic },
       { to: '/sets', label: 'Sets', icon: Clock },
     ],

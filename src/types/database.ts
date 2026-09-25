@@ -1098,6 +1098,15 @@ export type Database = {
         Args: { p_place: Json; p_spaces?: Json }
         Returns: string
       }
+      save_predicted_sets: {
+        Args: {
+          p_lineup_id: string
+          p_occurrence_id: string
+          p_replace?: boolean
+          p_sets: Json
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "operator"
