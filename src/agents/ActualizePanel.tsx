@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { hostnameOf, useAgent } from './client';
 import type { AgentKind, AgentResult } from './common';
@@ -23,6 +24,8 @@ interface ActualizePanelProps<TDraft> {
   disabled?: boolean;
   /** An example of a useful instruction for this kind. */
   hint?: string;
+  /** Renders as one row — a button and the instruction beside it — with no section of its own. */
+  inline?: boolean;
 }
 
 /**
@@ -35,7 +38,7 @@ interface ActualizePanelProps<TDraft> {
  * the agent follows it, and what is durable about it comes back merged into
  * the record's news / line-up pattern — so the next run already knows.
  */
-export function ActualizePanel<TDraft>({ kind, noun, keywords, onDraft, onDiscard, disabled, hint }: ActualizePanelProps<TDraft>) {
+export function ActualizePanel<TDraft>({ kind, noun, keywords, onDraft, onDiscard, disabled, hint, inline = false }: ActualizePanelProps<TDraft>) {
   const agent = useAgent<TDraft>(kind);
   const [instruction, setInstruction] = useState('');
   const [applied, setApplied] = useState<{ note: ReactNode; sources: string[] } | null>(null);
@@ -58,16 +61,46 @@ export function ActualizePanel<TDraft>({ kind, noun, keywords, onDraft, onDiscar
     }
   }
 
+  const button = (
+    <Button type="button" variant="secondary" onClick={() => void run()} disabled={disabled || agent.isPending}
+      title={`Research this ${noun} again and show what differs; nothing is saved until you press Save`}>
+      <RefreshCw className={agent.isPending ? 'animate-spin' : ''} /> {agent.isPending ? 'Actualizing…' : 'Actualize'}
+    </Button>
+  );
+
+  const banner = applied && (
+    <div className="rounded-md border border-blue-300 bg-blue-50/60 p-3 text-sm" role="status">
+      {applied.note}
+      {applied.sources.length > 0 && (
+        <span className="mt-1 block text-xs text-muted-foreground">
+          Sources: {applied.sources.map((u, i) => <span key={`${u}-${i}`}>{i > 0 && ' · '}<a href={u} target="_blank" rel="noreferrer" className="underline">{hostnameOf(u)}</a></span>)}
+        </span>
+      )}
+      <button type="button" className="mt-1 block underline" onClick={() => { onDiscard(); setApplied(null); }}>Discard the actualization</button>
+    </div>
+  );
+
+  // Inline: the caller owns the layout — the button sits among its own, with the
+  // instruction beside it and the result underneath.
+  if (inline) {
+    return (
+      <>
+        {button}
+        <Input className="h-10 min-w-[14rem] flex-1" value={instruction} onChange={(e) => setInstruction(e.target.value)}
+          disabled={disabled || agent.isPending} aria-label="Extra instruction for the agent"
+          placeholder={hint ?? 'Optional instruction for the agent'} />
+        {banner && <div className="w-full">{banner}</div>}
+      </>
+    );
+  }
+
   return (
     <section className="space-y-3 rounded-xl border border-[#C9BCE6] bg-secondary/40 p-5">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-secondary-foreground">AI actualization</h2>
         <span className="rounded-full bg-card px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">{kind} agent</span>
         <span className="flex-1" />
-        <Button type="button" variant="secondary" onClick={() => void run()} disabled={disabled || agent.isPending}
-          title={`Research this ${noun} again and show what differs; nothing is saved until you press Save`}>
-          <RefreshCw className={agent.isPending ? 'animate-spin' : ''} /> {agent.isPending ? 'Actualizing…' : 'Actualize'}
-        </Button>
+        {button}
       </div>
       <div className="space-y-1.5">
         <Textarea rows={2} value={instruction} onChange={(e) => setInstruction(e.target.value)} disabled={disabled || agent.isPending}
@@ -78,17 +111,7 @@ export function ActualizePanel<TDraft>({ kind, noun, keywords, onDraft, onDiscar
           news / line-up pattern — stored when you save, so the next run already knows it.
         </p>
       </div>
-      {applied && (
-        <div className="rounded-md border border-blue-300 bg-blue-50/60 p-3 text-sm" role="status">
-          {applied.note}
-          {applied.sources.length > 0 && (
-            <span className="mt-1 block text-xs text-muted-foreground">
-              Sources: {applied.sources.map((u, i) => <span key={`${u}-${i}`}>{i > 0 && ' · '}<a href={u} target="_blank" rel="noreferrer" className="underline">{hostnameOf(u)}</a></span>)}
-            </span>
-          )}
-          <button type="button" className="mt-1 block underline" onClick={() => { onDiscard(); setApplied(null); }}>Discard the actualization</button>
-        </div>
-      )}
+      {banner}
     </section>
   );
 }

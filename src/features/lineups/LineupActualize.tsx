@@ -19,6 +19,8 @@ interface LineupActualizeProps {
   onFill: (slots: LineupSlotValue[], splitByDay: boolean) => void;
   onDiscard: () => void;
   disabled?: boolean;
+  /** Renders as one row for a caller that owns the layout (the draft tab on a night). */
+  inline?: boolean;
 }
 
 /** Where a line-up's knowledge belongs: the venue that publishes the bill, else the brand. */
@@ -34,7 +36,7 @@ type PatternTarget = { kind: 'place' | 'event'; id: string; name: string };
  * to this URL") is knowledge about the SOURCE, so it is offered to the venue
  * that publishes it, or to the brand when the line-up names no venue.
  */
-export function LineupActualize({ occurrenceId, placeId, currentLabels, onFill, onDiscard, disabled }: LineupActualizeProps) {
+export function LineupActualize({ occurrenceId, placeId, currentLabels, onFill, onDiscard, disabled, inline = false }: LineupActualizeProps) {
   const [pattern, setPattern] = useState<{ target: PatternTarget; text: string; current: string | null; saved: boolean } | null>(null);
 
   async function occurrence(): Promise<FoundOccurrence | null> {
@@ -76,10 +78,11 @@ export function LineupActualize({ occurrenceId, placeId, currentLabels, onFill, 
   }
 
   return (
-    <div className="space-y-3">
+    <div className={inline ? 'contents' : 'space-y-3'}>
       <ActualizePanel<LineupDraft>
         kind="lineup"
         noun="line-up"
+        inline={inline}
         disabled={disabled}
         hint="Optional: “the bill is at …”, “ignore the last line”, “the club room list is on a second page”"
         keywords={async () => {

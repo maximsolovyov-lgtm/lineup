@@ -16,6 +16,8 @@ import type { Enums } from '@/types/database';
 import { fetchPlaceTimezones } from '@/features/events/api';
 import { SlotSummary, type SlotSummaryRow } from '@/features/lineups/SlotSummary';
 import { LineupSlotsEditor } from '@/features/lineups/LineupSlotsEditor';
+import { LineupActualize } from '@/features/lineups/LineupActualize';
+import { slotLabel } from '@/lib/slot-label';
 import { useSaveLineup } from '@/features/lineups/api';
 import { emptyLineupForm, toPayload, type LineupSlotValue } from '@/features/lineups/schema';
 import { useGeneratePredictedSets, useOccurrence, useOccurrenceLineups, useOccurrenceSets, useSaveOccurrence } from './api';
@@ -28,6 +30,8 @@ interface DraftVersion {
   place_id: string | null;
   notes: string;
   slots: LineupSlotValue[];
+  /** What the draft held before an actualization, so discarding one restores it. */
+  baseSlots: LineupSlotValue[];
 }
 
 /** The lines of a stored version as the slot editor holds them: a copy, with no ids. */
@@ -125,11 +129,13 @@ export function OccurrenceFormPage() {
 
   function startDraft(from: (typeof active)[number] | null) {
     const placeId = from?.place_id ?? form?.primary_place_id ?? null;
+    const slots = from ? toSlotValues(from.lineup_artist.filter((s) => s.status === 'active')) : [];
     setDraft({
       fromVersion: from?.version ?? null,
       place_id: placeId,
       notes: from ? `Next version after v${from.version}.` : '',
-      slots: from ? toSlotValues(from.lineup_artist.filter((s) => s.status === 'active')) : [],
+      slots,
+      baseSlots: slots,
     });
     setLineupId('draft');
   }
@@ -156,24 +162,6 @@ export function OccurrenceFormPage() {
     try {
       const saved = await publishDraft();
       if (saved) toast.success('Version published');
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
-
-  /** Publish the draft, then predict its timetable — one press, one outcome. */
-  async function onPublishAndGenerate() {
-    if (!row) return;
-    try {
-      const saved = await publishDraft();
-      if (!saved) return;
-      const fresh = saved.versions.find((l) => l.lineup_id === saved.lineup_id);
-      if (!fresh) { toast.success('Version published — generate the timetable from its tab'); return; }
-      const freshPlan = buildSchedule(fresh as unknown as ScheduleLineup, row, row.place ?? null);
-      const payload = planToPayload(freshPlan, fresh as unknown as ScheduleLineup, row);
-      if (payload.length === 0) { toast.success('Version published; nothing to schedule — no line names an act'); return; }
-      const n = await generate.mutateAsync({ lineupId: saved.lineup_id, sets: payload, replace: true });
-      toast.success(`Version published and ${n} predicted set${n === 1 ? '' : 's'} written`);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -348,9 +336,29 @@ export function OccurrenceFormPage() {
             </div>
             {draft && lineupId === 'draft' && (
               <div className="space-y-3 rounded-b-lg border border-t-0 border-amber-300 bg-amber-50/40 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" onClick={() => void onPublishDraft()} disabled={saveLineup.isPending || draft.slots.length === 0}>
+                    {saveLineup.isPending ? 'Publishing…' : `Publish v${nextVersion(draft.place_id)}`}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => { setDraft(null); setLineupId(active[0]?.lineup_id ?? ''); }}>
+                    Discard
+                  </Button>
+                  {/* The same actualization as the line-up screen: read the publication
+                      again, with an instruction when the operator has one, and lay it
+                      over the draft. */}
+                  <LineupActualize
+                    inline
+                    occurrenceId={occurrenceId!}
+                    placeId={draft.place_id}
+                    disabled={saveLineup.isPending}
+                    currentLabels={draft.slots.map((s) => slotLabel(s.kind, s.artists.map((a) => a.name), s.display_name_override)).filter(Boolean)}
+                    onFill={(slots) => setDraft((d) => (d ? { ...d, slots } : d))}
+                    onDiscard={() => setDraft((d) => (d ? { ...d, slots: d.baseSlots } : d))}
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {draft.fromVersion ? <>Started from <b>v{draft.fromVersion}</b> — its lines are copied in; that version stays exactly as it was.</> : <>A first line-up for this night.</>}
-                  {' '}Nothing is written until you publish.
+                  {' '}Nothing is written until you publish. {draft.slots.length} line{draft.slots.length === 1 ? '' : 's'}.
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   <Field label="Place of this version" hint="Empty means the announcement did not say where — one line-up with no place, never a copy per venue.">
@@ -368,19 +376,6 @@ export function OccurrenceFormPage() {
                   run={{ from: form.start_date, to: form.end_date }}
                   splitByDay={draft.slots.some((s) => s.slot_date !== '')}
                 />
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" onClick={() => void onPublishDraft()} disabled={saveLineup.isPending || draft.slots.length === 0}>
-                    {saveLineup.isPending ? 'Publishing…' : `Publish v${nextVersion(draft.place_id)}`}
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={() => void onPublishAndGenerate()}
-                    disabled={saveLineup.isPending || generate.isPending || draft.slots.length === 0}>
-                    <Wand2 /> {generate.isPending ? 'Generating…' : 'Publish and generate the timetable'}
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => { setDraft(null); setLineupId(active[0]?.lineup_id ?? ''); }}>
-                    Discard
-                  </Button>
-                  <span className="text-xs text-muted-foreground">{draft.slots.length} line{draft.slots.length === 1 ? '' : 's'}</span>
-                </div>
               </div>
             )}
             {chosen && lineupId !== 'draft' && (
@@ -415,7 +410,7 @@ export function OccurrenceFormPage() {
 
         {!chosen && draft && (
           <p className="text-sm text-muted-foreground">
-            The draft above is not published yet. Publish it there — or press <b>Publish and generate the timetable</b> and this happens in one go.
+            The draft above is not published yet — publish it in its tab, and its timetable can be generated here.
           </p>
         )}
         {!chosen && !draft && <p className="text-sm text-muted-foreground">Publish a line-up first — the timetable is who plays when, and it comes from who plays.</p>}
