@@ -101,7 +101,7 @@ export function useOccurrenceLineups(occurrenceId: string | undefined) {
     enabled: !!occurrenceId,
     queryFn: async () => {
       const { data, error } = await supabase.from('lineup')
-        .select('lineup_id,version,place_id,published_at,status,split_by_day,place:place_id(name),lineup_artist(lineup_artist_id,kind,is_headliner,billing_order,status,place_space_id,slot_date,display_name_override,space:place_space_id(name),lineup_artist_participant(participant_order,artist_id,artist(name)))')
+        .select('lineup_id,version,place_id,published_at,status,split_by_day,place:place_id(name),lineup_artist(lineup_artist_id,kind,performance_format,tags,placeholder_type,is_headliner,billing_order,status,place_space_id,slot_date,display_name_override,space:place_space_id(name),lineup_artist_participant(participant_order,artist_id,artist(name)))')
         .eq('occurrence_id', occurrenceId!).eq('status', 'active').order('version', { ascending: false });
       if (error) throw error;
       return data;

@@ -14,6 +14,7 @@ import { formatInZone, instantToWallTime, wallTimeToInstant } from '@/lib/dateti
 import { RECORD_STATUSES } from '@/types/enums';
 import type { Enums } from '@/types/database';
 import { fetchPlaceTimezones } from '@/features/events/api';
+import { SlotSummary, type SlotSummaryRow } from '@/features/lineups/SlotSummary';
 import { useGeneratePredictedSets, useOccurrence, useOccurrenceLineups, useOccurrenceSets, useSaveOccurrence } from './api';
 import { buildSchedule, planToPayload, type ScheduleLineup } from './schedule';
 
@@ -204,21 +205,55 @@ export function OccurrenceFormPage() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-muted-foreground">Line-ups of this night</h2>
           <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">lineup</span>
           <span className="flex-1" />
-          <Button asChild variant="outline" size="sm"><Link to={`/lineups/new?occurrence=${occurrenceId}${form.primary_place_id ? `&place=${form.primary_place_id}` : ''}`}><ListMusic /> New line-up</Link></Button>
+          {/* A publication is never edited into the next one: the button starts the
+              next version FROM the open one, which arrives with its lines already in. */}
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/lineups/new?occurrence=${occurrenceId}${chosen?.place_id ? `&place=${chosen.place_id}` : form.primary_place_id ? `&place=${form.primary_place_id}` : ''}${chosen ? `&from=${chosen.lineup_id}` : ''}`}>
+              <ListMusic /> {chosen ? `New version from v${chosen.version}` : 'New line-up'}
+            </Link>
+          </Button>
         </div>
         {active.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing published for this night yet. A timetable is generated from a line-up, so start there.</p>
         ) : (
-          <ul className="divide-y rounded-lg border">
-            {active.map((l) => (
-              <li key={l.lineup_id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-                <Link to={`/lineups/${l.lineup_id}`} className="font-mono font-semibold underline-offset-2 hover:underline">v{l.version}</Link>
-                <span className={l.place?.name ? '' : 'italic text-muted-foreground'}>{l.place?.name ?? 'place not announced'}</span>
-                <span className="text-xs text-muted-foreground">{l.lineup_artist.filter((s) => s.status === 'active').length} lines</span>
-                {l.split_by_day && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">split by day</span>}
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Newest version first and open: that is the one that is current. */}
+            <div role="tablist" aria-label="Line-up versions" className="-mb-px flex flex-wrap items-end gap-1 border-b">
+              {active.map((l, i) => {
+                const on = l.lineup_id === lineupId;
+                return (
+                  <button
+                    key={l.lineup_id}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setLineupId(l.lineup_id)}
+                    className={`flex items-center gap-2 rounded-t-lg border border-b-0 px-3 py-1.5 text-sm transition-colors ${
+                      on ? 'border-[#C9BCE6] bg-secondary/50 font-medium' : 'border-transparent text-muted-foreground hover:bg-secondary/30'}`}
+                  >
+                    <span className="font-mono font-semibold">v{l.version}</span>
+                    <span className={l.place?.name ? '' : 'italic'}>{l.place?.name ?? 'no place'}</span>
+                    {i === 0 && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">current</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {chosen && (
+              <div className="space-y-2 rounded-b-lg border border-t-0 border-[#C9BCE6] bg-secondary/20 p-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Link to={`/lineups/${chosen.lineup_id}`} className="underline underline-offset-2">Open v{chosen.version} to edit</Link>
+                  <span>·</span>
+                  <span>{chosen.lineup_artist.filter((s) => s.status === 'active').length} lines</span>
+                  {chosen.published_at && <span>· published {new Date(chosen.published_at).toLocaleDateString()}</span>}
+                  {chosen.split_by_day && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">split by day</span>}
+                </div>
+                <SlotSummary
+                  slots={chosen.lineup_artist.filter((s) => s.status === 'active') as unknown as SlotSummaryRow[]}
+                  showDays={chosen.split_by_day}
+                />
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -227,14 +262,7 @@ export function OccurrenceFormPage() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.3px] text-secondary-foreground">Generate the timetable</h2>
           <span className="rounded-full bg-card px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">predicted performance_set</span>
           <span className="flex-1" />
-          {active.length > 1 && (
-            <Select value={lineupId} onValueChange={setLineupId}>
-              <SelectTrigger className="w-56" aria-label="Line-up to generate from"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {active.map((l) => <SelectItem key={l.lineup_id} value={l.lineup_id}>v{l.version} · {l.place?.name ?? 'no place'}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
+          {active.length > 1 && <span className="text-xs text-muted-foreground">from the version open above</span>}
           <Button type="button" onClick={() => void onGenerate()} disabled={!plan || planned === 0 || generate.isPending}>
             <Wand2 /> {generate.isPending ? 'Writing…' : `Generate ${planned || ''} set${planned === 1 ? '' : 's'}`}
           </Button>
