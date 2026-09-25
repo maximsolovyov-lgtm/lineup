@@ -13,6 +13,7 @@ export interface SlotSummaryRow {
   billing_order: number | null;
   slot_date: string | null;
   display_name_override: string | null;
+  place_space_id: string | null;
   space: { name: string } | null;
   lineup_artist_participant: { participant_order: number; artist_id: string; artist: { name: string } | null }[];
 }
