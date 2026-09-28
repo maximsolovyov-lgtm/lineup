@@ -20,6 +20,7 @@ import { placeLookup, usePlace, useProfileNames, useSavePlace, useTagCounts } fr
 import { fromDraft } from './agent';
 import { useGeocode } from '@/agents/client';
 import { ActualizePanel } from '@/agents/ActualizePanel';
+import { PlaceOccurrences } from '@/features/occurrences/PlaceOccurrences';
 import { useDuplicates } from '@/lib/duplicates';
 import { DuplicateWarning } from '@/components/form/DuplicateWarning';
 
@@ -283,6 +284,8 @@ export function PlaceFormPage() {
           {' · '}a removed room is deactivated, not deleted, and the save is refused while a performance set still refers to it.
         </p>
       </section>
+
+      {!isNew && placeId && <PlaceOccurrences placeId={placeId} />}
 
       <FormSection title="Pattern confidence">
         <Field label="Confidence score" htmlFor="lineup_pattern_confidence_score" previous={prev('lineup_pattern_confidence_score')} error={errors.lineup_pattern_confidence_score?.message} hint="0 to 1">

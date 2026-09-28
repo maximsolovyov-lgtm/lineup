@@ -125,6 +125,45 @@ export function useOccurrenceSets(occurrenceId: string | undefined) {
   });
 }
 
+const PLACE_OCC_SELECT = 'occurrence_id,event_date,starts_at,ends_at,timezone,occurrence_name,status,primary_place_id,event:event_id(event_id,name)' as const;
+
+/**
+ * The nights at one venue: the ones whose default place it is, plus the ones
+ * that are here only because a line-up or a set of theirs is announced for it —
+ * a multi-venue night belongs to this venue too, and hiding it would be a lie
+ * of omission. Which is which travels with the row.
+ */
+export function usePlaceOccurrences(placeId: string | undefined) {
+  return useQuery({
+    queryKey: ['place-occurrences', placeId],
+    enabled: !!placeId,
+    queryFn: async () => {
+      const [direct, viaLineup, viaSet] = await Promise.all([
+        supabase.from('event_occurrence').select(PLACE_OCC_SELECT).eq('primary_place_id', placeId!)
+          .order('event_date', { ascending: false }).limit(200),
+        supabase.from('lineup').select('occurrence_id').eq('place_id', placeId!).eq('status', 'active'),
+        supabase.from('performance_set').select('occurrence_id').eq('place_id', placeId!).eq('status', 'active'),
+      ]);
+      if (direct.error) throw direct.error;
+      if (viaLineup.error) throw viaLineup.error;
+      if (viaSet.error) throw viaSet.error;
+
+      const here = new Set(direct.data.map((o) => o.occurrence_id));
+      const elsewhere = [...new Set([...viaLineup.data, ...viaSet.data].map((r) => r.occurrence_id))].filter((id) => !here.has(id));
+      let extra: typeof direct.data = [];
+      if (elsewhere.length > 0) {
+        const { data, error } = await supabase.from('event_occurrence').select(PLACE_OCC_SELECT).in('occurrence_id', elsewhere);
+        if (error) throw error;
+        extra = data;
+      }
+      return [
+        ...direct.data.map((o) => ({ ...o, via: 'place' as const })),
+        ...extra.map((o) => ({ ...o, via: 'lineup' as const })),
+      ].sort((a, b) => b.event_date.localeCompare(a.event_date));
+    },
+  });
+}
+
 export interface PredictedSetPayload { [k: string]: Json }
 
 /** Writes a whole predicted timetable in one transaction (save_predicted_sets). */
