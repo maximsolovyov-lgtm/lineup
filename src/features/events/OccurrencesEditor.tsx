@@ -101,8 +101,8 @@ export function OccurrencesEditor({ value, onChange, errors, eventName, disabled
               </Select>
               <div className="flex items-center">
                 {o.occurrence_id && (
-                  <Button asChild variant="ghost" size="icon" title="Open this night: its line-ups and what is announced for it">
-                    <Link to={`/lineups?occurrence=${o.occurrence_id}`}><CalendarSearch /></Link>
+                  <Button asChild variant="ghost" size="icon" title="Open this night: its own screen, with its line-ups and its timetable">
+                    <Link to={`/occurrences/${o.occurrence_id}`}><CalendarSearch /></Link>
                   </Button>
                 )}
                 <Button type="button" variant="ghost" size="icon" disabled={disabled}
